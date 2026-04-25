@@ -855,19 +855,8 @@ function SinglePitcherView({ p }) {
 
       {/* Section: Mechanics */}
       <SectionBlock num="02" title="Pitching Mechanics · 투구 메카닉스"
-        sub="· 키네매틱 시퀀스 · 분절 회전 속도 · 에너지 전달">
+        sub="· 에너지 전달 · 키네매틱 시퀀스 · 분절 회전 속도">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="panel">
-            <div className="panel-head">
-              <div>
-                <div className="kicker">Sequence Timing</div>
-                <h3>키네매틱 시퀀스 — 분절 회전 순서</h3>
-                <div className="sub">· 이상적: 골반 → 몸통 → 상완 (proximal-to-distal) · 간격 30–60ms</div>
-              </div>
-            </div>
-            <SequenceChart sequence={p.sequence}/>
-            <div className="chart-caption">{p.sequence.comment}</div>
-          </div>
           <div className="panel">
             <div className="panel-head">
               <div>
@@ -878,6 +867,17 @@ function SinglePitcherView({ p }) {
             </div>
             <EnergyFlow energy={p.energy}/>
             <div className="chart-caption">{p.energy.comment}</div>
+          </div>
+          <div className="panel">
+            <div className="panel-head">
+              <div>
+                <div className="kicker">Sequence Timing</div>
+                <h3>키네매틱 시퀀스 — 분절 회전 순서</h3>
+                <div className="sub">· 이상적: 골반 → 몸통 → 상완 (proximal-to-distal) · 간격 30–60ms</div>
+              </div>
+            </div>
+            <SequenceChart sequence={p.sequence}/>
+            <div className="chart-caption">{p.sequence.comment}</div>
           </div>
           <div className="panel">
             <div className="panel-head">
