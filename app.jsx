@@ -261,8 +261,8 @@ function MechanicsSection({ p }) {
           <div className="card-head">
             <div>
               <div className="section-kicker" style={{ fontSize: 10 }}>2.2 · Sequence Timing</div>
-              <h3 className="card-title" style={{ marginTop: 4 }}>키네매틱 시퀀스 — 분절 회전 순서</h3>
-              <div className="card-sub">· 이상적인 순서: 골반 → 몸통 → 상완 (proximal-to-distal)<br/>· 이상적인 간격: 분절 간 약 30–60 ms</div>
+              <h3 className="card-title" style={{ marginTop: 4 }}>키네매틱 시퀀스 — 분절 피크 회전 속도의 순서</h3>
+              <div className="card-sub">· 이상적인 순서: 골반 → 몸통 → 상완 (proximal-to-distal)<br/>· 인접 분절 피크 회전 속도 시점 간격: 약 30–60 ms</div>
             </div>
           </div>
           <SequenceChart sequence={p.sequence}/>

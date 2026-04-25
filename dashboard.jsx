@@ -872,8 +872,8 @@ function SinglePitcherView({ p }) {
             <div className="panel-head">
               <div>
                 <div className="kicker">Sequence Timing</div>
-                <h3>키네매틱 시퀀스 — 분절 회전 순서</h3>
-                <div className="sub">· 이상적: 골반 → 몸통 → 상완 (proximal-to-distal) · 간격 30–60ms</div>
+                <h3>키네매틱 시퀀스 — 분절 피크 회전 속도의 순서</h3>
+                <div className="sub">· 이상적: 골반 → 몸통 → 상완 (proximal-to-distal) · 인접 분절 피크 시점 간격 30–60 ms</div>
               </div>
             </div>
             <SequenceChart sequence={p.sequence}/>

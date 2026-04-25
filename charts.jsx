@@ -81,132 +81,485 @@ function RadarChart({ data }) {
 // ----------------- Kinematic Sequence (timeline) -----------------
 function SequenceChart({ sequence }) {
   const { pelvisMs, trunkMs, armMs, g1, g2 } = sequence;
-  const maxMs = 150;
-  const w = 800, h = 280;
-  const padL = 100, padR = 40, padT = 30, padB = 50;
-  const plotW = w - padL - padR;
-  const toX = (ms) => padL + (ms / maxMs) * plotW;
+  const uid = React.useMemo(() => Math.random().toString(36).slice(2, 8), []);
 
-  const rows = [
-    { y: padT + 30, ko: '골반', en: 'Pelvis', ms: pelvisMs, color: '#4a90c2' },
-    { y: padT + 90, ko: '몸통', en: 'Trunk', ms: trunkMs, color: '#5db885' },
-    { y: padT + 150, ko: '상완', en: 'Arm', ms: armMs, color: '#e8965a' },
+  const tMin = -30, tMax = 150;
+  const w = 800, h = 340;
+  const padL = 24, padR = 24, padT = 30, padB = 90;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const toX = (ms) => padL + ((ms - tMin) / (tMax - tMin)) * plotW;
+  const toY = (v)  => padT + plotH - v * plotH;
+
+  const segs = [
+    { ko: '골반', en: 'Pelvis', peakMs: pelvisMs, amp: 0.42, color: '#4a90c2', sigma: 26 },
+    { ko: '몸통', en: 'Trunk',  peakMs: trunkMs,  amp: 0.66, color: '#5db885', sigma: 24 },
+    { ko: '상완', en: 'Arm',    peakMs: armMs,    amp: 0.95, color: '#e8965a', sigma: 20 },
   ];
-  const ideal = [
-    { from: 30, to: 60, y1: padT + 30, y2: padT + 90, label: `골반→몸통 ${g1} ms`, ok: g1 >= 30 && g1 <= 60 },
-    { from: 60, to: 120, y1: padT + 90, y2: padT + 150, label: `몸통→상완 ${g2} ms`, ok: g2 >= 30 && g2 <= 60 },
-  ];
+
+  const sample = (peak, amp, sigma, t) => {
+    const z = (t - peak) / sigma;
+    return amp * Math.exp(-(z * z) / 2);
+  };
+
+  const curvePath = (peak, amp, sigma) => {
+    let d = '';
+    for (let t = tMin; t <= tMax; t += 2) {
+      const x = toX(t).toFixed(2);
+      const y = toY(sample(peak, amp, sigma, t)).toFixed(2);
+      d += (d === '' ? `M ${x} ${y}` : ` L ${x} ${y}`);
+    }
+    return d;
+  };
+
+  const okG1 = g1 >= 30 && g1 <= 60;
+  const okG2 = g2 >= 30 && g2 <= 60;
+
+  // Δt 두 행 (stagger)
+  const dtRow1Y = padT + plotH + 26;
+  const dtRow2Y = padT + plotH + 58;
 
   return (
-    <svg className="chart" viewBox={`0 0 ${w} ${h}`}>
-      <defs>
-        <filter id="glowDot">
-          <feGaussianBlur stdDeviation="4" result="b"/>
-          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      {/* gridlines */}
-      {[0,20,40,60,80,100,120,140].map(t => (
-        <g key={t}>
-          <line x1={toX(t)} x2={toX(t)} y1={padT} y2={h-padB} className="gridline"/>
-          <text x={toX(t)} y={h-padB+18} textAnchor="middle" className="axis">{t}</text>
-        </g>
-      ))}
-      <text x={padL + plotW/2} y={h - 10} textAnchor="middle" className="axis" fontSize="11">
-        골반 최대 회전을 0 ms로 한 상대 시간 (ms)
-      </text>
-      {/* rows */}
-      {rows.map((r,i) => (
-        <g key={i}>
-          <text x={padL - 16} y={r.y + 4} textAnchor="end" className="label-ko">{r.ko}</text>
-          <text x={padL - 16} y={r.y + 18} textAnchor="end" className="label-en" fontFamily="Inter">({r.en})</text>
-          <line x1={padL} x2={toX(r.ms > 0 ? r.ms : 2)} y1={r.y} y2={r.y}
-            stroke={r.color} strokeWidth="3" opacity="0.35" strokeLinecap="round"/>
-          <circle cx={toX(r.ms)} cy={r.y} r="11" fill={r.color} filter="url(#glowDot)"/>
-          <circle cx={toX(r.ms)} cy={r.y} r="7" fill={r.color} stroke="#08080c" strokeWidth="2"/>
-          <text x={toX(r.ms) + 16} y={r.y + 5} className="value" fontSize="14" fill={r.color}>{r.ms} ms</text>
-        </g>
-      ))}
-      {/* ideal bands */}
-      {ideal.map((b,i) => {
-        const x1 = toX(b.from), x2 = toX(b.to);
-        const yMid = (b.y1 + b.y2)/2;
-        const stroke = b.ok ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)';
-        const fill = b.ok ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.06)';
-        return (
-          <g key={i}>
-            <rect x={x1} y={b.y1 + 10} width={x2 - x1} height={b.y2 - b.y1 - 20}
-              fill={fill} stroke={stroke} strokeDasharray="4 4" rx="4"/>
-            <rect x={x1 + 4} y={yMid - 10} width={Math.max(10,(b.label.length * 6.5))} height={20}
-              fill="#0c0c14" stroke={stroke} rx="4"/>
-            <text x={x1 + 8} y={yMid + 4} fontSize="11" fill={b.ok ? '#4ade80' : '#f87171'} fontWeight="600">{b.label}</text>
-          </g>
-        );
-      })}
-      <text x={w - padR} y={h - padB - 6} textAnchor="end" className="axis" fontSize="10" opacity="0.7">
-        초록 띠 = 이상적 타이밍 범위 (30–60 ms)
-      </text>
-    </svg>
+    <div className="energy-silhouette">
+      <svg viewBox={`0 0 ${w} ${h}`} className="silhouette-svg" role="img" aria-label="키네매틱 시퀀스">
+        <defs>
+          <filter id={`curveGlow-${uid}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id={`peakGlow-${uid}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <linearGradient id={`plotBg-${uid}`} x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0" stopColor="#0a1322"/>
+            <stop offset="1" stopColor="#0d182b"/>
+          </linearGradient>
+          {segs.map((s, i) => (
+            <path key={i} id={`seqCurve-${i}-${uid}`} d={curvePath(s.peakMs, s.amp, s.sigma)} fill="none"/>
+          ))}
+        </defs>
+
+        {/* plot 배경 */}
+        <rect x={padL} y={padT} width={plotW} height={plotH} fill={`url(#plotBg-${uid})`} rx="4"/>
+
+        {/* 이상 Δt 띠 (30-60 ms / 60-120 ms 시각적 가이드) */}
+        <rect x={toX(30)} y={padT} width={toX(60) - toX(30)} height={plotH} fill="rgba(74,222,128,0.05)"/>
+        <rect x={toX(60)} y={padT} width={toX(120) - toX(60)} height={plotH} fill="rgba(74,222,128,0.04)"/>
+
+        {/* 시각용 그리드 (숫자 라벨 없음) */}
+        {[-30, 0, 30, 60, 90, 120, 150].map(t => (
+          <line key={t} x1={toX(t)} x2={toX(t)} y1={padT} y2={padT + plotH}
+                stroke="#1e293b" strokeWidth="1" strokeDasharray="2 4"/>
+        ))}
+
+        {/* 0 ms 기준선 (골반 피크) */}
+        <line x1={toX(0)} x2={toX(0)} y1={padT} y2={padT + plotH}
+              stroke="#475569" strokeWidth="1.5" strokeOpacity="0.6"/>
+
+        {/* 곡선 + 다이나믹 (라벨 없음) */}
+        {segs.map((s, i) => {
+          const d = curvePath(s.peakMs, s.amp, s.sigma);
+          const peakX = toX(s.peakMs);
+          const peakY = toY(s.amp);
+          const partDur = 2.0;
+          const partDelay = -((segs.length - 1 - i) * 0.35).toFixed(2);
+          return (
+            <g key={i}>
+              <path d={`${d} L ${toX(tMax)} ${toY(0)} L ${toX(tMin)} ${toY(0)} Z`}
+                    fill={s.color} opacity="0.10"/>
+              <path d={d} stroke={s.color} strokeWidth="2.6" fill="none" strokeLinecap="round"
+                    style={{ filter: `url(#curveGlow-${uid})` }}/>
+              <path d={d} stroke="#ffffff" strokeOpacity="0.5" strokeWidth="1.2" fill="none"
+                    strokeDasharray="10 22">
+                <animate attributeName="stroke-dashoffset" values="32;0" dur="1.6s" repeatCount="indefinite"/>
+              </path>
+              {[0, 0.5].map((offset, j) => (
+                <circle key={j} r="3.2" fill={s.color} opacity="0.95"
+                        style={{ filter: `url(#curveGlow-${uid})` }}>
+                  <animateMotion dur={`${partDur}s`} repeatCount="indefinite"
+                                 begin={`${(parseFloat(partDelay) - offset * partDur).toFixed(2)}s`}>
+                    <mpath href={`#seqCurve-${i}-${uid}`}/>
+                  </animateMotion>
+                </circle>
+              ))}
+              <circle cx={peakX} cy={peakY} r="10" fill="none" stroke={s.color} strokeOpacity="0.65" strokeWidth="2">
+                <animate attributeName="r" values="8;20;8" dur="1.6s" repeatCount="indefinite" begin={`${i * 0.4}s`}/>
+                <animate attributeName="stroke-opacity" values="0.7;0;0.7" dur="1.6s" repeatCount="indefinite" begin={`${i * 0.4}s`}/>
+              </circle>
+              <circle cx={peakX} cy={peakY} r="6.5" fill={s.color} stroke="#08080c" strokeWidth="2"
+                      style={{ filter: `url(#peakGlow-${uid})` }}/>
+            </g>
+          );
+        })}
+
+        {/* Δt 표시 (유일하게 남은 텍스트) - 2 행 stagger */}
+        {[
+          { x1: toX(pelvisMs), x2: toX(trunkMs), val: g1, ok: okG1, label: '골반→몸통', y: dtRow1Y },
+          { x1: toX(trunkMs),  x2: toX(armMs),   val: g2, ok: okG2, label: '몸통→상완', y: dtRow2Y },
+        ].map((b, i) => {
+          const xmid = (b.x1 + b.x2) / 2;
+          const clr = b.ok ? '#4ade80' : '#f87171';
+          return (
+            <g key={i}>
+              <line x1={b.x1} x2={b.x1} y1={b.y - 6} y2={b.y + 6} stroke={clr} strokeWidth="2"/>
+              <line x1={b.x2} x2={b.x2} y1={b.y - 6} y2={b.y + 6} stroke={clr} strokeWidth="2"/>
+              <line x1={b.x1 + 2} x2={b.x2 - 2} y1={b.y} y2={b.y} stroke={clr} strokeWidth="1.8"/>
+              <polygon points={`${b.x1 + 8},${b.y - 4} ${b.x1 + 2},${b.y} ${b.x1 + 8},${b.y + 4}`} fill={clr}/>
+              <polygon points={`${b.x2 - 8},${b.y - 4} ${b.x2 - 2},${b.y} ${b.x2 - 8},${b.y + 4}`} fill={clr}/>
+              <rect x={xmid - 64} y={b.y - 22} width="128" height="18" rx="3"
+                    fill="#0b1220" stroke={clr} strokeOpacity="0.75"/>
+              <text x={xmid} y={b.y - 9} textAnchor="middle" fontSize="11" fill={clr} fontWeight="700">
+                Δt {b.label} {b.val} ms
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
 // ----------------- Angular Velocity Bars -----------------
 function AngularChart({ angular }) {
   const segs = [
-    { ko: '골반', en: 'Pelvis', val: angular.pelvis, band: angular.pelvisBand, lo: 580, hi: 640, color: '#4a90c2' },
-    { ko: '몸통', en: 'Trunk',  val: angular.trunk,  band: angular.trunkBand,  lo: 800, hi: 900, color: '#5db885' },
-    { ko: '상완', en: 'Arm',    val: angular.arm,    band: angular.armBand,    lo: 1450, hi: 1600, color: '#e8965a' },
+    { ko: '골반', en: 'Pelvis', val: angular.pelvis, band: angular.pelvisBand, lo: 580,  hi: 640,  color: '#4a90c2', max: 700  },
+    { ko: '몸통', en: 'Trunk',  val: angular.trunk,  band: angular.trunkBand,  lo: 800,  hi: 900,  color: '#5db885', max: 1000 },
+    { ko: '상완', en: 'Arm',    val: angular.arm,    band: angular.armBand,    lo: 1450, hi: 1600, color: '#e8965a', max: 1700 },
   ];
-  const w = 800, h = 300;
-  const padL = 110, padR = 50, padT = 20, padB = 50;
-  const maxX = 1700;
-  const plotW = w - padL - padR;
-  const toX = (v) => padL + (v / maxX) * plotW;
-  const rowH = (h - padT - padB) / segs.length;
-  const barH = 34;
-
+  const uid = React.useMemo(() => Math.random().toString(36).slice(2, 8), []);
   const bandLabel = (b) => b === 'high' ? '기준 상위' : b === 'mid' ? '기준 범위' : '기준 미만';
-  const bandClr = (b) => b === 'high' ? '#4ade80' : b === 'mid' ? '#c8c8d8' : '#f87171';
+  const bandClr   = (b) => b === 'high' ? '#4ade80' : b === 'mid' ? '#c8c8d8' : '#f87171';
+
+  // 골반을 위로 올린 keypoints (pelvis 264→244, knee 12 위로)
+  const K = {
+    head:     [470, 100],
+    neck:     [478, 138],
+    rShoulder:[520, 162],
+    lShoulder:[438, 158],
+    rElbow:   [572, 108],
+    rWrist:   [612, 72],
+    ball:     [634, 60],
+    lElbow:   [376, 176],
+    lWrist:   [424, 220],
+    pelvisR:  [506, 280],
+    pelvisL:  [446, 280],
+    pelvisC:  [476, 280],
+    rKnee:    [556, 358],
+    rAnkle:   [620, 412],
+    lKnee:    [370, 384],
+    lAnkle:   [332, 472],
+    lToe:     [290, 474],
+    rToe:     [658, 420],
+  };
+
+  // 회전 호 메타데이터 — 화살표 방향 반대 (반시계방향 sweep, sweep flag 0)
+  // start/end가 이전 버전 대비 swap된 형태
+  const arcs = [
+    { center: [K.pelvisC[0], K.pelvisC[1] - 4], rx: 78, ry: 22, startDeg: 340, endDeg: 200,
+      val: segs[0].val, max: segs[0].max, color: segs[0].color, name: 'pelvis' },
+    { center: [(K.lShoulder[0]+K.rShoulder[0])/2 + 3, (K.lShoulder[1]+K.rShoulder[1])/2 + 32],
+      rx: 92, ry: 28, startDeg: 340, endDeg: 200,
+      val: segs[1].val, max: segs[1].max, color: segs[1].color, name: 'trunk' },
+    { center: [K.rShoulder[0], K.rShoulder[1]], rx: 108, ry: 108, startDeg: 5, endDeg: 245,
+      val: segs[2].val, max: segs[2].max, color: segs[2].color, name: 'arm' },
+  ];
+
+  // 반시계방향 ellipse 호 path (sweep flag = 0)
+  const arcPath = (cx, cy, rx, ry, startDeg, endDeg) => {
+    const sR = startDeg * Math.PI / 180;
+    const eR = endDeg * Math.PI / 180;
+    const x1 = cx + rx * Math.cos(sR);
+    const y1 = cy + ry * Math.sin(sR);
+    const x2 = cx + rx * Math.cos(eR);
+    const y2 = cy + ry * Math.sin(eR);
+    const sweep = ((startDeg - endDeg) + 360) % 360;
+    const largeArc = sweep > 180 ? 1 : 0;
+    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${rx} ${ry} 0 ${largeArc} 0 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+  };
+
+  // 호 끝 화살표 (반시계 sweep tangent: tx = +rx*sin(r), ty = -ry*cos(r))
+  const arrowHead = (cx, cy, rx, ry, deg, size, color) => {
+    const r = deg * Math.PI / 180;
+    const x = cx + rx * Math.cos(r);
+    const y = cy + ry * Math.sin(r);
+    const tx =  rx * Math.sin(r);
+    const ty = -ry * Math.cos(r);
+    const tl = Math.hypot(tx, ty);
+    const ux = tx / tl, uy = ty / tl;
+    const nx = -uy, ny = ux;
+    const tip = [x + ux * size * 0.6, y + uy * size * 0.6];
+    const b1  = [x - ux * size * 0.4 + nx * size * 0.6, y - uy * size * 0.4 + ny * size * 0.6];
+    const b2  = [x - ux * size * 0.4 - nx * size * 0.6, y - uy * size * 0.4 - ny * size * 0.6];
+    return (
+      <polygon points={`${tip[0].toFixed(1)},${tip[1].toFixed(1)} ${b1[0].toFixed(1)},${b1[1].toFixed(1)} ${b2[0].toFixed(1)},${b2[1].toFixed(1)}`} fill={color}/>
+    );
+  };
+
+  const arcStroke = (val, max) => Math.max(8, Math.min(26, 8 + (val / max) * 18));
+  // 빠를수록 짧은 dur (다이나믹: 0.6s ~ 1.6s)
+  const animDur = (val, max) => (1.6 - (val / max) * 1.0).toFixed(2) + 's';
 
   return (
-    <svg className="chart" viewBox={`0 0 ${w} ${h}`}>
-      {/* vertical grid */}
-      {[0, 400, 800, 1200, 1600].map(t => (
-        <g key={t}>
-          <line x1={toX(t)} x2={toX(t)} y1={padT} y2={h - padB} className="gridline"/>
-          <text x={toX(t)} y={h - padB + 18} textAnchor="middle" className="axis">{t}</text>
+    <div className="energy-silhouette">
+      <svg viewBox="0 0 800 520" className="silhouette-svg" role="img" aria-label="투구 실루엣 위의 분절별 최대 회전 속도">
+        <defs>
+          <linearGradient id={`bg-${uid}`} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor="#0b1220" stopOpacity="0"/>
+            <stop offset="1" stopColor="#0b1220" stopOpacity="0.35"/>
+          </linearGradient>
+          {/* 시네마틱 라디얼 라이팅 */}
+          <radialGradient id={`spotlight-${uid}`} cx="70%" cy="20%" r="80%">
+            <stop offset="0%" stopColor="#1c2748" stopOpacity="0.6"/>
+            <stop offset="60%" stopColor="#0a1322" stopOpacity="0"/>
+          </radialGradient>
+          {/* Mannequin shaders */}
+          <radialGradient id={`mSphere-${uid}`} cx="35%" cy="30%" r="75%">
+            <stop offset="0%" stopColor="#f1f5f9"/>
+            <stop offset="45%" stopColor="#cbd5e1"/>
+            <stop offset="85%" stopColor="#64748b"/>
+            <stop offset="100%" stopColor="#334155"/>
+          </radialGradient>
+          <linearGradient id={`mLimb-${uid}`} x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor="#e2e8f0"/>
+            <stop offset="50%" stopColor="#94a3b8"/>
+            <stop offset="100%" stopColor="#475569"/>
+          </linearGradient>
+          <linearGradient id={`mLimbD-${uid}`} x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor="#94a3b8"/>
+            <stop offset="55%" stopColor="#64748b"/>
+            <stop offset="100%" stopColor="#1e293b"/>
+          </linearGradient>
+          <linearGradient id={`mTorso-${uid}`} x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor="#e2e8f0"/>
+            <stop offset="40%" stopColor="#94a3b8"/>
+            <stop offset="100%" stopColor="#334155"/>
+          </linearGradient>
+          <radialGradient id={`mJoint-${uid}`} cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="#f8fafc"/>
+            <stop offset="60%" stopColor="#94a3b8"/>
+            <stop offset="100%" stopColor="#334155"/>
+          </radialGradient>
+          <radialGradient id={`aoShadow-${uid}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#000" stopOpacity="0.45"/>
+            <stop offset="100%" stopColor="#000" stopOpacity="0"/>
+          </radialGradient>
+          {/* 강한 글로우 (다이나믹 강조) */}
+          <filter id={`arcGlow-${uid}`} x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="4.5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id={`particleGlow-${uid}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          {/* 호 path를 mpath용으로 등록 */}
+          {arcs.map((a, i) => (
+            <path key={i} id={`arcRef-${i}-${uid}`}
+                  d={arcPath(a.center[0], a.center[1], a.rx, a.ry, a.startDeg, a.endDeg)}
+                  fill="none"/>
+          ))}
+        </defs>
+
+        {/* ground + 시네마틱 라이팅 */}
+        <rect x="0" y="0" width="800" height="520" fill={`url(#spotlight-${uid})`}/>
+        <line x1="40" y1="485" x2="760" y2="485" stroke="#2a3a5a" strokeWidth="1.5" strokeDasharray="3 6"/>
+        <rect x="0" y="0" width="800" height="520" fill={`url(#bg-${uid})`}/>
+
+        <ellipse cx={(K.lAnkle[0]+K.rAnkle[0])/2} cy="488" rx="180" ry="12" fill={`url(#aoShadow-${uid})`}/>
+
+        {/* ---- Glove-side arm (behind body) ---- */}
+        <g>
+          <line x1={K.lShoulder[0]} y1={K.lShoulder[1]} x2={K.lElbow[0]} y2={K.lElbow[1]}
+                stroke={`url(#mLimbD-${uid})`} strokeWidth="22" strokeLinecap="round"/>
+          <circle cx={K.lElbow[0]} cy={K.lElbow[1]} r="12" fill={`url(#mJoint-${uid})`}/>
+          <line x1={K.lElbow[0]} y1={K.lElbow[1]} x2={K.lWrist[0]} y2={K.lWrist[1]}
+                stroke={`url(#mLimbD-${uid})`} strokeWidth="19" strokeLinecap="round"/>
+          <circle cx={K.lWrist[0]} cy={K.lWrist[1]} r="13" fill={`url(#mSphere-${uid})`}/>
         </g>
-      ))}
-      <text x={padL + plotW/2} y={h - 10} textAnchor="middle" className="axis" fontSize="11">
-        최대 회전 속도 (°/s) — 프로 투수 범위 대비
-      </text>
-      {segs.map((s, i) => {
-        const y = padT + rowH * i + (rowH - barH)/2;
-        const x1 = toX(s.lo), x2 = toX(s.hi);
-        return (
-          <g key={i}>
-            <text x={padL - 14} y={y + barH/2 - 2} textAnchor="end" className="label-ko">{s.ko}</text>
-            <text x={padL - 14} y={y + barH/2 + 14} textAnchor="end" className="label-en" fontFamily="Inter">({s.en})</text>
-            {/* reference band */}
-            <rect x={x1} y={y - 4} width={x2 - x1} height={barH + 8}
-              fill="rgba(148,163,184,0.08)" stroke="rgba(148,163,184,0.3)" strokeDasharray="4 3"/>
-            {/* bar */}
-            <rect x={padL} y={y} width={toX(s.val) - padL} height={barH}
-              fill={s.color} rx="4"
-              style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))' }}/>
-            {/* band pill */}
-            <g transform={`translate(${padL + 14}, ${y + barH/2 - 9})`}>
-              <rect width="68" height="18" rx="3" fill="rgba(8,8,12,0.5)" stroke={bandClr(s.band)} strokeWidth="1"/>
-              <text x="34" y="13" textAnchor="middle" fontSize="11" fill={bandClr(s.band)} fontWeight="700">{bandLabel(s.band)}</text>
+
+        {/* ---- Back leg ---- */}
+        <g>
+          <line x1={K.pelvisR[0]-2} y1={K.pelvisR[1]} x2={K.rKnee[0]} y2={K.rKnee[1]}
+                stroke={`url(#mLimb-${uid})`} strokeWidth="32" strokeLinecap="round"/>
+          <circle cx={K.rKnee[0]} cy={K.rKnee[1]} r="15" fill={`url(#mJoint-${uid})`}/>
+          <line x1={K.rKnee[0]} y1={K.rKnee[1]} x2={K.rAnkle[0]} y2={K.rAnkle[1]}
+                stroke={`url(#mLimb-${uid})`} strokeWidth="24" strokeLinecap="round"/>
+          <circle cx={K.rAnkle[0]} cy={K.rAnkle[1]} r="11" fill={`url(#mJoint-${uid})`}/>
+          <path d={`
+            M ${K.rAnkle[0]-8} ${K.rAnkle[1]+4}
+            Q ${K.rAnkle[0]-4} ${K.rAnkle[1]+18} ${K.rToe[0]-6} ${K.rToe[1]+10}
+            L ${K.rToe[0]+4} ${K.rToe[1]+2}
+            Q ${K.rToe[0]-2} ${K.rAnkle[1]-2} ${K.rAnkle[0]+6} ${K.rAnkle[1]-4}
+            Z
+          `} fill={`url(#mLimb-${uid})`}/>
+        </g>
+
+        {/* ---- Front leg ---- */}
+        <g>
+          <line x1={K.pelvisL[0]+2} y1={K.pelvisL[1]} x2={K.lKnee[0]} y2={K.lKnee[1]}
+                stroke={`url(#mLimb-${uid})`} strokeWidth="34" strokeLinecap="round"/>
+          <circle cx={K.lKnee[0]} cy={K.lKnee[1]} r="17" fill={`url(#mJoint-${uid})`}/>
+          <line x1={K.lKnee[0]} y1={K.lKnee[1]} x2={K.lAnkle[0]} y2={K.lAnkle[1]}
+                stroke={`url(#mLimb-${uid})`} strokeWidth="26" strokeLinecap="round"/>
+          <circle cx={K.lAnkle[0]} cy={K.lAnkle[1]} r="12" fill={`url(#mJoint-${uid})`}/>
+          <path d={`
+            M ${K.lAnkle[0]-12} ${K.lAnkle[1]+2}
+            Q ${K.lToe[0]-4} ${K.lToe[1]-8} ${K.lToe[0]-12} ${K.lToe[1]+8}
+            L ${K.lAnkle[0]-4} ${K.lAnkle[1]+14}
+            Z
+          `} fill={`url(#mLimb-${uid})`}/>
+        </g>
+
+        {/* ---- Torso ---- */}
+        <line x1={K.lShoulder[0]+2} y1={K.lShoulder[1]+4}
+              x2={K.rShoulder[0]-2} y2={K.rShoulder[1]+4}
+              stroke={`url(#mLimb-${uid})`} strokeWidth="34" strokeLinecap="round"/>
+        <path d={`
+          M ${K.lShoulder[0]+4} ${K.lShoulder[1]+8}
+          C ${K.lShoulder[0]-2} ${K.lShoulder[1]+50}, ${K.pelvisL[0]+2} ${K.pelvisL[1]-68}, ${K.pelvisL[0]+6} ${K.pelvisL[1]-20}
+          L ${K.pelvisR[0]-6} ${K.pelvisR[1]-20}
+          C ${K.pelvisR[0]-2} ${K.pelvisR[1]-68}, ${K.rShoulder[0]+2} ${K.rShoulder[1]+50}, ${K.rShoulder[0]-4} ${K.rShoulder[1]+8}
+          Z
+        `} fill={`url(#mTorso-${uid})`} stroke="#1e293b" strokeWidth="1.2"/>
+        {/* Abdomen + 통합 hip silhouette (별도 pelvis 캡슐 없음 — 하단에서 자연스럽게 hip 폭으로 넓어짐) */}
+        <path d={`
+          M ${K.pelvisL[0]+6} ${K.pelvisL[1]-22}
+          C ${K.pelvisL[0]+2} ${K.pelvisL[1]-12}, ${K.pelvisL[0]-2} ${K.pelvisL[1]-2}, ${K.pelvisL[0]-6} ${K.pelvisL[1]+10}
+          L ${K.pelvisR[0]+6} ${K.pelvisR[1]+10}
+          C ${K.pelvisR[0]+2} ${K.pelvisR[1]-2}, ${K.pelvisR[0]-2} ${K.pelvisR[1]-12}, ${K.pelvisR[0]-6} ${K.pelvisR[1]-22}
+          Z
+        `} fill={`url(#mTorso-${uid})`} stroke="#1e293b" strokeWidth="1"/>
+        <path d={`M ${(K.lShoulder[0]+K.rShoulder[0])/2} ${(K.lShoulder[1]+K.rShoulder[1])/2 + 12}
+                  L ${K.pelvisC[0]+2} ${K.pelvisC[1]-12}`}
+              stroke="#334155" strokeWidth="1" strokeOpacity="0.35" fill="none"/>
+        <circle cx={K.lShoulder[0]} cy={K.lShoulder[1]} r="15" fill={`url(#mJoint-${uid})`}/>
+        <circle cx={K.rShoulder[0]} cy={K.rShoulder[1]} r="16" fill={`url(#mJoint-${uid})`}/>
+
+        {/* ---- Neck + head ---- */}
+        <line x1={K.neck[0]-2} y1={K.neck[1]-6} x2={K.neck[0]+2} y2={K.neck[1]+8}
+              stroke={`url(#mLimb-${uid})`} strokeWidth="16" strokeLinecap="round"/>
+        <circle cx={K.head[0]} cy={K.head[1]} r="28" fill={`url(#mSphere-${uid})`} stroke="#1e293b" strokeWidth="1"/>
+        <path d={`M ${K.head[0]-28} ${K.head[1]-4} Q ${K.head[0]-10} ${K.head[1]+10} ${K.head[0]+22} ${K.head[1]+4}`}
+              stroke="#475569" strokeWidth="1" strokeOpacity="0.4" fill="none"/>
+
+        {/* ---- Throwing arm ---- */}
+        <g>
+          <line x1={K.rShoulder[0]} y1={K.rShoulder[1]} x2={K.rElbow[0]} y2={K.rElbow[1]}
+                stroke={`url(#mLimb-${uid})`} strokeWidth="26" strokeLinecap="round"/>
+          <circle cx={K.rElbow[0]} cy={K.rElbow[1]} r="13" fill={`url(#mJoint-${uid})`}/>
+          <line x1={K.rElbow[0]} y1={K.rElbow[1]} x2={K.rWrist[0]} y2={K.rWrist[1]}
+                stroke={`url(#mLimb-${uid})`} strokeWidth="20" strokeLinecap="round"/>
+          <circle cx={K.rWrist[0]} cy={K.rWrist[1]} r="11" fill={`url(#mJoint-${uid})`}/>
+        </g>
+
+        {/* ---- Ball ---- */}
+        <circle cx={K.ball[0]} cy={K.ball[1]} r="9" fill="#f8fafc" stroke="#1e293b" strokeWidth="1.2"/>
+        <path d={`M ${K.ball[0]-6} ${K.ball[1]-3} Q ${K.ball[0]} ${K.ball[1]-8} ${K.ball[0]+6} ${K.ball[1]-3}`} stroke="#ef4444" strokeWidth="1.2" fill="none"/>
+        <path d={`M ${K.ball[0]-6} ${K.ball[1]+3} Q ${K.ball[0]} ${K.ball[1]+8} ${K.ball[0]+6} ${K.ball[1]+3}`} stroke="#ef4444" strokeWidth="1.2" fill="none"/>
+
+        {/* -------- Rotation arcs (다이나믹: 흐르는 빛 + 입자 + 펄스) -------- */}
+        {arcs.map((a, i) => {
+          const sw = arcStroke(a.val, a.max);
+          const dur = animDur(a.val, a.max);
+          const durNum = parseFloat(dur);
+          const arcRef = `#arcRef-${i}-${uid}`;
+          const pathD = arcPath(a.center[0], a.center[1], a.rx, a.ry, a.startDeg, a.endDeg);
+          return (
+            <g key={i}>
+              {/* 외광 헤일로 */}
+              <path d={pathD}
+                    stroke={a.color} strokeOpacity="0.16" strokeWidth={sw + 14}
+                    fill="none" strokeLinecap="round"
+                    style={{ filter: `url(#arcGlow-${uid})` }}/>
+              {/* 베이스 underlay */}
+              <path d={pathD}
+                    stroke={a.color} strokeOpacity="0.32" strokeWidth={sw + 4}
+                    fill="none" strokeLinecap="round"/>
+              {/* 메인 호 (펄스 효과) */}
+              <path d={pathD}
+                    stroke={a.color} strokeWidth={sw}
+                    fill="none" strokeLinecap="round"
+                    style={{ filter: `url(#arcGlow-${uid})` }}>
+                <animate attributeName="stroke-opacity" values="0.85;1;0.85" dur={`${(durNum*1.5).toFixed(2)}s`} repeatCount="indefinite"/>
+              </path>
+              {/* 흐르는 빛 (dasharray 애니메이션) - 반시계방향이므로 offset 반대로 */}
+              <path d={pathD}
+                    stroke="#ffffff" strokeOpacity="0.55" strokeWidth={Math.max(2, sw * 0.35)}
+                    fill="none" strokeLinecap="round"
+                    strokeDasharray="18 26">
+                <animate attributeName="stroke-dashoffset" values="0;44" dur={dur} repeatCount="indefinite"/>
+              </path>
+              {/* 흐르는 입자 3개 */}
+              {[0, 0.33, 0.66].map((offset, j) => (
+                <circle key={j} r={2.8} fill="#ffffff" opacity="0.95"
+                        style={{ filter: `url(#particleGlow-${uid})` }}>
+                  <animateMotion dur={dur} repeatCount="indefinite"
+                                 begin={`-${(offset * durNum).toFixed(2)}s`}>
+                    <mpath href={arcRef}/>
+                  </animateMotion>
+                </circle>
+              ))}
+              {/* 화살표 머리 (반대 방향) - 펄스 */}
+              <g style={{ filter: `url(#arcGlow-${uid})` }}>
+                {arrowHead(a.center[0], a.center[1], a.rx, a.ry, a.endDeg, sw + 8, a.color)}
+                <circle cx={a.center[0] + a.rx * Math.cos(a.endDeg * Math.PI/180)}
+                        cy={a.center[1] + a.ry * Math.sin(a.endDeg * Math.PI/180)}
+                        r={sw * 0.55} fill={a.color} opacity="0.5">
+                  <animate attributeName="r" values={`${sw*0.45};${sw*0.85};${sw*0.45}`} dur={dur} repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.5;0.0;0.5" dur={dur} repeatCount="indefinite"/>
+                </circle>
+              </g>
+              {/* 회전 축 점 */}
+              <circle cx={a.center[0]} cy={a.center[1]} r="3.5" fill={a.color} opacity="0.9"/>
+              <circle cx={a.center[0]} cy={a.center[1]} r="6" fill="none" stroke={a.color} strokeOpacity="0.4" strokeWidth="1"/>
             </g>
-            {/* value */}
-            <text x={toX(s.val) + 8} y={y + barH/2 + 5} fontSize="15" fill={s.color} fontWeight="800" fontFamily="Inter">
-              {s.val} °/s
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+          );
+        })}
+
+        {/* -------- Left side label panels with leader lines -------- */}
+        {segs.map((s, i) => {
+          const a = arcs[i];
+          const lx = 36, ly = 56 + i * 132, lw = 200, lh = 102;
+          // leader: 호의 새 endDeg 근처에서 라벨로
+          const lr = (a.endDeg - 25) * Math.PI / 180;
+          const px = a.center[0] + a.rx * Math.cos(lr);
+          const py = a.center[1] + a.ry * Math.sin(lr);
+          const pct = Math.min(1, s.val / s.max);
+          const loPct = s.lo / s.max;
+          const hiPct = s.hi / s.max;
+          const gx0 = lx + 14, gx1 = lx + lw - 14, gw = gx1 - gx0;
+          const gy = ly + 64;
+          return (
+            <g key={i}>
+              <line x1={px} y1={py} x2={lx + lw} y2={ly + lh / 2}
+                    stroke={s.color} strokeWidth="1.2" strokeOpacity="0.6" strokeDasharray="2 3"/>
+              <rect x={lx} y={ly} width={lw} height={lh} rx="8" fill="#0b1220" stroke={s.color} strokeOpacity="0.7"/>
+              <text x={lx + 14} y={ly + 22} fontSize="10" fill={s.color} fontFamily="Inter" fontWeight="700" letterSpacing="2">{s.en.toUpperCase()}</text>
+              <text x={lx + 14} y={ly + 44} fontSize="17" fill="#e2e8f0" fontWeight="700">{s.ko}</text>
+              <text x={lx + lw - 14} y={ly + 44} textAnchor="end" fontSize="22" fill={s.color} fontWeight="800" fontFamily="Inter">
+                {s.val}<tspan fontSize="11" fill="#94a3b8" fontWeight="500"> °/s</tspan>
+              </text>
+              <line x1={gx0} y1={gy} x2={gx1} y2={gy} stroke="#1e293b" strokeWidth="3" strokeLinecap="round"/>
+              <line x1={gx0 + loPct * gw} y1={gy} x2={gx0 + hiPct * gw} y2={gy}
+                    stroke="rgba(148,163,184,0.5)" strokeWidth="3" strokeLinecap="round"/>
+              <circle cx={gx0 + pct * gw} cy={gy} r="5" fill={s.color} stroke="#0b1220" strokeWidth="1.5"/>
+              <rect x={lx + 14} y={ly + 76} width="68" height="18" rx="3"
+                    fill="rgba(8,8,12,0.6)" stroke={bandClr(s.band)} strokeWidth="1"/>
+              <text x={lx + 48} y={ly + 89} textAnchor="middle" fontSize="11" fill={bandClr(s.band)} fontWeight="700">{bandLabel(s.band)}</text>
+              <text x={lx + lw - 14} y={ly + 89} textAnchor="end" fontSize="10" fill="#94a3b8" fontFamily="Inter">기준 {s.lo}–{s.hi}</text>
+            </g>
+          );
+        })}
+      </svg>
+
+      <div className="silhouette-legend">
+        <div className="leg-item"><span className="dot" style={{ background: '#4a90c2' }}/>골반 회전 — 하체 회전 시작점</div>
+        <div className="leg-item"><span className="dot" style={{ background: '#5db885' }}/>몸통 회전 — 골반 → 몸통 가속 (이상 ×1.3+)</div>
+        <div className="leg-item"><span className="dot" style={{ background: '#e8965a' }}/>상완 회전 — 채찍 끝 가속 (이상 ×1.7+)</div>
+        <div className="leg-item note">호의 두께 = 회전 속도 비례 · 흐르는 입자 속도 = 분절 회전 속도 비례 · 화살표 = 회전 방향</div>
+      </div>
+    </div>
   );
 }
 
@@ -229,12 +582,12 @@ function EnergyFlow({ energy }) {
     ball:     [634, 60],
     lElbow:   [376, 176],
     lWrist:   [424, 220],
-    pelvisR:  [506, 264],
-    pelvisL:  [446, 264],
-    pelvisC:  [476, 264],
-    rKnee:    [556, 352],   // back leg driving
+    pelvisR:  [506, 280],
+    pelvisL:  [446, 280],
+    pelvisC:  [476, 280],
+    rKnee:    [556, 358],   // back leg driving
     rAnkle:   [620, 412],
-    lKnee:    [370, 378],   // FRONT knee bent more (forward + down)
+    lKnee:    [370, 384],   // FRONT knee bent more (forward + down)
     lAnkle:   [332, 472],   // front foot planted
     lToe:     [290, 474],
     rToe:     [658, 420],
@@ -410,22 +763,16 @@ function EnergyFlow({ energy }) {
         `} fill={`url(#mTorso-${uid})`} stroke="#1e293b" strokeWidth="1.2"/>
 
         {/* Abdomen / waist — narrower band connecting ribcage to pelvis */}
+        {/* Abdomen + 통합 hip silhouette (별도 pelvis 캡슐 없음 — 하단에서 자연스럽게 hip 폭으로 넓어짐) */}
         <path d={`
           M ${K.pelvisL[0]+6} ${K.pelvisL[1]-22}
-          C ${K.pelvisL[0]+2} ${K.pelvisL[1]-10}, ${K.pelvisL[0]+6} ${K.pelvisL[1]+4}, ${K.pelvisL[0]+10} ${K.pelvisL[1]+6}
-          L ${K.pelvisR[0]-10} ${K.pelvisR[1]+6}
-          C ${K.pelvisR[0]-6} ${K.pelvisR[1]+4}, ${K.pelvisR[0]-2} ${K.pelvisR[1]-10}, ${K.pelvisR[0]-6} ${K.pelvisR[1]-22}
+          C ${K.pelvisL[0]+2} ${K.pelvisL[1]-12}, ${K.pelvisL[0]-2} ${K.pelvisL[1]-2}, ${K.pelvisL[0]-6} ${K.pelvisL[1]+10}
+          L ${K.pelvisR[0]+6} ${K.pelvisR[1]+10}
+          C ${K.pelvisR[0]+2} ${K.pelvisR[1]-2}, ${K.pelvisR[0]-2} ${K.pelvisR[1]-12}, ${K.pelvisR[0]-6} ${K.pelvisR[1]-22}
           Z
         `} fill={`url(#mTorso-${uid})`} stroke="#1e293b" strokeWidth="1"/>
 
         {/* Pelvis/hip block — rounded capsule */}
-        <path d={`
-          M ${K.pelvisL[0]-4} ${K.pelvisL[1]+4}
-          Q ${K.pelvisL[0]-16} ${K.pelvisL[1]+16} ${K.pelvisL[0]-2} ${K.pelvisL[1]+26}
-          L ${K.pelvisR[0]+2} ${K.pelvisR[1]+26}
-          Q ${K.pelvisR[0]+16} ${K.pelvisR[1]+16} ${K.pelvisR[0]+4} ${K.pelvisR[1]+4}
-          Z
-        `} fill={`url(#mLimb-${uid})`} stroke="#1e293b" strokeWidth="1"/>
 
         {/* Sternum center-line (subtle 3D split) */}
         <path d={`M ${(K.lShoulder[0]+K.rShoulder[0])/2} ${(K.lShoulder[1]+K.rShoulder[1])/2 + 12}
@@ -525,10 +872,6 @@ function EnergyFlow({ energy }) {
           </text>
         </g>
 
-        {/* Ball label */}
-        <g>
-          <line x1={K.ball[0]} y1={K.ball[1]} x2={K.ball[0]+60} y2={K.ball[1]-36} stroke="#fbbf24" strokeWidth="1" strokeDasharray="2 3"/>
-        </g>
       </svg>
 
       <div className="silhouette-legend">
