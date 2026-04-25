@@ -488,7 +488,7 @@ function VideoPanel({ p }) {
           {ytEmbed ? (
             <iframe src={ytEmbed} title={`${p.name} mocap`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen/>
           ) : src ? (
-            <video ref={videoRef} src={src} playsInline preload="auto" muted
+            <video ref={videoRef} src={src} playsInline preload="auto" muted controls={false} disablePictureInPicture
               onPlay={() => setIsPaused(false)}
               onPause={() => setIsPaused(true)}
               onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
@@ -520,7 +520,9 @@ function VideoPanel({ p }) {
             <input type="range" className="seek-slider"
                    min={0} max={duration || 0} step={FRAME} value={currentTime}
                    onChange={onSeek}
-                   onMouseDown={() => { try { videoRef.current && videoRef.current.pause(); } catch(_) {} }}
+                   onInput={onSeek}
+                   onPointerDown={() => { try { videoRef.current && videoRef.current.pause(); } catch(_) {} }}
+                   onTouchStart={() => { try { videoRef.current && videoRef.current.pause(); } catch(_) {} }}
                    style={{ '--seek-progress': `${duration ? (currentTime / duration) * 100 : 0}%` }}
                    aria-label="동영상 시점 이동"/>
             <span className="seek-time">{formatTime(duration)}</span>
@@ -792,7 +794,7 @@ function VideoCard({ src }) {
         </div>
       </div>
       <div className="video-wrap" tabIndex={0} onKeyDown={onKey} style={{ position: 'relative' }}>
-        <video ref={videoRef} src={src} playsInline preload="auto" muted
+        <video ref={videoRef} src={src} playsInline preload="auto" muted controls={false} disablePictureInPicture
           onPlay={() => setIsPaused(false)}
           onPause={() => setIsPaused(true)}
           onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
@@ -808,7 +810,9 @@ function VideoCard({ src }) {
           <input type="range" className="seek-slider"
                  min={0} max={duration || 0} step={FRAME} value={currentTime}
                  onChange={onSeek}
-                 onMouseDown={() => { try { videoRef.current && videoRef.current.pause(); } catch(_) {} }}
+                 onInput={onSeek}
+                 onPointerDown={() => { try { videoRef.current && videoRef.current.pause(); } catch(_) {} }}
+                   onTouchStart={() => { try { videoRef.current && videoRef.current.pause(); } catch(_) {} }}
                  style={{ '--seek-progress': `${duration ? (currentTime / duration) * 100 : 0}%` }}
                  aria-label="동영상 시점 이동"/>
           <span className="seek-time">{formatTime(duration)}</span>
@@ -852,12 +856,9 @@ function SinglePitcherView({ p }) {
         </span>
       </div>
 
-      {/* Hero — Video (full width) + Core Issue (below) */}
+      {/* Hero — Video (full width) */}
       <div style={{ marginBottom: 20 }}>
         <VideoPanel p={p}/>
-      </div>
-      <div style={{ marginBottom: 24 }}>
-        <CoreIssuePanel p={p}/>
       </div>
 
       {/* KPI grid */}
@@ -873,6 +874,11 @@ function SinglePitcherView({ p }) {
         <KPI label="CMJ 단위파워" value={p.physical.cmjPower.cmj} unit="W/kg"
           band={p.physical.cmjPower.band}
           foot="기준 50+"/>
+      </div>
+
+      {/* Core Issue — KPI와 체력 프로파일 사이 */}
+      <div style={{ marginBottom: 24 }}>
+        <CoreIssuePanel p={p}/>
       </div>
 
       {/* Section: Physical */}
@@ -1059,6 +1065,9 @@ function SinglePitcherView({ p }) {
       <SectionBlock num={p.flags.length ? '06' : '05'}
         title="Movement Correction Drills · 동작 교정 드릴"
         sub="· 선수가 혼자서도 수행할 수 있는 자기주도 드릴">
+        <div style={{ marginBottom: 24 }}>
+          <MechanicalSW p={p}/>
+        </div>
         <MechanicDrills p={p}/>
       </SectionBlock>
 
@@ -1238,6 +1247,59 @@ function pickDrills(p) {
     });
   }
   return picked.slice(0, 4);
+}
+
+/* 메카닉스 vs 피지컬 키워드 기반으로 strengths/weaknesses 분리 */
+function splitMechanicalSW(items) {
+  const mechRegex = /시퀀스|ETI|에너지|layback|레이백|골반|몸통|상완|회전|투구|메카닉|동작|타이밍|템포|밸런스|착지|분리각|throw|throwing|hip|trunk|arm|pelvis|kinetic|chain/i;
+  return (items || []).filter(it => mechRegex.test((it.title || '') + ' ' + (it.detail || '')));
+}
+
+function MechanicalSW({ p }) {
+  const mechS = splitMechanicalSW(p.strengths);
+  const mechW = splitMechanicalSW(p.weaknesses);
+  return (
+    <div className="sw-grid">
+      <div>
+        <div className="sw-title pos">
+          <svg width="14" height="14" viewBox="0 0 16 16"><path d="M3 8l4 4 6-8" stroke="#4ade80" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          메카닉스 강점 · Mechanical Strengths
+        </div>
+        <div className="sw-list">
+          {mechS.length > 0 ? mechS.map((s,i) => (
+            <div className="sw-item pos" key={i}>
+              <div className="t">{s.title}</div>
+              <div className="d">{s.detail}</div>
+            </div>
+          )) : (
+            <div className="sw-item" style={{ opacity: .55 }}>
+              <div className="t">두드러진 메카닉스 강점 없음</div>
+              <div className="d">· 아래 교정 드릴로 전반적 동작 품질 향상 권장</div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div>
+        <div className="sw-title neg">
+          <svg width="14" height="14" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="#f87171" strokeWidth="2.5" fill="none" strokeLinecap="round"/></svg>
+          메카닉스 약점 · Mechanical Improvement
+        </div>
+        <div className="sw-list">
+          {mechW.length > 0 ? mechW.map((w,i) => (
+            <div className="sw-item neg" key={i}>
+              <div className="t">{w.title}</div>
+              <div className="d">{w.detail}</div>
+            </div>
+          )) : (
+            <div className="sw-item" style={{ opacity: .55 }}>
+              <div className="t">메카닉스 영역 약점 없음</div>
+              <div className="d">· 현재 동작 품질을 유지하면서 미세 조정만 권장</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function MechanicDrills({ p }) {

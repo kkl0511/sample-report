@@ -526,43 +526,6 @@ html[data-theme="light"] .kpi.kpi-hero {
   border: 1px solid var(--d-border);
 }
 
-.video-overlay-btn {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  background: rgba(8, 8, 12, 0.55);
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 12px 40px -8px rgba(0,0,0,0.6);
-  opacity: 0.85;
-  transition: opacity .18s ease, transform .18s ease, background .18s ease, box-shadow .18s ease;
-  z-index: 4;
-  padding: 0;
-}
-.video-overlay-btn:hover {
-  opacity: 1;
-  background: rgba(37, 99, 235, 0.7);
-  box-shadow: 0 16px 50px -8px rgba(37,99,235,0.5), 0 0 0 4px rgba(37,99,235,0.15);
-  transform: translate(-50%, -50%) scale(1.06);
-}
-.video-overlay-btn:active {
-  transform: translate(-50%, -50%) scale(0.96);
-}
-.video-overlay-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 16px 50px -8px rgba(37,99,235,0.5), 0 0 0 4px rgba(37,99,235,0.35);
-}
-
 .seek-bar {
   position: absolute;
   left: 0; right: 0; bottom: 48px;
@@ -572,6 +535,18 @@ html[data-theme="light"] .kpi.kpi-hero {
   padding: 10px 14px;
   background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0.15));
   z-index: 3;
+  touch-action: pan-x;
+}
+@media (max-width: 700px) {
+  .seek-bar {
+    bottom: 40px;
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .seek-time {
+    font-size: 10px;
+    min-width: 48px;
+  }
 }
 .seek-time {
   font-family: 'JetBrains Mono', 'Inter', monospace;
@@ -587,7 +562,7 @@ html[data-theme="light"] .kpi.kpi-hero {
   flex: 1;
   -webkit-appearance: none;
   appearance: none;
-  height: 6px;
+  height: 8px;
   border-radius: 999px;
   background: linear-gradient(
     to right,
@@ -599,18 +574,29 @@ html[data-theme="light"] .kpi.kpi-hero {
   outline: none;
   cursor: pointer;
   margin: 0;
+  /* 모바일: 부모 .video-wrap의 touch-action 제약을 우회 */
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  /* 터치 입력 명확히 받기 위해 padding 영역 확장 (히트박스 키우기) */
+  padding: 12px 0;
+  background-clip: content-box;
+  position: relative;
+  z-index: 4;
 }
 .seek-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #ffffff;
-  border: 2px solid #2563EB;
+  border: 3px solid #2563EB;
   cursor: grab;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
   transition: transform .15s ease, box-shadow .15s ease;
+  margin-top: 0;
 }
 .seek-slider::-webkit-slider-thumb:hover {
   transform: scale(1.25);
@@ -621,13 +607,13 @@ html[data-theme="light"] .kpi.kpi-hero {
   transform: scale(1.15);
 }
 .seek-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #ffffff;
-  border: 2px solid #2563EB;
+  border: 3px solid #2563EB;
   cursor: grab;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
   transition: transform .15s ease, box-shadow .15s ease;
 }
 .seek-slider::-moz-range-thumb:hover {
@@ -664,6 +650,21 @@ html[data-theme="light"] .kpi.kpi-hero {
 .frame-btn:hover { background: rgba(37, 99, 235, 0.4); border-color: rgba(37, 99, 235, 0.6); }
 .frame-btn.play { background: rgba(37, 99, 235, 0.25); border-color: rgba(37, 99, 235, 0.5); }
 .frame-btn.play:hover { background: rgba(37, 99, 235, 0.5); }
+
+.video-wrap video::-webkit-media-controls,
+.video-wrap video::-webkit-media-controls-panel,
+.video-wrap video::-webkit-media-controls-play-button,
+.video-wrap video::-webkit-media-controls-start-playback-button,
+.video-wrap video::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.video-wrap video {
+  -webkit-tap-highlight-color: transparent;
+}
 
 .mocap-badge {
   display: inline-flex;
