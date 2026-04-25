@@ -403,6 +403,8 @@ function VideoPanel({ p }) {
   const videoRef = useRef(null);
   const [rate, setRate] = useState(1);
   const [isPaused, setIsPaused] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const rates = [1, 0.25, 0.1];
   const src = p.mocapUrl || p.video || p.videoUrl;
   const isYouTube = src && /youtu\.?be/.test(src);
@@ -428,6 +430,19 @@ function VideoPanel({ p }) {
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) { try { await v.play(); } catch(_) {} } else v.pause();
+  };
+  const onSeek = (e) => {
+    const v = videoRef.current;
+    if (!v || !isFinite(v.duration)) return;
+    const t = parseFloat(e.target.value);
+    v.currentTime = t;
+    setCurrentTime(t);
+  };
+  const formatTime = (t) => {
+    if (!isFinite(t) || t < 0) return '0:00.00';
+    const m = Math.floor(t / 60);
+    const s = (t % 60).toFixed(2).padStart(5, '0');
+    return `${m}:${s}`;
   };
   const onKey = (e) => {
     if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
@@ -476,12 +491,16 @@ function VideoPanel({ p }) {
             <video ref={videoRef} src={src} playsInline preload="auto" muted
               onPlay={() => setIsPaused(false)}
               onPause={() => setIsPaused(true)}
+              onClick={toggle}
+              onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
               onLoadedMetadata={(e) => {
                 const v = e.currentTarget;
                 v.playbackRate = rate;
+                setDuration(v.duration || 0);
                 // 첫 프레임 강제 표시 (검은 화면 방지)
                 try { v.currentTime = 0.001; } catch(_) {}
-              }}/>
+              }}
+              style={{ cursor: 'pointer' }}/>
           ) : (
             <MocapPlaceholder p={p}/>
           )}
@@ -496,6 +515,34 @@ function VideoPanel({ p }) {
           }}>
             {trans.scale.toFixed(1)}× · Reset
           </button>
+        )}
+        {showScrubber && !zoomed && (
+          <button className="video-overlay-btn" onClick={toggle}
+                  aria-label={isPaused ? '재생' : '일시정지'}
+                  title={isPaused ? '재생 (Space)' : '일시정지 (Space)'}>
+            {isPaused ? (
+              <svg viewBox="0 0 64 64" width="40" height="40" aria-hidden="true">
+                <polygon points="20,14 50,32 20,50" fill="currentColor"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 64 64" width="40" height="40" aria-hidden="true">
+                <rect x="18" y="14" width="10" height="36" rx="2" fill="currentColor"/>
+                <rect x="36" y="14" width="10" height="36" rx="2" fill="currentColor"/>
+              </svg>
+            )}
+          </button>
+        )}
+        {showScrubber && (
+          <div className="seek-bar">
+            <span className="seek-time">{formatTime(currentTime)}</span>
+            <input type="range" className="seek-slider"
+                   min={0} max={duration || 0} step={FRAME} value={currentTime}
+                   onChange={onSeek}
+                   onMouseDown={() => { try { videoRef.current && videoRef.current.pause(); } catch(_) {} }}
+                   style={{ '--seek-progress': `${duration ? (currentTime / duration) * 100 : 0}%` }}
+                   aria-label="동영상 시점 이동"/>
+            <span className="seek-time">{formatTime(duration)}</span>
+          </div>
         )}
         {showScrubber && (
           <div className="frame-controls">
@@ -709,6 +756,8 @@ function VideoCard({ src }) {
   const videoRef = useRef(null);
   const [rate, setRate] = useState(1);
   const [isPaused, setIsPaused] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const rates = [1, 0.25, 0.1];
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = rate;
@@ -725,6 +774,19 @@ function VideoCard({ src }) {
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) { try { await v.play(); } catch(_) {} } else v.pause();
+  };
+  const onSeek = (e) => {
+    const v = videoRef.current;
+    if (!v || !isFinite(v.duration)) return;
+    const t = parseFloat(e.target.value);
+    v.currentTime = t;
+    setCurrentTime(t);
+  };
+  const formatTime = (t) => {
+    if (!isFinite(t) || t < 0) return '0:00.00';
+    const m = Math.floor(t / 60);
+    const s = (t % 60).toFixed(2).padStart(5, '0');
+    return `${m}:${s}`;
   };
   const onKey = (e) => {
     if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
@@ -747,16 +809,43 @@ function VideoCard({ src }) {
           ))}
         </div>
       </div>
-      <div className="video-wrap" tabIndex={0} onKeyDown={onKey}>
+      <div className="video-wrap" tabIndex={0} onKeyDown={onKey} style={{ position: 'relative' }}>
         <video ref={videoRef} src={src} playsInline preload="auto" muted
           onPlay={() => setIsPaused(false)}
           onPause={() => setIsPaused(true)}
+          onClick={toggle}
+          onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
           onLoadedMetadata={(e) => {
             const v = e.currentTarget;
             v.playbackRate = rate;
+            setDuration(v.duration || 0);
             try { v.currentTime = 0.001; } catch(_) {}
           }}
-          style={{ width: '100%', display: 'block', borderRadius: 12, background: '#000' }}/>
+          style={{ width: '100%', display: 'block', borderRadius: 12, background: '#000', cursor: 'pointer' }}/>
+        <button className="video-overlay-btn" onClick={toggle}
+                aria-label={isPaused ? '재생' : '일시정지'}
+                title={isPaused ? '재생 (Space)' : '일시정지 (Space)'}>
+          {isPaused ? (
+            <svg viewBox="0 0 64 64" width="40" height="40" aria-hidden="true">
+              <polygon points="20,14 50,32 20,50" fill="currentColor"/>
+            </svg>
+          ) : (
+            <svg viewBox="0 0 64 64" width="40" height="40" aria-hidden="true">
+              <rect x="18" y="14" width="10" height="36" rx="2" fill="currentColor"/>
+              <rect x="36" y="14" width="10" height="36" rx="2" fill="currentColor"/>
+            </svg>
+          )}
+        </button>
+        <div className="seek-bar">
+          <span className="seek-time">{formatTime(currentTime)}</span>
+          <input type="range" className="seek-slider"
+                 min={0} max={duration || 0} step={FRAME} value={currentTime}
+                 onChange={onSeek}
+                 onMouseDown={() => { try { videoRef.current && videoRef.current.pause(); } catch(_) {} }}
+                 style={{ '--seek-progress': `${duration ? (currentTime / duration) * 100 : 0}%` }}
+                 aria-label="동영상 시점 이동"/>
+          <span className="seek-time">{formatTime(duration)}</span>
+        </div>
         <div className="frame-controls">
           <button className="frame-btn" onClick={() => step(-1)}>◀ −1f</button>
           <button className="frame-btn play" onClick={toggle}>{isPaused ? '▶ 재생' : '❚❚ 정지'}</button>
