@@ -2483,43 +2483,164 @@ function CompareSummary({ left, right }) {
   })();
   
   // 트레이닝 권장
-  const recommendation = (() => {
-    const items = [];
+  // === 두 선수 각자의 장단점 + 훈련 방향 (자동 도출) ===
+  const analyzeOnePlayer = (self, other) => {
+    const strengths = [];
+    const weaknesses = [];
+    const training = [];
     
-    // 누가 더 우월한지 종합 판단
-    const leftBetter = (velDiff > 0 ? 1 : -1) + (strikeDiff > 0 ? 1 : -1) + (leftAvgPt > rightAvgPt ? 1 : -1);
-    
-    if (leftBetter >= 1) {
-      items.push(`${right.name}이(가) ${left.name}으로부터 학습할 수 있는 부분이 더 많은 비교입니다.`);
-    } else if (leftBetter <= -1) {
-      items.push(`${left.name}이(가) ${right.name}으로부터 학습할 수 있는 부분이 더 많은 비교입니다.`);
-    } else {
-      items.push('서로 강점·약점이 보완적이라 상호 학습이 가능한 비교입니다.');
+    // === 1. 구속 (Velocity) ===
+    const velSelf = self.velocity;
+    const velOther = other.velocity;
+    if (velSelf > velOther + 3) {
+      strengths.push(`구속 ${velSelf.toFixed(1)} km/h — 비교 선수 대비 ${(velSelf - velOther).toFixed(1)} km/h 빠름`);
+    } else if (velSelf < velOther - 3) {
+      weaknesses.push(`구속 ${velSelf.toFixed(1)} km/h — 비교 선수 대비 ${(velOther - velSelf).toFixed(1)} km/h 부족`);
     }
     
-    // 구속이 약한 쪽
-    if (Math.abs(velDiff) >= 5) {
-      const slower = velDiff > 0 ? right.name : left.name;
-      const slowerAvgPt = velDiff > 0 ? rightAvgPt : leftAvgPt;
-      const fasterAvgPt = velDiff > 0 ? leftAvgPt : rightAvgPt;
-      
-      if (slowerAvgPt > fasterAvgPt) {
-        items.push(`${slower}은(는) 메카닉이 더 좋음에도 구속이 낮음 → 체력(특히 폭발력) 보강이 우선`);
-      } else {
-        items.push(`${slower}은(는) 메카닉도 약하므로 메카닉 일관성 회복부터 시작`);
+    // === 2. 체력 (Physical) ===
+    const cmpVar = (a, b, threshold = 0.05) => {
+      if (a == null || b == null || a === '—' || b === '—') return 0;
+      const diff = Number(a) - Number(b);
+      if (Math.abs(diff) < threshold) return 0;
+      return diff > 0 ? 1 : -1;
+    };
+    
+    const physVars = [
+      { name: 'CMJ 단위파워(폭발력)', s: self.physical.cmjPower.cmj, o: other.physical.cmjPower.cmj, band: self.physical.cmjPower.band, th: 3 },
+      { name: '절대근력(IMTP)', s: self.physical.maxStrength.perKg, o: other.physical.maxStrength.perKg, band: self.physical.maxStrength.band, th: 1 },
+      { name: '반응성(RSI-mod)', s: self.physical.reactive.cmj, o: other.physical.reactive.cmj, band: self.physical.reactive.band, th: 0.05 },
+      { name: '반동활용(EUR)', s: self.physical.ssc.value, o: other.physical.ssc.value, band: self.physical.ssc.band, th: 0.05 },
+      { name: '악력', s: self.physical.release.value, o: other.physical.release.value, band: self.physical.release.band, th: 2 },
+    ];
+    
+    physVars.forEach(v => {
+      const cmp = cmpVar(v.s, v.o, v.th);
+      if (cmp > 0 && v.band === 'high') {
+        strengths.push(`${v.name} 우수 (${v.s})`);
+      } else if (v.band === 'low') {
+        weaknesses.push(`${v.name} 부족 (${v.s})`);
       }
+    });
+    
+    // === 3. 메카닉스 (구속 관련) ===
+    if (self.energy.etiTA >= 1.5) {
+      strengths.push(`Trunk→Arm 에너지 전달 효율 우수 (ETI ${self.energy.etiTA.toFixed(2)})`);
+    } else if (self.energy.etiTA < 0.85) {
+      weaknesses.push(`Trunk→Arm 에너지 누수 (ETI ${self.energy.etiTA.toFixed(2)} · 약 ${self.energy.leakPct}% 손실)`);
     }
     
-    // D등급 있는 선수
-    if (lefDs.length > 0) {
-      items.push(`${left.name}은(는) ${lefDs.map(f => f.name).join(', ')} 교정이 시급`);
-    }
-    if (rightDs.length > 0) {
-      items.push(`${right.name}은(는) ${rightDs.map(f => f.name).join(', ')} 교정이 시급`);
+    if (self.layback.band === 'high') {
+      strengths.push(`Layback ${self.layback.deg.toFixed(0)}° (가속 거리 충분)`);
+    } else if (self.layback.band === 'low') {
+      weaknesses.push(`Layback ${self.layback.deg.toFixed(0)}° (가속 거리 부족)`);
     }
     
-    return items;
-  })();
+    if (self.angular.armBand === 'high') {
+      strengths.push(`팔 회전속도 ${self.angular.arm}°/s (상위 그룹)`);
+    } else if (self.angular.armBand === 'low') {
+      weaknesses.push(`팔 회전속도 ${self.angular.arm}°/s (보강 필요)`);
+    }
+    
+    // === 4. 제구 (7대 요인) ===
+    const factors = self.factors || [];
+    const aFactors = factors.filter(f => f.grade === 'A');
+    const dFactors = factors.filter(f => f.grade === 'D');
+    const cFactors = factors.filter(f => f.grade === 'C');
+    
+    if (aFactors.length >= 5) {
+      strengths.push(`제구력 7대 요인 중 ${aFactors.length}개 A등급 (메카닉 일관성 우수)`);
+    } else if (aFactors.length >= 3) {
+      strengths.push(`${aFactors.map(f => f.name).join(', ')} 일관성 우수`);
+    }
+    
+    if (dFactors.length > 0) {
+      weaknesses.push(`${dFactors.map(f => f.name).join(', ')} (D등급 — 시행간 변동 큼)`);
+    }
+    if (cFactors.length > 0 && dFactors.length === 0) {
+      weaknesses.push(`${cFactors.map(f => f.name).join(', ')} (C등급 — 보강 여지)`);
+    }
+    
+    // === 5. 훈련 방향 도출 ===
+    
+    // 5-1. 폭발력/순발력 부족 → 점프·플라이오메트릭
+    if (self.physical.cmjPower.band === 'low' || self.physical.reactive.band === 'low') {
+      training.push({
+        priority: 'HIGH',
+        cat: '체력',
+        what: '하체 폭발력 + 순발력 강화',
+        how: 'CMJ·SJ 파워 향상 — 박스 점프, 댑스 점프, 메디신볼 던지기 등 플라이오메트릭 위주 (주 2-3회)',
+      });
+    }
+    
+    // 5-2. 절대근력 부족
+    if (self.physical.maxStrength.band === 'low') {
+      training.push({
+        priority: 'MID',
+        cat: '체력',
+        what: '하체 절대근력 보강',
+        how: '백스쿼트, 데드리프트, 트랩바 데드리프트 등 다관절 근력 운동 (주 2회, 80% 1RM 이상)',
+      });
+    }
+    
+    // 5-3. ETI 누수 → 메카닉 분절 시퀀스 교정
+    if (self.energy.etiTA < 0.85) {
+      training.push({
+        priority: 'HIGH',
+        cat: '메카닉',
+        what: 'Trunk → Arm 에너지 전달 회복',
+        how: '몸통 회전 정점 후 어깨 외회전 가속이 늦지 않도록 timing drill (Wall Drill, Towel Drill)',
+      });
+    }
+    
+    // 5-4. Layback 작음
+    if (self.layback.band === 'low') {
+      training.push({
+        priority: 'MID',
+        cat: '메카닉',
+        what: '어깨 외회전 가동범위 확보',
+        how: 'Sleeper Stretch, Cross-Body Stretch + Connection Ball drill로 layback 거리 확보',
+      });
+    }
+    
+    // 5-5. D등급 요인별 맞춤 처방
+    dFactors.forEach(f => {
+      const id = f.id;
+      let drill = null;
+      if (id === 'F1_landing') {
+        drill = { what: '앞발 착지 위치 일정화', how: '거울 앞 미러링 + foot strike marker로 매 투구 같은 위치에 착지하도록 반복' };
+      } else if (id === 'F2_separation') {
+        drill = { what: '골반-몸통 분리 일관성', how: 'Hip Hinge Drill + 의식적으로 몸통 회전 늦추기 (Late Trunk Rotation cue)' };
+      } else if (id === 'F3_arm_timing') {
+        drill = { what: '어깨-팔 타이밍 일관화', how: 'Connection Ball drill + Plyo Ball으로 팔 동작 패턴 자동화 (주 3회)' };
+      } else if (id === 'F4_knee') {
+        drill = { what: '앞 무릎 안정성 (blocking) 회복', how: 'Single-Leg RDL + Single-Leg Squat + 앞다리 등척성 홀드 (주 2-3회)' };
+      } else if (id === 'F5_tilt') {
+        drill = { what: '몸통 기울기 일관성', how: '코어 안정성 강화 + Side Plank, Rotational Core 운동 (주 3회)' };
+      } else if (id === 'F6_head') {
+        drill = { what: '머리·시선 안정성 회복', how: 'Mirror Drill + 시선 고정 투구 + 호흡 통제 (가벼운 무게 던지기로 천천히 적응)' };
+      } else if (id === 'F7_wrist') {
+        drill = { what: '손목 정렬 일관성', how: 'Towel Drill + 슬로우 모션 릴리스 반복 + 그립 일정화' };
+      }
+      if (drill) {
+        training.push({
+          priority: 'HIGH',
+          cat: '제구',
+          what: drill.what,
+          how: drill.how,
+        });
+      }
+    });
+    
+    return {
+      strengths: strengths.slice(0, 5),
+      weaknesses: weaknesses.slice(0, 5),
+      training: training.slice(0, 5),
+    };
+  };
+  
+  const leftAnalysis = analyzeOnePlayer(left, right);
+  const rightAnalysis = analyzeOnePlayer(right, left);
   
   // === 렌더링 ===
   
@@ -2637,26 +2758,162 @@ function CompareSummary({ left, right }) {
         </div>
       )}
       
-      {/* 코칭 권장 */}
-      <div style={{
-        padding: '14px 16px',
-        background: 'linear-gradient(135deg, rgba(74,222,128,0.06), rgba(96,165,250,0.04))',
-        border: '1px solid rgba(74,222,128,0.3)',
-        borderRadius: 8,
-      }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: C.pos, letterSpacing: '1.2px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.pos} strokeWidth="2.5"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          COACHING 코칭 권장
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--d-fg2)', lineHeight: 1.7 }}>
-          {recommendation.map((line, i) => (
-            <div key={i} style={{ paddingLeft: 8, marginBottom: 4 }}>· {line}</div>
-          ))}
-        </div>
-      </div>
+      {/* === 두 선수 각자의 장단점 + 훈련 방향 === */}
+      {(() => {
+        const PriorityBadge = ({ priority }) => {
+          const colors = {
+            HIGH: { bg: '#fef2f2', border: '#fca5a5', text: '#b91c1c' },
+            MID: { bg: '#fffbeb', border: '#fcd34d', text: '#b45309' },
+            LOW: { bg: '#f0fdf4', border: '#86efac', text: '#15803d' },
+          };
+          const c = colors[priority] || colors.MID;
+          return (
+            <span style={{
+              fontSize: 8.5, fontWeight: 700, fontFamily: 'Inter',
+              padding: '1px 6px', borderRadius: 3,
+              background: c.bg, color: c.text, border: `1px solid ${c.border}`,
+              flexShrink: 0,
+            }}>{priority}</span>
+          );
+        };
+        
+        const PlayerSummary = ({ player, analysis, accentColor }) => (
+          <div style={{
+            padding: '14px 16px',
+            background: 'var(--d-surface-3)',
+            border: '1px solid var(--d-border)',
+            borderRadius: 8,
+            display: 'flex', flexDirection: 'column', gap: 14,
+          }}>
+            {/* 선수 헤더 */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              paddingBottom: 10, borderBottom: `2px solid ${accentColor}`,
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%',
+                background: accentColor, color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 800, fontSize: 14,
+              }}>{player.name[0]}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--d-fg1)' }}>{player.name}</div>
+                <div style={{ fontSize: 10, color: 'var(--d-fg3)' }}>
+                  {player.velocity.toFixed(1)} km/h · {player.command?.grade || '—'} · {player.archetype}
+                </div>
+              </div>
+            </div>
+            
+            {/* 강점 */}
+            <div>
+              <div style={{
+                fontSize: 9.5, fontWeight: 700, color: '#15803d', letterSpacing: '1.2px',
+                marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2.5">
+                  <path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                STRENGTHS · 강점
+              </div>
+              {analysis.strengths.length > 0 ? (
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: 'var(--d-fg2)', lineHeight: 1.6 }}>
+                  {analysis.strengths.map((s, i) => <li key={i} style={{ marginBottom: 3 }}>{s}</li>)}
+                </ul>
+              ) : (
+                <div style={{ fontSize: 11, color: 'var(--d-fg3)', fontStyle: 'italic', paddingLeft: 8 }}>두드러진 강점 없음</div>
+              )}
+            </div>
+            
+            {/* 약점 */}
+            <div>
+              <div style={{
+                fontSize: 9.5, fontWeight: 700, color: '#b91c1c', letterSpacing: '1.2px',
+                marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" strokeWidth="2.5">
+                  <path d="M12 9v4m0 3v.01M12 3l10 18H2z" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                WEAKNESSES · 약점
+              </div>
+              {analysis.weaknesses.length > 0 ? (
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11.5, color: 'var(--d-fg2)', lineHeight: 1.6 }}>
+                  {analysis.weaknesses.map((w, i) => <li key={i} style={{ marginBottom: 3 }}>{w}</li>)}
+                </ul>
+              ) : (
+                <div style={{ fontSize: 11, color: 'var(--d-fg3)', fontStyle: 'italic', paddingLeft: 8 }}>뚜렷한 약점 없음</div>
+              )}
+            </div>
+            
+            {/* 훈련 방향 */}
+            <div style={{ paddingTop: 10, borderTop: '1px dashed var(--d-border)' }}>
+              <div style={{
+                fontSize: 9.5, fontWeight: 700, color: accentColor, letterSpacing: '1.2px',
+                marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2.5">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                TRAINING DIRECTION · 훈련 방향
+              </div>
+              {analysis.training.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {analysis.training.map((t, i) => (
+                    <div key={i} style={{
+                      padding: '8px 10px',
+                      background: 'rgba(255,255,255,0.5)',
+                      border: '1px solid var(--d-border)',
+                      borderRadius: 6,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <PriorityBadge priority={t.priority}/>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--d-fg3)', letterSpacing: '0.5px' }}>
+                          {t.cat}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--d-fg1)', flex: 1 }}>
+                          {t.what}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 10.5, color: 'var(--d-fg2)', lineHeight: 1.55, paddingLeft: 4 }}>
+                        {t.how}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{
+                  padding: '8px 10px', fontSize: 11, color: 'var(--d-fg3)', fontStyle: 'italic',
+                  background: 'rgba(74,222,128,0.06)', borderRadius: 6, textAlign: 'center',
+                }}>
+                  현재 메카닉·체력 모두 양호 · 현 수준 유지 + 점진적 부하 증가
+                </div>
+              )}
+            </div>
+          </div>
+        );
+        
+        return (
+          <div>
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: 'var(--d-fg1)', marginBottom: 10,
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--d-fg2)" strokeWidth="2">
+                <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>선수별 장단점 및 훈련 방향</span>
+            </div>
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
+            }}>
+              <PlayerSummary player={left} analysis={leftAnalysis} accentColor={C.a}/>
+              <PlayerSummary player={right} analysis={rightAnalysis} accentColor={C.b}/>
+            </div>
+          </div>
+        );
+      })()}
       
       <div style={{ marginTop: 12, fontSize: 9.5, color: 'var(--d-fg3)', fontStyle: 'italic', textAlign: 'right' }}>
-        본 요약은 두 선수의 데이터를 기계적으로 비교한 결과입니다. 실제 코칭 적용은 영상 분석과 함께 진행하시기 바랍니다.
+        본 요약은 두 선수의 데이터를 기계적으로 비교·진단한 결과입니다. 실제 코칭 적용은 영상 분석과 함께 진행하시기 바랍니다.
       </div>
     </div>
   );
