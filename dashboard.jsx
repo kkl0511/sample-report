@@ -664,42 +664,348 @@ function MocapPlaceholder({ p }) {
 }
 
 function CoreIssuePanel({ p }) {
+  const sevLabel = p.severity === 'NONE' ? 'BALANCED' : p.severity;
+  const sevDesc = {
+    'HIGH':     '즉시 개입 권장',
+    'MEDIUM':   '교정 우선순위 높음',
+    'LOW':      '점진적 개선',
+    'BALANCED': '균형 잡힌 상태',
+    'NONE':     '균형 잡힌 상태',
+  }[sevLabel] || '평가 진행 중';
+
+  const Stat = ({ label, value, color, accent }) => (
+    <div style={{
+      flex: 1,
+      padding: '14px 12px',
+      background: 'rgba(8, 8, 12, 0.35)',
+      border: `1px solid ${accent || 'var(--d-border)'}`,
+      borderRadius: 10,
+      textAlign: 'center',
+      minWidth: 0,
+    }}>
+      <div style={{ fontSize: 26, fontWeight: 800, color: color, fontFamily: 'Inter', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 10, color: 'var(--d-fg3)', marginTop: 6, fontWeight: 600, letterSpacing: '0.5px' }}>{label}</div>
+    </div>
+  );
+
   return (
-    <div className="panel" style={{ minHeight: 280 }}>
+    <div className="panel">
       <div className="panel-head">
         <div>
           <div className="kicker">Core Issue</div>
           <h3>핵심 진단</h3>
-          <div className="sub">· 통합 분석 자동 추출</div>
+          <div className="sub">· 한눈 요약 · 자세한 내용은 아래 섹션 참조</div>
         </div>
       </div>
-      <div className="diag-row" style={{ marginTop: 8 }}>
-        <span className={`sev sev-${p.severity}`}>{p.severity === 'NONE' ? 'BALANCED' : p.severity}</span>
+
+      {/* 종합 평가 1줄 */}
+      <div className="diag-row" style={{ marginTop: 12 }}>
+        <span className={`sev sev-${p.severity}`}>{sevLabel}</span>
         <div style={{ fontSize: 13, color: 'var(--d-fg1)', lineHeight: 1.5, fontWeight: 600 }}>
           {p.coreIssue}
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--d-fg2)' }}>
-          <svg className="ic-svg" viewBox="0 0 24 24" style={{ color: '#4ade80' }}><path d="M5 12l5 5 9-11"/></svg>
-          <b>강점 {p.strengths.length}</b>
-          <span style={{ color: 'var(--d-fg3)' }}>· {p.strengths[0]?.title || '—'}</span>
+
+      {/* 카운트 3개 */}
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <Stat label="강점 · STRENGTHS"  value={p.strengths.length}  color="#4ade80" accent="rgba(74,222,128,0.35)"/>
+        <Stat label="약점 · WEAKNESS"   value={p.weaknesses.length} color="#f87171" accent="rgba(248,113,113,0.35)"/>
+        <Stat label="체크 · CHECKPOINT" value={p.flags.length}      color="#fbbf24" accent="rgba(251,191,36,0.35)"/>
+      </div>
+
+      {/* 아치타입 강조 */}
+      <div style={{
+        marginTop: 14,
+        padding: '12px 14px',
+        background: 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(37,99,235,0.04))',
+        border: '1px solid rgba(37,99,235,0.3)',
+        borderRadius: 10,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+      }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" style={{ color: '#60a5fa', flexShrink: 0 }}>
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 9, color: '#60a5fa', fontWeight: 700, letterSpacing: '1.2px' }}>ARCHETYPE</div>
+          <div style={{ fontSize: 14, color: 'var(--d-fg1)', fontWeight: 700, marginTop: 2 }}>{p.archetype}</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--d-fg2)' }}>
-          <svg className="ic-svg" viewBox="0 0 24 24" style={{ color: '#f87171' }}><path d="M5 5l14 14M19 5L5 19"/></svg>
-          <b>약점 {p.weaknesses.length}</b>
-          <span style={{ color: 'var(--d-fg3)' }}>· {p.weaknesses[0]?.title || '—'}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--d-fg2)' }}>
-          <svg className="ic-svg" viewBox="0 0 24 24" style={{ color: '#fbbf24' }}><path d="M12 9v4m0 3v.01M12 3l10 18H2z"/></svg>
-          <b>체크 {p.flags.length}</b>
-          <span style={{ color: 'var(--d-fg3)' }}>· {p.flags[0]?.title || '특이 신호 없음'}</span>
+        <div style={{
+          marginLeft: 'auto',
+          fontSize: 11,
+          color: 'var(--d-fg3)',
+          fontWeight: 500,
+          textAlign: 'right',
+          flexShrink: 0,
+        }}>
+          {sevDesc}
         </div>
       </div>
-      <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--d-border)', fontSize: 11, color: 'var(--d-fg3)', display: 'flex', justifyContent: 'space-between' }}>
+
+      <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--d-border)', fontSize: 11, color: 'var(--d-fg3)', display: 'flex', justifyContent: 'space-between' }}>
         <span>측정일 · {p.date}</span>
-        <span>{p.archetype}</span>
+        <span>아래 섹션에서 상세 분석 →</span>
       </div>
+    </div>
+  );
+}
+
+/* ---------------- EXPECTED VELOCITY (Hybrid model) ----------------
+ * Driveline (2021) "Predicted Velocity Through Jump and Strength Testing" 방법론을 차용하여
+ * BBL 한국 대학생 투수 표본 분포 기반으로 계수 보정한 hybrid 모델.
+ * - Physical: CMJ 단위파워 / RSI-mod / SJ peak power 기반
+ * - Mechanical: ETI(T→A) / 상완 회전속도 / max layback / 누수% 기반
+ * - 절대 예측이 아닌 "with all other variables equal" 기대값 → 실제 vs 기대 gap으로 lowest hanging fruit 식별
+ * - 참고: Driveline (2021), Werner (2008), Stodden (2005), Lehman et al. (2013) 등
+ */
+function expectedVelocity(p) {
+  const BASE = 134.7; // BBL 4인 평균 km/h (한국 대학생 투수 baseline)
+  const CAP = 10;     // ±10 km/h cap (소표본 outlier 흡수)
+
+  // Physical Expected — 체력 기반
+  const physContrib = {
+    'CMJ 단위파워':   (p.physical.cmjPower.cmj - 50) * 0.18,
+    'RSI 반응성':    (p.physical.reactive.cmj - 0.5) * 12.0,
+    'SJ 절대파워':    (p.physical.cmjPower.sj - 44) * 0.10,
+  };
+  let physPred = BASE + Object.values(physContrib).reduce((a,b)=>a+b, 0);
+  physPred = Math.max(BASE - CAP, Math.min(BASE + CAP, physPred));
+
+  // Mechanical Expected — 메카닉스 기반
+  const mechContrib = {
+    'ETI 상완 전달':   (p.energy.etiTA - 0.77) * 18.0,
+    '상완 회전 속도':  (p.angular.arm - 1463) / 50 * 1.2,
+    'Max layback':    (p.layback.deg - 184) * 0.10,
+    '에너지 누수':    -p.energy.leakPct * 0.10,
+  };
+  let mechPred = BASE + Object.values(mechContrib).reduce((a,b)=>a+b, 0);
+  mechPred = Math.max(BASE - CAP, Math.min(BASE + CAP, mechPred));
+
+  return { physPred, mechPred, physContrib, mechContrib, base: BASE };
+}
+
+function ExpectedVelocityPanel({ p }) {
+  const { physPred, mechPred, physContrib, mechContrib } = expectedVelocity(p);
+  const actual = p.velocity;
+  const gapP = actual - physPred;  // + → 체력 ceiling 위로 outperforming
+  const gapM = actual - mechPred;  // + → 메카닉스 ceiling 위로 outperforming
+  const ceiling = Math.max(physPred, mechPred);
+  const ceilingHeadroom = ceiling - actual;
+
+  // 시나리오 분류 (gap 기준 ±2 km/h를 같음으로 처리)
+  // 우리 분석과 모순 방지: 누수 35%↑면 무조건 메카닉스 lagging 우선
+  const TOL = 2.0;
+  const physLag = gapP < -TOL;  // actual < physPred → 체력 잠재가 더 큼 (체력에 비해 못 던짐)
+  const mechLag = gapM < -TOL;  // actual < mechPred → 메카닉스 잠재가 더 큼
+  // 단, 실제 누수 35%+면 메카닉스 lagging이 항상 우세
+  const heavyLeak = p.energy.leakPct >= 35;
+
+  let scenario, primary, secondary, advice;
+  if (physLag && mechLag) {
+    scenario = '체력·메카닉스 모두 잠재력 > 실제';
+    primary = heavyLeak ? '메카닉스 효율 회복' : '체력 베이스라인 활용';
+    secondary = heavyLeak ? '체력 우위 활용' : '메카닉스 다듬기';
+    advice = heavyLeak
+      ? '누수 우선 차단 → 체력은 이미 충분 · 에너지 전달이 막혀 잠재 미발현'
+      : '체력·메카닉 양쪽 모두 보강 시 큰 폭 상승 가능';
+  } else if (physLag) {
+    scenario = '체력 잠재력 > 실제 (메카닉스 lagging)';
+    primary = '메카닉스 다듬기';
+    secondary = '체력 유지';
+    advice = '체력은 이미 ceiling — 동작 효율(에너지 전달, 시퀀스, layback) 보강이 lowest hanging fruit';
+  } else if (mechLag) {
+    scenario = '메카닉스 잠재력 > 실제 (체력 lagging)';
+    primary = '체력 보강';
+    secondary = '메카닉스 유지';
+    advice = '메카닉스는 이미 효율적 — 절대 근력·파워 증가가 가장 큰 상승 여력';
+  } else if (gapP > TOL && gapM > TOL) {
+    scenario = '실제 > 기대 (skill outperforming)';
+    primary = '재능 활용 + 미세 보강';
+    secondary = '부상 관리';
+    advice = '체력·메카닉스 기대치 대비 더 잘 던지는 케이스 — 워크로드 관리하며 양쪽 보강 시 추가 상승';
+  } else {
+    scenario = '실제 ≈ 기대 (균형형)';
+    primary = '전반 동시 향상';
+    secondary = '약점 보강';
+    advice = '체력·메카닉스 모두 현재 수준으로 ceiling에 근접 — 둘 다 1 SD 향상 시 +2~3 km/h 가능';
+  }
+
+  // 시각화: 3개 막대 (실제 / 체력 기대 / 메카닉스 기대)
+  const allVals = [actual, physPred, mechPred];
+  const maxV = Math.max(...allVals) + 5;
+  const minV = Math.min(...allVals) - 5;
+  const range = maxV - minV;
+  const w = 100; // %
+  const toPct = (v) => ((v - minV) / range) * w;
+
+  const Bar = ({ label, en, val, gap, color, isActual }) => {
+    const pct = toPct(val);
+    const sign = gap > 0 ? '+' : '';
+    return (
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6, fontSize: 12 }}>
+          <span style={{ fontWeight: 700, color: 'var(--d-fg1)' }}>
+            {label} <span style={{ color: 'var(--d-fg3)', fontSize: 10, fontWeight: 500, marginLeft: 4 }}>{en}</span>
+          </span>
+          <span>
+            <b style={{ color: color, fontSize: 16, fontFamily: 'Inter' }}>{val.toFixed(1)}</b>
+            <span style={{ color: 'var(--d-fg3)', fontSize: 10, marginLeft: 3 }}>km/h</span>
+            {!isActual && (
+              <span style={{
+                marginLeft: 8,
+                padding: '2px 6px',
+                borderRadius: 3,
+                fontSize: 10,
+                fontWeight: 700,
+                background: gap > 1 ? 'rgba(74,222,128,0.15)' : gap < -1 ? 'rgba(248,113,113,0.15)' : 'rgba(148,163,184,0.15)',
+                color: gap > 1 ? '#4ade80' : gap < -1 ? '#f87171' : '#94a3b8',
+              }}>
+                실제 {sign}{gap.toFixed(1)}
+              </span>
+            )}
+          </span>
+        </div>
+        <div style={{ position: 'relative', height: 8, background: 'rgba(8,8,12,0.4)', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0,
+            width: `${pct}%`,
+            background: `linear-gradient(90deg, ${color}88, ${color})`,
+            borderRadius: 4,
+          }}/>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="panel">
+      <div className="panel-head">
+        <div>
+          <div className="kicker" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            Expected Velocity · 기대 구속 모델
+            <span style={{
+              padding: '2px 7px', borderRadius: 4, fontSize: 9, fontWeight: 700, letterSpacing: '0.5px',
+              background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.4)', color: '#fbbf24',
+            }}>v0.1 · PROTOTYPE</span>
+            <span style={{
+              padding: '2px 7px', borderRadius: 4, fontSize: 9, fontWeight: 600, letterSpacing: '0.3px',
+              background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.3)', color: '#93c5fd',
+            }}>v1.0 (n=600) 작업 예정</span>
+          </div>
+          <h3>체력 vs 메카닉스 기대 구속</h3>
+          <div className="sub">· 두 ceiling 비교로 가장 효과적인 훈련 방향 자동 추출</div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <Bar label="실제 구속"          en="Actual"             val={actual}   gap={0}     color="#60a5fa" isActual/>
+        <Bar label="체력 기반 기대 구속"   en="Physical Expected"  val={physPred} gap={gapP} color="#4ade80"/>
+        <Bar label="메카닉스 기반 기대 구속" en="Mechanical Expected" val={mechPred} gap={gapM} color="#e8965a"/>
+      </div>
+
+      {/* 시나리오 + 훈련 방향 */}
+      <div style={{
+        marginTop: 18,
+        padding: '14px 16px',
+        background: 'linear-gradient(135deg, rgba(37,99,235,0.10), rgba(37,99,235,0.03))',
+        border: '1px solid rgba(37,99,235,0.3)',
+        borderRadius: 10,
+      }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', letterSpacing: '1.2px', marginBottom: 6 }}>
+          TRAINING DIRECTION · 훈련 방향
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--d-fg1)', marginBottom: 8 }}>
+          {scenario}
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+          <div style={{
+            padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+            background: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.4)', color: '#4ade80',
+          }}>
+            우선순위 1 · {primary}
+          </div>
+          <div style={{
+            padding: '6px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+            background: 'rgba(148,163,184,0.1)', border: '1px solid rgba(148,163,184,0.3)', color: 'var(--d-fg2)',
+          }}>
+            보조 · {secondary}
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--d-fg2)', lineHeight: 1.6 }}>
+          · {advice}
+        </div>
+        {ceilingHeadroom > 1 && (
+          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--d-fg3)' }}>
+            · 추정 잠재력 천장: <b style={{ color: '#fbbf24' }}>{ceiling.toFixed(1)} km/h</b>
+            <span style={{ marginLeft: 6 }}>(현재 대비 +{ceilingHeadroom.toFixed(1)} km/h 여력)</span>
+          </div>
+        )}
+      </div>
+
+      {/* 모델 설명 (작게) */}
+      <details style={{ marginTop: 12, fontSize: 11, color: 'var(--d-fg3)' }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>모델 상세 · 계수 기여도 보기</summary>
+        <div style={{ marginTop: 10, padding: 12, background: 'rgba(0,0,0,0.25)', borderRadius: 6, lineHeight: 1.7 }}>
+          <div style={{ fontWeight: 700, color: '#4ade80', marginBottom: 4 }}>체력 기반 기여도 (km/h)</div>
+          {Object.entries(physContrib).map(([k,v]) => (
+            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(148,163,184,0.15)', padding: '2px 0' }}>
+              <span>· {k}</span>
+              <span style={{ color: v >= 0 ? '#4ade80' : '#f87171', fontFamily: 'Inter', fontWeight: 600 }}>{v >= 0 ? '+' : ''}{v.toFixed(2)}</span>
+            </div>
+          ))}
+          <div style={{ fontWeight: 700, color: '#e8965a', margin: '10px 0 4px' }}>메카닉스 기반 기여도 (km/h)</div>
+          {Object.entries(mechContrib).map(([k,v]) => (
+            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(148,163,184,0.15)', padding: '2px 0' }}>
+              <span>· {k}</span>
+              <span style={{ color: v >= 0 ? '#4ade80' : '#f87171', fontFamily: 'Inter', fontWeight: 600 }}>{v >= 0 ? '+' : ''}{v.toFixed(2)}</span>
+            </div>
+          ))}
+          <div style={{ marginTop: 10, padding: 8, borderTop: '1px solid var(--d-border)', fontSize: 10, color: 'var(--d-fg3)', lineHeight: 1.6 }}>
+            <b>방법론 출처</b> · Driveline Baseball (2021) <i>"Predicted Velocity Through Jump and Strength Testing"</i> 모델 차용,
+            BBL 한국 대학생 투수 4인 baseline(평균 134.7 km/h)에 맞춰 계수 보정.
+            선행 연구: Werner (2008), Stodden et al. (2005), Lehman et al. (2013).
+            <br/><b>주의</b> · "with all other variables equal" 기대값 — 절대 예측 아님.
+            ±10 km/h cap 적용. 표본 4명 기반이므로 추가 표본 누적 시 정확도 향상 예정.
+          </div>
+
+          {/* v1.0 업그레이드 로드맵 */}
+          <div style={{ marginTop: 14, padding: 12, background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#93c5fd', letterSpacing: '1px', marginBottom: 8 }}>
+              v1.0 UPGRADE ROADMAP · 정식 모델 작업 계획
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--d-fg2)', lineHeight: 1.7, marginBottom: 10 }}>
+              BBL 보유 <b style={{ color: '#93c5fd' }}>약 600명 투수 데이터셋</b>(Uplift Labs 마커리스 모션캡처 + Rapsodo 트래킹 + ForceDecks 포스플레이트 통합)을 활용해
+              v0.1 prototype을 검증된 회귀 모델로 업그레이드 예정.
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 10, lineHeight: 1.6 }}>
+              <div style={{ padding: 8, background: 'rgba(8,8,12,0.3)', borderRadius: 4, border: '1px solid var(--d-border)' }}>
+                <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4 }}>Phase 1 · 데이터 통합</div>
+                <div style={{ color: 'var(--d-fg3)' }}>· 세 시스템 측정 매칭<br/>· 결측·이상치 처리<br/>· 수준별 표본 분포 검증</div>
+              </div>
+              <div style={{ padding: 8, background: 'rgba(8,8,12,0.3)', borderRadius: 4, border: '1px solid var(--d-border)' }}>
+                <div style={{ fontWeight: 700, color: '#fbbf24', marginBottom: 4 }}>Phase 2 · 회귀 모델 fit</div>
+                <div style={{ color: 'var(--d-fg3)' }}>· 75:25 split · 5-fold CV<br/>· R²·MAE·VIF·잔차 진단<br/>· 95% CI 산출</div>
+              </div>
+              <div style={{ padding: 8, background: 'rgba(8,8,12,0.3)', borderRadius: 4, border: '1px solid var(--d-border)' }}>
+                <div style={{ fontWeight: 700, color: '#93c5fd', marginBottom: 4 }}>Phase 3 · 수준별 baseline</div>
+                <div style={{ color: 'var(--d-fg3)' }}>· 고교/대학/실업/프로 분리<br/>· 변수별 percentile 산출<br/>· "프로 상위 N%" 절대 기준</div>
+              </div>
+              <div style={{ padding: 8, background: 'rgba(8,8,12,0.3)', borderRadius: 4, border: '1px solid var(--d-border)' }}>
+                <div style={{ fontWeight: 700, color: '#93c5fd', marginBottom: 4 }}>Phase 4 · 하위 모델 확장</div>
+                <div style={{ color: 'var(--d-fg3)' }}>· 부상 위험 모델<br/>· 선발/불펜 분리<br/>· 연령별 발달 곡선</div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 10, fontSize: 10, color: 'var(--d-fg3)', lineHeight: 1.6 }}>
+              <b>예상 산출물</b> · 한국 대학생 투수 코호트 회귀 모델 (R² 0.55+ 예상) ·
+              수준별 percentile 자동 산출 시스템 · 학술 논문화 가능
+              ("한국 야구 투수 force plate metrics와 fastball velocity의 관계: 600인 코호트 분석")
+            </div>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
@@ -879,6 +1185,11 @@ function SinglePitcherView({ p }) {
       {/* Core Issue — KPI와 체력 프로파일 사이 */}
       <div style={{ marginBottom: 24 }}>
         <CoreIssuePanel p={p}/>
+      </div>
+
+      {/* Expected Velocity — 체력/메카닉스 기대 구속 + 훈련 방향 */}
+      <div style={{ marginBottom: 24 }}>
+        <ExpectedVelocityPanel p={p}/>
       </div>
 
       {/* Section: Physical */}
@@ -1090,9 +1401,6 @@ function SinglePitcherView({ p }) {
       <SectionBlock num="06"
         title="Movement Correction Drills · 동작 교정 드릴"
         sub="· 선수가 혼자서도 수행할 수 있는 자기주도 드릴">
-        <div style={{ marginBottom: 24 }}>
-          <MechanicalSW p={p}/>
-        </div>
         <MechanicDrills p={p}/>
       </SectionBlock>
 
@@ -1272,59 +1580,6 @@ function pickDrills(p) {
     });
   }
   return picked.slice(0, 4);
-}
-
-/* 메카닉스 vs 피지컬 키워드 기반으로 strengths/weaknesses 분리 */
-function splitMechanicalSW(items) {
-  const mechRegex = /시퀀스|ETI|에너지|layback|레이백|골반|몸통|상완|회전|투구|메카닉|동작|타이밍|템포|밸런스|착지|분리각|throw|throwing|hip|trunk|arm|pelvis|kinetic|chain/i;
-  return (items || []).filter(it => mechRegex.test((it.title || '') + ' ' + (it.detail || '')));
-}
-
-function MechanicalSW({ p }) {
-  const mechS = splitMechanicalSW(p.strengths);
-  const mechW = splitMechanicalSW(p.weaknesses);
-  return (
-    <div className="sw-grid">
-      <div>
-        <div className="sw-title pos">
-          <svg width="14" height="14" viewBox="0 0 16 16"><path d="M3 8l4 4 6-8" stroke="#4ade80" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          메카닉스 강점 · Mechanical Strengths
-        </div>
-        <div className="sw-list">
-          {mechS.length > 0 ? mechS.map((s,i) => (
-            <div className="sw-item pos" key={i}>
-              <div className="t">{s.title}</div>
-              <div className="d">{s.detail}</div>
-            </div>
-          )) : (
-            <div className="sw-item" style={{ opacity: .55 }}>
-              <div className="t">두드러진 메카닉스 강점 없음</div>
-              <div className="d">· 아래 교정 드릴로 전반적 동작 품질 향상 권장</div>
-            </div>
-          )}
-        </div>
-      </div>
-      <div>
-        <div className="sw-title neg">
-          <svg width="14" height="14" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="#f87171" strokeWidth="2.5" fill="none" strokeLinecap="round"/></svg>
-          메카닉스 약점 · Mechanical Improvement
-        </div>
-        <div className="sw-list">
-          {mechW.length > 0 ? mechW.map((w,i) => (
-            <div className="sw-item neg" key={i}>
-              <div className="t">{w.title}</div>
-              <div className="d">{w.detail}</div>
-            </div>
-          )) : (
-            <div className="sw-item" style={{ opacity: .55 }}>
-              <div className="t">메카닉스 영역 약점 없음</div>
-              <div className="d">· 현재 동작 품질을 유지하면서 미세 조정만 권장</div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function MechanicDrills({ p }) {
