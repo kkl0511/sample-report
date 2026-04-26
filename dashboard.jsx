@@ -1078,6 +1078,202 @@ function ExpectedVelocityPanel({ p }) {
   );
 }
 
+/* ---------------- COMMAND PROFILE PANEL (DEMO) ---------------- */
+function CommandProfilePanel({ cmd, energy, layback }) {
+  if (!cmd) return null;
+  const { strikePct, plateSdCm, grade, breakdown, note, isDemo } = cmd;
+
+  // 등급 색상 매핑
+  const gradeColors = {
+    A: { c: '#4ade80', label: '상위' },
+    B: { c: '#60a5fa', label: '중상' },
+    C: { c: '#fbbf24', label: '중위' },
+    D: { c: '#f87171', label: '하위' },
+  };
+  const g = gradeColors[grade] || gradeColors['C'];
+
+  // 게이지 길이
+  const strikePctClamped = Math.max(0, Math.min(100, strikePct));
+
+  // 분산 시각화 — strike zone box 안에 dispersion 원
+  // strike zone: 약 43cm × 60cm (홈플레이트 17"=43cm, 무릎-가슴 약 60cm)
+  // plate_sd cm를 SVG 박스 픽셀로 변환
+  const ZONE_W = 200;  // px
+  const ZONE_H = 240;  // px
+  const ZONE_REAL_W = 43;  // cm (홈플레이트 너비)
+  const cmToPx = ZONE_W / ZONE_REAL_W;
+  const dispersionR = plateSdCm * cmToPx;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* DEMO 경고 박스 */}
+      {isDemo && (
+        <div style={{
+          padding: '12px 16px',
+          background: 'linear-gradient(135deg, rgba(251,191,36,0.10), rgba(251,191,36,0.03))',
+          border: '1px solid rgba(251,191,36,0.4)',
+          borderRadius: 8,
+          fontSize: 12, color: 'var(--d-fg2)', lineHeight: 1.6,
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#fbbf24', letterSpacing: '1.2px', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5"><path d="M12 9v4m0 3v.01M12 3l10 18H2z" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            DEMO · Rapsodo 측정 전 임시 예시
+          </div>
+          이 섹션의 수치는 메카닉 평균값과 선행 연구의 인과 chain(Whiteside 2016, Solomito 2018)에 근거한
+          <b style={{ color: '#fbbf24' }}> 추정 placeholder</b>입니다.
+          실제 Rapsodo 측정 데이터(strike zone location · plate location SD) 입력 시 자동 교체됩니다.
+        </div>
+      )}
+
+      <div className="dash-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {/* 좌측 — 등급 + Strike% 게이지 */}
+        <div className="panel">
+          <div className="panel-head">
+            <div>
+              <div className="kicker">Estimated Command Grade</div>
+              <h3>제구력 등급 (추정)</h3>
+            </div>
+          </div>
+          <div style={{ padding: '20px 0', textAlign: 'center' }}>
+            <div style={{
+              display: 'inline-flex', flexDirection: 'column', alignItems: 'center',
+              padding: '20px 36px',
+              background: `linear-gradient(135deg, ${g.c}15, ${g.c}05)`,
+              border: `2px solid ${g.c}`,
+              borderRadius: 16,
+            }}>
+              <div style={{ fontSize: 64, fontWeight: 800, color: g.c, lineHeight: 1, fontFamily: 'Inter' }}>{grade}</div>
+              <div style={{ fontSize: 11, color: 'var(--d-fg3)', marginTop: 4, letterSpacing: '1px' }}>{g.label}</div>
+            </div>
+          </div>
+
+          {/* Strike% 게이지 */}
+          <div style={{ marginTop: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+              <span style={{ fontSize: 11, color: 'var(--d-fg3)' }}>추정 스트라이크 비율</span>
+              <span style={{ fontSize: 22, fontWeight: 700, color: g.c, fontFamily: 'Inter' }}>{strikePct.toFixed(1)}%</span>
+            </div>
+            <div style={{ height: 10, background: 'rgba(148,163,184,0.12)', borderRadius: 5, overflow: 'hidden', position: 'relative' }}>
+              <div style={{
+                position: 'absolute', left: 0, top: 0, bottom: 0,
+                width: `${strikePctClamped}%`,
+                background: `linear-gradient(90deg, ${g.c}88, ${g.c})`,
+                borderRadius: 5,
+              }}/>
+              {/* baseline 표시 */}
+              <div style={{ position: 'absolute', left: '60%', top: -3, bottom: -3, width: 1, background: 'rgba(148,163,184,0.5)' }}/>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--d-fg3)', marginTop: 4 }}>
+              <span>0%</span>
+              <span>고교 평균 60%</span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          {/* 추론 근거 */}
+          <div style={{
+            marginTop: 14, padding: '10px 12px',
+            background: 'rgba(8,8,12,0.3)', border: '1px solid var(--d-border)', borderRadius: 6,
+            fontSize: 11.5, color: 'var(--d-fg2)', lineHeight: 1.6,
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', letterSpacing: '1px', marginBottom: 4 }}>
+              추론 근거
+            </div>
+            {note}
+          </div>
+        </div>
+
+        {/* 우측 — Plate dispersion 시각화 */}
+        <div className="panel">
+          <div className="panel-head">
+            <div>
+              <div className="kicker">Plate Dispersion Estimate</div>
+              <h3>도착 위치 분산 (추정)</h3>
+              <div className="sub">· 작을수록 일관성 ↑</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
+            <svg viewBox={`0 0 ${ZONE_W + 80} ${ZONE_H + 60}`} style={{ maxWidth: 280 }}>
+              {/* Strike Zone */}
+              <rect x="40" y="30" width={ZONE_W} height={ZONE_H}
+                fill="rgba(96,165,250,0.04)" stroke="rgba(96,165,250,0.5)" strokeWidth="2" rx="2"/>
+              {/* 9분할 */}
+              <line x1={40 + ZONE_W/3} y1="30" x2={40 + ZONE_W/3} y2={30 + ZONE_H} stroke="rgba(96,165,250,0.2)" strokeWidth="1"/>
+              <line x1={40 + 2*ZONE_W/3} y1="30" x2={40 + 2*ZONE_W/3} y2={30 + ZONE_H} stroke="rgba(96,165,250,0.2)" strokeWidth="1"/>
+              <line x1="40" y1={30 + ZONE_H/3} x2={40 + ZONE_W} y2={30 + ZONE_H/3} stroke="rgba(96,165,250,0.2)" strokeWidth="1"/>
+              <line x1="40" y1={30 + 2*ZONE_H/3} x2={40 + ZONE_W} y2={30 + 2*ZONE_H/3} stroke="rgba(96,165,250,0.2)" strokeWidth="1"/>
+
+              {/* Dispersion 원 (중심 + radius) */}
+              <circle cx={40 + ZONE_W/2} cy={30 + ZONE_H/2} r={dispersionR}
+                fill={`${g.c}25`} stroke={g.c} strokeWidth="2" strokeDasharray="4 3"/>
+              {/* 중심점 */}
+              <circle cx={40 + ZONE_W/2} cy={30 + ZONE_H/2} r="3" fill={g.c}/>
+
+              {/* 라벨 */}
+              <text x={40 + ZONE_W/2} y={30 + ZONE_H + 24} textAnchor="middle"
+                style={{ fontSize: 11, fill: 'var(--d-fg2)', fontFamily: 'Inter', fontWeight: 600 }}>
+                σ ≈ {plateSdCm.toFixed(1)} cm
+              </text>
+              <text x={40 + ZONE_W/2} y={30 + ZONE_H + 40} textAnchor="middle"
+                style={{ fontSize: 9, fill: 'var(--d-fg3)' }}>
+                추정 도착 위치 표준편차
+              </text>
+              <text x={40 + ZONE_W/2} y="22" textAnchor="middle"
+                style={{ fontSize: 9, fill: 'var(--d-fg3)', letterSpacing: '0.5px' }}>
+                STRIKE ZONE
+              </text>
+            </svg>
+          </div>
+
+          {/* 기여도 분해 */}
+          <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(8,8,12,0.3)', border: '1px solid var(--d-border)', borderRadius: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', letterSpacing: '1px', marginBottom: 8 }}>
+              기여도 분해 (vs baseline 55%)
+            </div>
+            {[
+              { k: '에너지 누수 영향', v: breakdown.leak },
+              { k: 'Layback 효과', v: breakdown.layback },
+              { k: 'ETI 전달 효율', v: breakdown.eti },
+            ].map((row, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px dashed rgba(148,163,184,0.12)', fontSize: 11 }}>
+                <span style={{ color: 'var(--d-fg2)' }}>· {row.k}</span>
+                <span style={{ color: row.v >= 0 ? '#4ade80' : '#f87171', fontFamily: 'Inter', fontWeight: 600 }}>
+                  {row.v >= 0 ? '+' : ''}{row.v.toFixed(1)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 방법론 출처 */}
+      <details style={{ fontSize: 11, color: 'var(--d-fg3)' }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600, padding: '6px 0' }}>방법론 · 메카닉 → 제구력 추정 근거</summary>
+        <div style={{ marginTop: 8, padding: 12, background: 'rgba(0,0,0,0.25)', borderRadius: 6, lineHeight: 1.7 }}>
+          <div style={{ fontWeight: 700, color: '#93c5fd', marginBottom: 6 }}>이론적 인과 chain</div>
+          <div style={{ paddingLeft: 8 }}>
+            메카닉 일관성 (low-leak, stable layback, efficient ETI)<br/>
+            → release point variability ↓<br/>
+            → plate location dispersion ↓<br/>
+            → strike % ↑
+          </div>
+          <div style={{ fontWeight: 700, color: '#93c5fd', margin: '12px 0 6px' }}>선행 연구</div>
+          <div style={{ paddingLeft: 8 }}>
+            · Whiteside et al. (2016) — 메카닉 일관성 ↔ 컨트롤 r ≈ 0.4-0.6<br/>
+            · Solomito et al. (2018) — 분절 timing variability → release point variability (R² ≈ 0.5)<br/>
+            · Werner et al. (2008) — release point SD가 plate location SD를 직접 결정
+          </div>
+          <div style={{ marginTop: 12, paddingTop: 8, borderTop: '1px solid var(--d-border)', fontSize: 10 }}>
+            <b>한계</b> · 본 추정치는 10구 raw 데이터 부재 상태에서 메카닉 평균값 기반 임시 산출.
+            실제 strike% / plate dispersion은 Rapsodo 직접 측정으로 대체 예정.
+            현재 사용 중 추정 공식: strike% = 55 + leak·(-0.30) + (1 - |layback - 180|/30)·4 + (eti_ta - 0.85)·18
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+}
+
 /* ---------------- COLLAPSIBLE SECTION ---------------- */
 function SectionBlock({ num, title, sub, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -1382,8 +1578,14 @@ function SinglePitcherView({ p }) {
         </div>
       </SectionBlock>
 
+      {/* Section: Command Profile (DEMO) */}
+      <SectionBlock num="03" title="Command Profile · 제구력 프로파일"
+        sub="· 메카닉 평균값 기반 추정 · Rapsodo 측정 전 임시 예시">
+        <CommandProfilePanel cmd={p.command} energy={p.energy} layback={p.layback}/>
+      </SectionBlock>
+
       {/* Section: SW */}
-      <SectionBlock num="03" title="Strengths & Weaknesses · 강점·약점"
+      <SectionBlock num="04" title="Strengths & Weaknesses · 강점·약점"
         sub="· 통합 판정 기반">
         <div className="sw-grid">
           <div>
@@ -1418,7 +1620,7 @@ function SinglePitcherView({ p }) {
       </SectionBlock>
 
       {/* Section: Flags — 항상 표시 (빈 경우 '특이사항 없음' 메시지) */}
-      <SectionBlock num="04" title="Check Points · 체크 포인트"
+      <SectionBlock num="05" title="Check Points · 체크 포인트"
         sub="· 자동 규칙 엔진이 감지한 확인 필요 항목">
         {p.flags.length > 0 ? p.flags.map((f,i) => (
           <div className={`flag-item ${f.severity}`} key={i}>
@@ -1460,7 +1662,7 @@ function SinglePitcherView({ p }) {
       </SectionBlock>
 
       {/* Section: Training */}
-      <SectionBlock num="05"
+      <SectionBlock num="06"
         title="Physical Training Guide · 피지컬 트레이닝 가이드"
         sub="· 선수가 혼자 수행하는 자기주도 프로그램 · 최소 장비 · 4–12주 블록">
         <div className="training-list">
@@ -1481,7 +1683,7 @@ function SinglePitcherView({ p }) {
       </SectionBlock>
 
       {/* Section: Mechanic Drills */}
-      <SectionBlock num="06"
+      <SectionBlock num="07"
         title="Movement Correction Drills · 동작 교정 드릴"
         sub="· 선수가 혼자서도 수행할 수 있는 자기주도 드릴">
         <MechanicDrills p={p}/>
@@ -1901,10 +2103,11 @@ function App() {
     { id: 'overview', label: 'Overview',     icon: Ic.home,     num: '00' },
     { id: 'physical', label: '구속 관련 체력', icon: Ic.body,     num: '01' },
     { id: 'mech',     label: '투구 메카닉스', icon: Ic.motion,   num: '02' },
-    { id: 'sw',       label: '강점·약점',     icon: Ic.star,     num: '03' },
-    { id: 'flags',    label: '체크 포인트',   icon: Ic.flag,     num: '04' },
-    { id: 'training', label: '피지컬 트레이닝', icon: Ic.dumbbell, num: '05' },
-    { id: 'drills',   label: '동작 교정 드릴', icon: Ic.motion,   num: '06' },
+    { id: 'command',  label: '제구력 (DEMO)', icon: Ic.flag,     num: '03' },
+    { id: 'sw',       label: '강점·약점',     icon: Ic.star,     num: '04' },
+    { id: 'flags',    label: '체크 포인트',   icon: Ic.flag,     num: '05' },
+    { id: 'training', label: '피지컬 트레이닝', icon: Ic.dumbbell, num: '06' },
+    { id: 'drills',   label: '동작 교정 드릴', icon: Ic.motion,   num: '07' },
   ];
 
   // Smooth scroll to section

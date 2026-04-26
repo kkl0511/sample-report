@@ -47,6 +47,12 @@ window.BBL_PITCHERS = [
       etiPT: 6.44, etiTA: 1.04, leakPct: 0,
       comment: '· 몸통→상완 에너지 전달 효율 1.04 · 누수 0% · 4명 중 최고 · lag 51 ms와 layback 187°가 모두 이상적 범위 · 흉추 가동성·분절 타이밍 모두 우수 · 현재 상태 유지하며 절대 근력 보강 시 추가 상승 여력',
     },
+    command: {
+      strikePct: 61.5, plateSdCm: 18.1, grade: 'B',
+      breakdown: { leak: 0.0, layback: 3.1, eti: 3.4 },
+      note: '· 누수 0% + layback 187°(정상) + ETI 1.04 → 안정적 메카닉 → 일관성 우수 추정',
+      isDemo: true,
+    },
     layback: { deg: 187.1, band: 'high', note: '· 프로 범위 180°+ 도달 · 가속 거리 충분' },
     strengths: [
       { title: '하체 단위파워 우수', detail: '· CMJ 단위파워 56.9 W/kg · 기준 상위' },
@@ -114,6 +120,12 @@ window.BBL_PITCHERS = [
     energy: {
       etiPT: 7.06, etiTA: 0.77, leakPct: 22,
       comment: '· 몸통→상완 에너지 손실 약 22% · 핵심 원인 두 가지 · ① 몸통→상완 lag 38 ms로 짧음 (정상 40–60 ms) · ② 어깨 외회전(layback) 169° · 프로 기준 180°+ 미달 → 상완 가속 거리 부족 · 흉추 회전 가동성 + lag 의도적 늘리기 + RSI 보강(SSC 활용 ↑) 필요',
+    },
+    command: {
+      strikePct: 49.5, plateSdCm: 23.7, grade: 'C',
+      breakdown: { leak: -6.6, layback: 2.6, eti: -1.4 },
+      note: '· 누수 22% + layback 169°(부족) → release point 변동 가능성 → 제구 기복 추정',
+      isDemo: true,
     },
     layback: { deg: 169.2, band: 'mid', note: '· 프로 범위 160°–180° 내' },
     strengths: [
@@ -197,6 +209,12 @@ window.BBL_PITCHERS = [
       etiPT: 4.16, etiTA: 0.68, leakPct: 31,
       comment: '· 몸통→상완 에너지 손실 약 31% · 흥미로운 패턴 · lag 60 ms · layback 195°로 이상적 · 그러나 trunk peak 682°/s로 4명 중 가장 낮음 · 즉 "전달 효율" 문제가 아닌 "몸통 회전 자체"가 약함 · 이런 데이터에도 145 km/h 던지는 이유 (가설) · 절대 IMTP 2,525 N (4명 중 1위) + 악력 74 kg (4명 중 1위) + EUR 1.18 (SSC 활용 우수) · 분절 peak 외 손목·전완 폭발력 + 신경근 효율로 보완 추정 · 흉추 회전 파워·코어 회전력 보강이 ETI 회복 지렛대',
     },
+    command: {
+      strikePct: 44.7, plateSdCm: 26.0, grade: 'D',
+      breakdown: { leak: -9.3, layback: 2.0, eti: -3.1 },
+      note: '· 누수 31% + ETI 0.68 + 분절 peak 약함 → 보상 메커니즘 의존 → 일관성 저하 추정',
+      isDemo: true,
+    },
     layback: { deg: 194.8, band: 'high', note: '· 프로 범위 180°+ 도달 · 가속 거리 충분' },
     strengths: [
       { title: '반응·폭발성 (RSI) 우수', detail: '· SJ RSI-mod 0.62 m/s · 기준 상위' },
@@ -278,6 +296,12 @@ window.BBL_PITCHERS = [
     energy: {
       etiPT: 6.44, etiTA: 0.60, leakPct: 39,
       comment: '· 몸통→상완 에너지 손실 약 39% (4명 중 최대) · trunk peak 929°/s로 매우 빠름 (4명 중 1위) · 그러나 arm peak 1486°/s로 비슷한 수준 · 즉 강력한 몸통 회전이 상완으로 거의 전달 안 됨 · 어깨 stabilizer 약함·timing 동기화 미흡·overstride 가능성 · 메카닉 보강이 구속 +14 km/h 잠재력 회복의 핵심',
+    },
+    command: {
+      strikePct: 42.0, plateSdCm: 27.3, grade: 'D',
+      breakdown: { leak: -11.7, layback: 3.2, eti: -4.5 },
+      note: '· 누수 39%(최대) + ETI 0.60 + trunk-arm 동기화 미흡 → 일관성 가장 약할 가능성',
+      isDemo: true,
     },
     layback: { deg: 186.3, band: 'high', note: '· 프로 범위 180°+ 도달 · 가속 거리 충분' },
     strengths: [
