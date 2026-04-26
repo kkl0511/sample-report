@@ -1656,7 +1656,7 @@ function SinglePitcherView({ p }) {
       </SectionBlock>
 
       {/* Section: Mechanics */}
-      <SectionBlock num="02" title="Pitching Mechanics · 투구 메카닉스"
+      <SectionBlock num="02" title="Velocity Mechanics · 구속 관련 메카닉스"
         sub="· 에너지 전달 · 키네매틱 시퀀스 · 분절 회전 속도">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="panel">
@@ -1727,7 +1727,7 @@ function SinglePitcherView({ p }) {
       </SectionBlock>
 
       {/* Section: Command Profile (7대 요인) */}
-      <SectionBlock num="03" title="Command Profile · 제구력 프로파일"
+      <SectionBlock num="03" title="Command Mechanics · 제구 관련 메카닉스"
         sub="· 10구 메카닉 일관성 + 제구력 7대 요인 평가 · Uplift Labs 실측">
         <CommandProfilePanel cmd={p.command} energy={p.energy} layback={p.layback} factors={p.factors}/>
       </SectionBlock>
@@ -2125,6 +2125,24 @@ function MechanicDrills({ p }) {
 function CompareCol({ p }) {
   const bandLabel = { high: '상위', mid: '범위', low: '미만', na: '—' };
   const taLeak = p.energy.etiTA < 0.85;
+  const gradeColors = {
+    A: { c: '#4ade80', bg: 'rgba(74,222,128,0.10)' },
+    B: { c: '#60a5fa', bg: 'rgba(96,165,250,0.10)' },
+    C: { c: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
+    D: { c: '#f87171', bg: 'rgba(248,113,113,0.10)' },
+    na: { c: '#94a3b8', bg: 'rgba(148,163,184,0.10)' },
+  };
+  const cmd = p.command || {};
+  const cmdGrade = cmd.grade || 'na';
+  const cmdFg = gradeColors[cmdGrade] || gradeColors.na;
+  
+  // 섹션 헤더 스타일
+  const sectionHeader = {
+    fontSize: 10, fontWeight: 700, color: '#93c5fd', letterSpacing: '1.2px',
+    paddingTop: 14, marginTop: 14, marginBottom: 10,
+    borderTop: '1px solid var(--d-border)',
+  };
+  
   return (
     <div className="compare-col">
       <div className="col-head">
@@ -2135,63 +2153,165 @@ function CompareCol({ p }) {
         </div>
       </div>
       <div className="col-body">
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
-          <div style={{ fontFamily: 'Inter', fontSize: 36, fontWeight: 900, color: 'var(--d-fg1)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-            {p.velocity.toFixed(1)}
+        {/* === 헤드라인 — Velocity + Strike% === */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+          <div style={{ flex: 1, padding: '10px 12px', background: 'var(--d-surface-3)', borderRadius: 8, border: '1px solid var(--d-border)' }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--d-fg3)', letterSpacing: '1px', marginBottom: 4 }}>VELOCITY</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <div style={{ fontFamily: 'Inter', fontSize: 26, fontWeight: 900, color: 'var(--d-fg1)', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                {p.velocity.toFixed(1)}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--d-fg3)', fontWeight: 600 }}>km/h</div>
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--d-fg3)', marginTop: 4 }}>평균 {p.velocityAvg.toFixed(1)}</div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--d-fg3)', fontWeight: 600 }}>km/h · peak</div>
-          <span className={`sev sev-${p.severity}`} style={{ marginLeft: 'auto', fontSize: 10, padding: '4px 8px' }}>
-            {p.severity === 'NONE' ? 'BAL' : p.severity}
-          </span>
+          <div style={{ flex: 1, padding: '10px 12px', background: cmdFg.bg, borderRadius: 8, border: `1px solid ${cmdFg.c}55` }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: cmdFg.c, letterSpacing: '1px', marginBottom: 4 }}>COMMAND</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <div style={{ fontFamily: 'Inter', fontSize: 26, fontWeight: 900, color: cmdFg.c, letterSpacing: '-0.02em', lineHeight: 1 }}>
+                {cmdGrade}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--d-fg2)' }}>
+                {cmd.strikePct ? cmd.strikePct.toFixed(1) + '%' : '—'}
+              </div>
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--d-fg3)', marginTop: 4 }}>plate {cmd.plateSdCm ? cmd.plateSdCm + 'cm' : '—'}</div>
+          </div>
         </div>
 
+        <span className={`sev sev-${p.severity}`} style={{ fontSize: 10, padding: '4px 8px', display: 'inline-block', marginBottom: 12 }}>
+          {p.severity === 'NONE' ? 'BALANCED' : p.severity + ' PRIORITY'}
+        </span>
+
+        {/* === ① 구속 관련 체력 === */}
+        <div style={sectionHeader}>① 구속 관련 체력</div>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
           <RadarChart data={p.radar}/>
         </div>
-
-        <div style={{ marginTop: 16 }}>
-          <div className="compare-stat">
-            <span className="lbl">CMJ 단위파워</span>
-            <span className="val">{p.physical.cmjPower.cmj}</span>
-            <span className={`band ${p.physical.cmjPower.band}`}>{bandLabel[p.physical.cmjPower.band]}</span>
-          </div>
-          <div className="compare-stat">
-            <span className="lbl">절대근력 (N/kg)</span>
-            <span className="val">{p.physical.maxStrength.perKg ?? '—'}</span>
-            <span className={`band ${p.physical.maxStrength.band}`}>{bandLabel[p.physical.maxStrength.band]}</span>
-          </div>
-          <div className="compare-stat">
-            <span className="lbl">RSI-mod</span>
-            <span className="val">{p.physical.reactive.cmj}</span>
-            <span className={`band ${p.physical.reactive.band}`}>{bandLabel[p.physical.reactive.band]}</span>
-          </div>
-          <div className="compare-stat">
-            <span className="lbl">EUR</span>
-            <span className="val">{p.physical.ssc.value}</span>
-            <span className={`band ${p.physical.ssc.band}`}>{bandLabel[p.physical.ssc.band]}</span>
-          </div>
-          <div className="compare-stat">
-            <span className="lbl">악력 (kg)</span>
-            <span className="val">{p.physical.release.value}</span>
-            <span className={`band ${p.physical.release.band}`}>{bandLabel[p.physical.release.band]}</span>
-          </div>
-          <div className="compare-stat">
-            <span className="lbl">Max Layback</span>
-            <span className="val">{p.layback.deg.toFixed(1)}°</span>
-            <span className={`band ${p.layback.band}`}>{bandLabel[p.layback.band]}</span>
-          </div>
-          <div className="compare-stat">
-            <span className="lbl">Trunk→Arm ETI</span>
-            <span className="val">{p.energy.etiTA.toFixed(2)}</span>
-            <span className={`band ${taLeak ? 'low' : 'high'}`}>{taLeak ? '미만' : '상위'}</span>
-          </div>
-          <div className="compare-stat">
-            <span className="lbl">상완 회전속도</span>
-            <span className="val">{p.angular.arm}<span style={{fontSize:10,color:'var(--d-fg3)',marginLeft:2}}>°/s</span></span>
-            <span className={`band ${p.angular.armBand}`}>{bandLabel[p.angular.armBand]}</span>
-          </div>
+        <div className="compare-stat">
+          <span className="lbl">CMJ 단위파워 (W/kg)</span>
+          <span className="val">{p.physical.cmjPower.cmj}</span>
+          <span className={`band ${p.physical.cmjPower.band}`}>{bandLabel[p.physical.cmjPower.band]}</span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">절대근력 IMTP (N/kg)</span>
+          <span className="val">{p.physical.maxStrength.perKg ?? '—'}</span>
+          <span className={`band ${p.physical.maxStrength.band}`}>{bandLabel[p.physical.maxStrength.band]}</span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">반응성 RSI-mod</span>
+          <span className="val">{p.physical.reactive.cmj}</span>
+          <span className={`band ${p.physical.reactive.band}`}>{bandLabel[p.physical.reactive.band]}</span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">반동 활용 EUR</span>
+          <span className="val">{p.physical.ssc.value}</span>
+          <span className={`band ${p.physical.ssc.band}`}>{bandLabel[p.physical.ssc.band]}</span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">악력 (kg)</span>
+          <span className="val">{p.physical.release.value}</span>
+          <span className={`band ${p.physical.release.band}`}>{bandLabel[p.physical.release.band]}</span>
         </div>
 
+        {/* === ② 구속 관련 메카닉스 === */}
+        <div style={sectionHeader}>② 구속 관련 메카닉스</div>
+        <div className="compare-stat">
+          <span className="lbl">Pelvis 회전속도 (°/s)</span>
+          <span className="val">{p.angular.pelvis}</span>
+          <span className={`band ${p.angular.pelvisBand}`}>{bandLabel[p.angular.pelvisBand]}</span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">Trunk 회전속도 (°/s)</span>
+          <span className="val">{p.angular.trunk}</span>
+          <span className={`band ${p.angular.trunkBand}`}>{bandLabel[p.angular.trunkBand]}</span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">Arm 회전속도 (°/s)</span>
+          <span className="val">{p.angular.arm}</span>
+          <span className={`band ${p.angular.armBand}`}>{bandLabel[p.angular.armBand]}</span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">Pelvis→Trunk gain</span>
+          <span className="val">{p.energy.etiPT.toFixed(2)}</span>
+          <span className={`band ${p.energy.etiPT >= 1.3 ? 'high' : p.energy.etiPT >= 1.1 ? 'mid' : 'low'}`}>
+            {p.energy.etiPT >= 1.3 ? '상위' : p.energy.etiPT >= 1.1 ? '범위' : '미만'}
+          </span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">Trunk→Arm gain (ETI)</span>
+          <span className="val">{p.energy.etiTA.toFixed(2)}</span>
+          <span className={`band ${taLeak ? 'low' : 'high'}`}>{taLeak ? '미만' : '상위'}</span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">Max Layback (°)</span>
+          <span className="val">{p.layback.deg.toFixed(1)}</span>
+          <span className={`band ${p.layback.band}`}>{bandLabel[p.layback.band]}</span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">P→T lag (ms)</span>
+          <span className="val">{p.sequence.g1}</span>
+          <span className={`band ${p.sequence.g1 >= 30 && p.sequence.g1 <= 60 ? 'high' : 'mid'}`}>
+            {p.sequence.g1 >= 30 && p.sequence.g1 <= 60 ? '정상' : '범위'}
+          </span>
+        </div>
+        <div className="compare-stat">
+          <span className="lbl">T→A lag (ms)</span>
+          <span className="val">{p.sequence.g2}</span>
+          <span className={`band ${p.sequence.g2 >= 30 && p.sequence.g2 <= 70 ? 'high' : 'mid'}`}>
+            {p.sequence.g2 >= 30 && p.sequence.g2 <= 70 ? '정상' : '범위'}
+          </span>
+        </div>
+
+        {/* === ③ 제구 관련 메카닉스 (7대 요인) === */}
+        <div style={sectionHeader}>③ 제구 관련 메카닉스 · 7대 요인</div>
+        {p.factors && p.factors.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 10 }}>
+            {p.factors.map((f, i) => {
+              const fg = gradeColors[f.grade] || gradeColors.na;
+              return (
+                <div key={f.id} title={f.name + ' — ' + (f.comment || '')}
+                  style={{
+                    padding: '8px 4px',
+                    background: fg.bg,
+                    border: `1px solid ${fg.c}55`,
+                    borderRadius: 4,
+                    textAlign: 'center',
+                  }}>
+                  <div style={{ fontSize: 8.5, fontWeight: 700, color: 'var(--d-fg3)', marginBottom: 2 }}>
+                    {String(i+1).padStart(2,'0')}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: fg.c, fontFamily: 'Inter', lineHeight: 1 }}>
+                    {f.grade}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ fontSize: 11, color: 'var(--d-fg3)', fontStyle: 'italic', padding: 8 }}>제구 7대 요인 데이터 없음</div>
+        )}
+
+        {/* 7대 요인 상세 (작은 표) */}
+        {p.factors && p.factors.length > 0 && (
+          <div style={{ marginTop: 6 }}>
+            {p.factors.map((f, i) => {
+              const fg = gradeColors[f.grade] || gradeColors.na;
+              return (
+                <div key={f.id} className="compare-stat" style={{ padding: '6px 8px' }}>
+                  <span className="lbl" style={{ fontSize: 10.5 }}>{f.name}</span>
+                  <span className="val" style={{ fontSize: 11 }}>—</span>
+                  <span style={{
+                    background: fg.c, color: '#fff', fontWeight: 700,
+                    padding: '2px 8px', borderRadius: 4, fontSize: 10, fontFamily: 'Inter',
+                  }}>{f.grade}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* === Core Issue === */}
         <div style={{ marginTop: 16, padding: 12, borderRadius: 8, background: 'var(--d-surface-3)', border: '1px solid var(--d-border)' }}>
           <div style={{ fontSize: 10, color: 'var(--d-fg3)', fontFamily: 'Inter', letterSpacing: 1.5, fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>Core Issue</div>
           <div style={{ fontSize: 13, color: 'var(--d-fg1)', fontWeight: 600, lineHeight: 1.5 }}>{p.coreIssue}</div>
@@ -2208,22 +2328,30 @@ function CompareView({ pitchers, leftId, rightId, onLeft, onRight }) {
     <>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Compare Mode</h1>
-          <div className="page-sub">선수 간 동일 지표 비교 · 색상 띠로 기준 대비 위치 확인</div>
+          <h1 className="page-title">Compare Mode · 선수 비교</h1>
+          <div className="page-sub">2명 동시 비교 · 체력 + 구속 메카닉스 + 제구 메카닉스 종합</div>
         </div>
       </div>
       <div className="compare-bar">
         <span className="label">A</span>
         <div className="compare-slot">
           <select value={leftId} onChange={(e) => onLeft(e.target.value)}>
-            {pitchers.map(p => <option key={p.id} value={p.id}>{p.name} · {p.velocity.toFixed(1)} km/h</option>)}
+            {pitchers.map(p => (
+              <option key={p.id} value={p.id} disabled={p.id === rightId}>
+                {p.name} · {p.velocity.toFixed(1)} km/h · {p.command?.grade || '—'}
+              </option>
+            ))}
           </select>
         </div>
         <span className="label" style={{ marginLeft: 12 }}>vs</span>
         <span className="label">B</span>
         <div className="compare-slot">
           <select value={rightId} onChange={(e) => onRight(e.target.value)}>
-            {pitchers.map(p => <option key={p.id} value={p.id}>{p.name} · {p.velocity.toFixed(1)} km/h</option>)}
+            {pitchers.map(p => (
+              <option key={p.id} value={p.id} disabled={p.id === leftId}>
+                {p.name} · {p.velocity.toFixed(1)} km/h · {p.command?.grade || '—'}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -2250,8 +2378,8 @@ function App() {
   const navItems = [
     { id: 'overview', label: 'Overview',     icon: Ic.home,     num: '00' },
     { id: 'physical', label: '구속 관련 체력', icon: Ic.body,     num: '01' },
-    { id: 'mech',     label: '투구 메카닉스', icon: Ic.motion,   num: '02' },
-    { id: 'command',  label: '제구력',         icon: Ic.flag,     num: '03' },
+    { id: 'mech',     label: '구속 관련 메카닉스', icon: Ic.motion,   num: '02' },
+    { id: 'command',  label: '제구 관련 메카닉스', icon: Ic.flag,     num: '03' },
     { id: 'sw',       label: '강점·약점',     icon: Ic.star,     num: '04' },
     { id: 'flags',    label: '체크 포인트',   icon: Ic.flag,     num: '05' },
     { id: 'training', label: '피지컬 트레이닝', icon: Ic.dumbbell, num: '06' },
@@ -2265,7 +2393,7 @@ function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    const numMap = { physical: '01', mech: '02', sw: '03', flags: '04', training: '05', drills: '06' };
+    const numMap = { physical: '01', mech: '02', command: '03', sw: '04', flags: '05', training: '06', drills: '07' };
     const targetNum = numMap[id];
     setTimeout(() => {
       const block = document.querySelector(`.section-block[data-section-num="${targetNum}"]`);

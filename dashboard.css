@@ -1521,3 +1521,272 @@ html[data-theme="light"] .chart-caption { color: var(--d-fg3); }
   font-style: italic;
   margin-left: auto;
 }
+
+/* =====================================================
+   PRINT STYLES — PDF 인쇄 최적화
+   브라우저에서 Cmd+P → PDF로 저장 시 적용
+   ===================================================== */
+@media print {
+  /* 페이지 설정: A4, 적절한 여백 */
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+
+  /* === 다크 → 라이트 강제 변환 === */
+  :root, html, body, .dash, .main, .content {
+    background: #ffffff !important;
+    color: #1a1a2e !important;
+  }
+  
+  /* 다크 테마 변수를 라이트 값으로 강제 오버라이드 */
+  body, .dash {
+    --d-bg: #ffffff !important;
+    --d-bg-1: #ffffff !important;
+    --d-bg-2: #fafbfc !important;
+    --d-surface: #ffffff !important;
+    --d-surface-1: #ffffff !important;
+    --d-surface-2: #f8f9fa !important;
+    --d-surface-3: #f1f3f5 !important;
+    --d-fg1: #1a1a2e !important;
+    --d-fg2: #2b3245 !important;
+    --d-fg3: #5b6478 !important;
+    --d-fg: #1a1a2e !important;
+    --d-border: #d4d8e0 !important;
+    --d-border-strong: #b0b6c4 !important;
+  }
+  
+  /* === 인쇄 불필요 요소 숨김 === */
+  .sidebar,
+  .dash-top,
+  .tb-actions,
+  .tb-filter,
+  .seg-toggle,
+  .ps-wrap,
+  .pitcher-select,
+  video,
+  .video-controls,
+  .vp-controls,
+  .play-btn,
+  details summary { /* details는 보이게, summary는 숨김 */
+    display: none !important;
+  }
+  
+  /* details 내용은 펼쳐진 상태로 표시 */
+  details {
+    display: block !important;
+  }
+  details > *:not(summary) {
+    display: block !important;
+  }
+  
+  /* === 메인 영역 전체 너비 사용 === */
+  .main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+  .content {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  /* === 페이지 분할 최적화 === */
+  /* 섹션이 페이지 중간에 잘리지 않도록 */
+  section, .section, .panel {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  /* SectionBlock 컨테이너 */
+  [class*="section-block"], 
+  div[id^="section-"] {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 16px !important;
+  }
+  
+  /* h1, h2, h3 다음에는 콘텐츠가 붙어야 (orphan 방지) */
+  h1, h2, h3, .page-title, .panel-head {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  
+  /* 카드/패널 자체는 잘리면 안 됨 */
+  .panel, .kpi, .training-card, .compare-col,
+  .dl-item, .check-card, .factor-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  
+  /* === 패널·카드 시각화 보정 === */
+  .panel, .kpi, .training-card {
+    background: #ffffff !important;
+    border: 1px solid #d4d8e0 !important;
+    box-shadow: none !important;
+    color: #1a1a2e !important;
+  }
+  
+  /* 테두리·구분선 색상 진하게 */
+  hr, .divider {
+    border-color: #b0b6c4 !important;
+  }
+  
+  /* === 텍스트 색상 가독성 === */
+  /* 흰 글씨를 검정으로 강제 */
+  *[style*="color: #fff"],
+  *[style*="color: white"],
+  *[style*="color:#fff"] {
+    color: #1a1a2e !important;
+  }
+  
+  /* 어두운 배경 박스를 밝게 */
+  *[style*="background: rgba(0,0,0"],
+  *[style*="background:rgba(0,0,0"],
+  *[style*="background: rgba(8,8,12"],
+  *[style*="background:rgba(8,8,12"] {
+    background: #f8f9fa !important;
+    color: #1a1a2e !important;
+    border: 1px solid #e5e7eb !important;
+  }
+  
+  /* === SVG 색상 보존 === */
+  /* 차트·다이어그램 색상은 그대로 유지 (-webkit-print-color-adjust) */
+  svg, svg * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  /* 모든 색상이 있는 요소에 적용 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* === 표 가독성 === */
+  table {
+    border-collapse: collapse !important;
+  }
+  table, th, td {
+    border: 1px solid #b0b6c4 !important;
+    color: #1a1a2e !important;
+  }
+  th {
+    background: #eef0f4 !important;
+    font-weight: 600 !important;
+  }
+  
+  /* === 폰트 크기 조정 (인쇄용) === */
+  body {
+    font-size: 10.5pt !important;
+    line-height: 1.5 !important;
+  }
+  h1 { font-size: 18pt !important; }
+  h2 { font-size: 14pt !important; }
+  h3 { font-size: 12pt !important; }
+  h4 { font-size: 11pt !important; }
+  
+  /* === 등급 배지 색상 보존 + 흰 글씨 보장 === */
+  /* A/B/C/D 등급 배지는 색상 유지 + 텍스트는 흰색 */
+  div[style*="background: #4ade80"],
+  div[style*="background: #60a5fa"],
+  div[style*="background: #fbbf24"],
+  div[style*="background: #f87171"],
+  div[style*="background:#4ade80"],
+  div[style*="background:#60a5fa"],
+  div[style*="background:#fbbf24"],
+  div[style*="background:#f87171"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color: #ffffff !important;
+  }
+  
+  /* === 링크 색상 === */
+  a {
+    color: #2563eb !important;
+    text-decoration: underline !important;
+  }
+  
+  /* === 강조 색상 (그라디언트 배경 박스 등) === */
+  /* 노란/초록/빨강 등 알림 박스의 배경 + 테두리 보존 */
+  div[style*="rgba(74,222,128"],
+  div[style*="rgba(96,165,250"],
+  div[style*="rgba(251,191,36"],
+  div[style*="rgba(248,113,113"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* === 그리드·플렉스 인쇄 호환 === */
+  .dash-grid, .kpi-grid, .compare-grid, .hero-grid {
+    display: grid !important;
+  }
+  
+  /* compare-grid는 가로 2열 유지 (선수 비교 용도) */
+  .compare-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+  
+  /* compare-col 인쇄 시 색상/배경 보존 */
+  .compare-col {
+    background: #ffffff !important;
+    border: 1px solid #d4d8e0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .compare-col .col-head {
+    background: #f1f3f5 !important;
+    color: #1a1a2e !important;
+  }
+  .compare-col .col-head .av {
+    background: #1a2a4f !important;
+    color: #ffffff !important;
+  }
+  
+  /* compare-stat 가독성 */
+  .compare-stat {
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+  .compare-stat .lbl { color: #5b6478 !important; }
+  .compare-stat .val { color: #1a1a2e !important; font-weight: 600 !important; }
+  
+  /* compare-bar 숨김 (인쇄에서 select는 무의미) */
+  .compare-bar { display: none !important; }
+  
+  /* === 첫 페이지 헤더 영역 === */
+  .page-head {
+    page-break-after: avoid;
+    margin-bottom: 12pt !important;
+    padding-bottom: 8pt !important;
+    border-bottom: 2px solid #1a2a4f !important;
+  }
+  
+  /* === 영상 자리에 placeholder === */
+  .video-panel::before {
+    content: '🎥 투구 영상 (디지털 버전에서 확인)';
+    display: block;
+    padding: 24px;
+    text-align: center;
+    background: #f8f9fa;
+    border: 1px dashed #b0b6c4;
+    color: #5b6478;
+    font-style: italic;
+  }
+  
+  /* === KPI 그리드 인쇄용 단순화 === */
+  .kpi-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 8px !important;
+  }
+  .kpi {
+    padding: 8px !important;
+    background: #ffffff !important;
+    border: 1px solid #d4d8e0 !important;
+  }
+  
+  /* === 빈 공간 줄이기 === */
+  .panel { padding: 12px !important; margin-bottom: 10px !important; }
+}
