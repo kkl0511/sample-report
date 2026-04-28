@@ -3227,7 +3227,7 @@ function CompareSummaryTable({ pitchers }) {
   );
 }
 
-
+function CompareSummary({ pitchers, left, right }) {
   // ⭐ v18 — N명(2~4) 비교 지원
   // 2명 — 기존 풍부한 텍스트 분석 사용
   // 3~4명 — 간단한 비교표 표시
