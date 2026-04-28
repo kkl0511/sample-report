@@ -310,10 +310,10 @@
         label: `스트라이드 길이 변동 큼 (${summary.strideLength.cv.toFixed(1)}% CV · Drives/Fleisig 청소년 핵심 차이)` });
       if (severity !== 'HIGH') severity = 'MEDIUM';
     }
-    // [B] 회전 타이밍 — Wang 2025 r=0.78
+    // [B] 회전 타이밍 — Wang 2025 r=−0.78
     if (summary.peakPelvisVel?.cv != null && summary.peakPelvisVel.cv > 15) {
       issues.push({ type: 'cmd', severity: 'MEDIUM',
-        label: `골반 회전속도 변동 큼 (${summary.peakPelvisVel.cv.toFixed(1)}% CV · Wang 2025 r=0.78)` });
+        label: `골반 회전속도 변동 큼 (${summary.peakPelvisVel.cv.toFixed(1)}% CV · Wang 2025 r=−0.78)` });
       if (severity !== 'HIGH') severity = 'MEDIUM';
     }
     // [C] 자세 일관성 — Manzi 2021 #1 (6.6% MSE)
@@ -1289,9 +1289,9 @@
   //                            Lead hip flexion at FC = 4.2% MSE (#2)
   //                            Shoulder abduction at FC = 4.2% MSE (#3)
   //     · Fleisig/Driveline — 청소년 vs 엘리트 차이: front foot placement + flexion at foot plant
-  //     · Wang 2025 — pelvic rotation variability r=0.78 (transverse plane)
+  //     · Wang 2025 — pelvic rotation variability r=−0.78 (transverse plane)
   //     · Howenstein 2021 (n=88) — KS 패턴 11개, 시퀀싱 일관성이 핵심
-  //     · Yamada 2024 (PMC11608975, n=344 MLB) — release point variability ↓ → BB/9·xFIP 개선
+  //     · Wakamiya 2024 (PMC11608975, n=344 MLB) — release point variability ↓ → BB/9·xFIP 개선
   //
   //   가중치 분배:
   //     [A] 앞발 착지 안정성 (사용자 강조 + 학술 핵심)  0.40
@@ -1376,7 +1376,7 @@
       [[15,95],[25,75],[40,50],[60,25]], 'CV%');
 
     // 7. 골반 peak velocity 변동성 (CV) — 0.07
-    //    Wang 2025: pelvic rotation variability r=0.78 (가장 강한 단일 변동성 변인!)
+    //    Wang 2025: pelvic rotation variability r=−0.78 (가장 강한 단일 변동성 변인!)
     push('rotation', '골반 회전속도 변동성', 0.07, sm.peakPelvisVel?.cv,
       [[5,95],[10,75],[15,50],[22,25]], 'CV%');
 
@@ -1403,12 +1403,12 @@
     // [D] 릴리즈 결과 (downstream — 사용자: 결과 지표) — 0.12
     // ════════════════════════════════════════════════════════
     // 11. Arm slot 각도 변동성 (SD) — 0.06
-    //     사용자 언급 결과 변인 + Yamada 2024 release variability
+    //     사용자 언급 결과 변인 + Wakamiya 2024 release variability
     push('release', 'Arm slot 변동성', 0.06, sm.armSlotAngle?.sd,
       [[3,95],[5,75],[8,50],[12,25]], '° SD');
 
     // 12. 손목 높이 변동성 (SD, cm 단위) — 0.04
-    //     Yamada 2024: release point vertical (RPZ) variability
+    //     Wakamiya 2024: release point vertical (RPZ) variability
     const wristSdCm = sm.wristHeight?.sd != null ? sm.wristHeight.sd * 100 : null;
     push('release', '손목 높이 변동성', 0.04, wristSdCm,
       [[2,95],[4,75],[6,50],[10,25]], 'cm SD');
@@ -1711,7 +1711,7 @@
         candidates.push({ kind: 'command',
           weight: 60 - command + sm.armSlotAngle.sd * 2,
           title: '팔 슬롯 일관성 (downstream)',
-          detail: `Arm slot SD ±${sm.armSlotAngle.sd.toFixed(2)}° (Yamada 2024)`,
+          detail: `Arm slot SD ±${sm.armSlotAngle.sd.toFixed(2)}° (Wakamiya 2024)`,
           action: '거울 보고 동일 슬롯 반복, T-드릴, 와인드업 일관성'
         });
       }
@@ -1735,12 +1735,12 @@
           action: 'depth jump → 즉시 단일다리 brace, 메디볼 슬램 후 quad 신전 강화'
         });
       }
-      // [B] 골반 회전속도 변동성 — Wang 2025 r=0.78
+      // [B] 골반 회전속도 변동성 — Wang 2025 r=−0.78
       if (sm.peakPelvisVel?.cv != null && sm.peakPelvisVel.cv > 10) {
         candidates.push({ kind: 'command',
           weight: 71 - command + sm.peakPelvisVel.cv,
           title: '골반 회전 일관성 ⭐ (Wang 2025)',
-          detail: `${sm.peakPelvisVel.cv.toFixed(1)}% CV · pelvic var. r=0.78 (가장 강한 변동성 예측)`,
+          detail: `${sm.peakPelvisVel.cv.toFixed(1)}% CV · pelvic var. r=−0.78 (가장 강한 변동성 예측)`,
           action: 'pelvis dissociation 드릴, 회전 throw 변형, 케이블 Pallof press'
         });
       }
@@ -2280,7 +2280,7 @@
 
     // ⭐ v26 — 제구 점수 4그룹 변인 객체 (Section 03 카테고리화 시각화)
     //   사용자 가설: 근본 원인 (착지 + 회전 타이밍) + 결과 (릴리즈)
-    //   학술 근거: Manzi 2019/2021, Wang 2025, Howenstein 2021, Yamada 2024
+    //   학술 근거: Manzi 2019/2021, Wang 2025, Howenstein 2021, Wakamiya 2024
     const commandV26 = {
       // [A] 앞발 착지 안정성 (사용자 강조 — 근본 원인) — 0.40
       landing: {
@@ -2293,7 +2293,7 @@
         kneeBrMean:      sm.kneeFlexionAtBR?.mean ?? null,
         leadKneeExtMean: sm.leadKneeExtAtBR?.mean ?? null
       },
-      // [B] 회전 타이밍 (사용자 강조 + Wang 2025 r=0.78) — 0.30
+      // [B] 회전 타이밍 (사용자 강조 + Wang 2025 r=−0.78) — 0.30
       rotation: {
         ptLagCv:        sm.ptLagMs?.cv ?? null,
         taLagCv:        sm.taLagMs?.cv ?? null,

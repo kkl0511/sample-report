@@ -1980,7 +1980,7 @@ const VAR_INFO = {
     title: '골반 회전속도 변동성 (CV%)',
     definition: [
       '· 10구 동안 골반의 최고 회전속도가 매번 얼마나 일정한지',
-      '· ⭐ 모든 변인 중 가장 강한 변동성 예측 (Wang 2025 r=0.78)'
+      '· ⭐ 모든 변인 중 가장 강한 변동성 예측 (Wang 2025 r=−0.78)'
     ],
     calculation: [
       '· 10구 peak pelvis angular velocity의 변동계수',
@@ -1991,7 +1991,7 @@ const VAR_INFO = {
       '⚠️ 5 ~ 15%',
       '❌ 15% 초과 — 코어 안정성 부족'
     ],
-    source: '⭐ Wang 2025 (r=0.78 · 가장 강한 변동성 예측)'
+    source: '⭐ Wang 2025 (r=−0.78 · 가장 강한 변동성 예측)'
   },
   trunkVelCv: {
     title: '몸통 회전속도 변동성 (CV%)',
@@ -2059,13 +2059,13 @@ const VAR_INFO = {
       '⚠️ 3 ~ 8°',
       '❌ 8° 초과 — 슬롯 매번 다름 (근본 원인 = 착지 또는 자세 불안정)'
     ],
-    source: 'Yamada 2024 · 사용자 언급 결과 변인'
+    source: 'Wakamiya 2024 · 사용자 언급 결과 변인'
   },
   wristSdCm: {
     title: '손목 높이 변동성 (cm SD)',
     definition: [
       '· 릴리즈 포인트의 수직 위치가 매번 얼마나 일정한지',
-      '· Yamada 2024: 이 변동성이 BB/9 · xFIP 개선에 직결'
+      '· Wakamiya 2024: 이 변동성이 BB/9 · xFIP 개선에 직결'
     ],
     calculation: [
       '· 10구 릴리즈 시점 손목 y좌표의 표준편차 (cm)',
@@ -2076,7 +2076,7 @@ const VAR_INFO = {
       '⚠️ 2 ~ 6cm',
       '❌ 6cm 초과 — 릴리즈 포인트 불안정'
     ],
-    source: 'Yamada 2024 (n=344 MLB starters)'
+    source: 'Wakamiya 2024 (n=344 MLB starters)'
   },
   fcBrCv: {
     title: 'FC→릴리스 시간 일관성 (CV%)',
@@ -2213,7 +2213,7 @@ function KneeFlexExtDiagram({ kneeFcMean, kneeBrMean, leadKneeExtMean }) {
   );
 }
 
-// ⭐ v26 — 릴리즈 포인트 분산도 (Yamada 2024 95% confidence ellipse 형식)
+// ⭐ v26 — 릴리즈 포인트 분산도 (Wakamiya 2024 95% confidence ellipse 형식)
 function ReleasePointScatter({ wristSdCm, armSlotSd }) {
   const W = 280, H = 220;
   const cx = W/2, cy = H/2 + 10;
@@ -2226,7 +2226,7 @@ function ReleasePointScatter({ wristSdCm, armSlotSd }) {
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: 280, display: 'block' }}>
       <rect x="0" y="0" width={W} height={H} fill="rgba(0,0,0,0.15)" rx="6"/>
       <text x={W/2} y="18" fontSize="11" fontWeight="700" fill="#cbd5e1" textAnchor="middle">95% 릴리즈 포인트 신뢰 타원</text>
-      <text x={W/2} y="32" fontSize="9" fill="#94a3b8" textAnchor="middle">· 작은 타원 = 일관된 릴리즈 (Yamada 2024)</text>
+      <text x={W/2} y="32" fontSize="9" fill="#94a3b8" textAnchor="middle">· 작은 타원 = 일관된 릴리즈 (Wakamiya 2024)</text>
       {/* 십자가 — 평균 점 */}
       <line x1={cx-70} y1={cy} x2={cx+70} y2={cy} stroke="rgba(148,163,184,0.3)" strokeDasharray="3,3"/>
       <line x1={cx} y1={cy-70} x2={cx} y2={cy+70} stroke="rgba(148,163,184,0.3)" strokeDasharray="3,3"/>

@@ -1251,8 +1251,8 @@ function MechanicsBy7GroupsPanel({ p }) {
       {/* ============ [A] 키네틱 체인 (0.30) ⭐ ============ */}
       <div className="panel" style={{ borderTop: '3px solid #fbbf24' }}>
         <GroupHead id="A" title="키네틱 체인 — 에너지가 발끝에서 손끝까지 흐르는 효율"
-          sub="ETI P→T (0.08) · ETI T→A (0.08) · 누수율 (0.10) · 시퀀싱 (0.04) — Aguinaldo 2019"
-          weight={0.30} mapping="우리 시스템 고유 + 사용자 강조" isStarred />
+          sub="ETI P→T (0.07) · ETI T→A (0.07) · 누수율 (0.10) · 시퀀싱 (0.04) — Aguinaldo 2019"
+          weight={0.28} mapping="우리 시스템 고유 + 사용자 강조" isStarred />
         <div style={{ fontSize: 11, color: 'var(--d-fg2)', marginBottom: 10, lineHeight: 1.6, padding: '8px 10px', background: 'rgba(251,191,36,0.06)', borderRadius: 5 }}>
           <b style={{ color: '#fbbf24' }}>· 핵심 원리</b><br/>
           · 던지기는 <b>골반 → 몸통 → 팔</b>로 가속이 이어지는 채찍 동작<br/>
@@ -1298,8 +1298,8 @@ function MechanicsBy7GroupsPanel({ p }) {
       {/* ============ [B] Arm Action (0.18) — Driveline #2 ============ */}
       <div className="panel" style={{ borderTop: '3px solid #60a5fa' }}>
         <GroupHead id="B" title="Arm Action — 팔 동작 (Layback이 핵심)"
-          sub="Layback (0.10 ⭐) · Shoulder Abd FP (0.04) · Scap Load FP (0.04) — Driveline 영향력 #2"
-          weight={0.18} mapping="Driveline Arm Action" />
+          sub="Layback (0.09 ⭐) · Shoulder Abd FP (0.04) · Scap Load FP (0.03) — Driveline 영향력 #2"
+          weight={0.16} mapping="Driveline Arm Action" />
         <div style={{ fontSize: 11, color: 'var(--d-fg2)', marginBottom: 10, lineHeight: 1.6, padding: '8px 10px', background: 'rgba(96,165,250,0.06)', borderRadius: 5 }}>
           <b style={{ color: '#60a5fa' }}>· 핵심 원리</b><br/>
           · 팔을 멀리 뒤로 젖힐수록 가속할 거리가 길어짐 (= 더 빠른 공)<br/>
@@ -1342,8 +1342,8 @@ function MechanicsBy7GroupsPanel({ p }) {
       {/* ============ [C] Posture (0.18) — Driveline #1 ============ */}
       <div className="panel" style={{ borderTop: '3px solid #a78bfa' }}>
         <GroupHead id="C" title="Posture — 자세 안정성 (드라이브라인 영향력 1위)"
-          sub="Hip-Shoulder Sep FP (0.06) · Trunk Fwd Tilt FP (0.05) · Counter Rot (0.04) · Trunk Rot FP (0.03)"
-          weight={0.18} mapping="Driveline Posture" />
+          sub="Hip-Shoulder Sep FP (0.05) · Trunk Fwd Tilt FP (0.04) · Counter Rot (0.04) · Trunk Rot FP (0.03)"
+          weight={0.16} mapping="Driveline Posture" />
         <div style={{ fontSize: 11, color: 'var(--d-fg2)', marginBottom: 10, lineHeight: 1.6, padding: '8px 10px', background: 'rgba(167,139,250,0.06)', borderRadius: 5 }}>
           <b style={{ color: '#a78bfa' }}>· 핵심 원리</b><br/>
           · 풋플랜트 순간(Foot Plant)의 자세가 모든 후속 동작의 기준이 됨<br/>
@@ -1369,8 +1369,8 @@ function MechanicsBy7GroupsPanel({ p }) {
       {/* ============ [D] Rotation (0.10) — Driveline 1.0 (기준 변인) ============ */}
       <div className="panel" style={{ borderTop: '3px solid #34d399' }}>
         <GroupHead id="D" title="Rotation — 몸통 회전 속도 (단일 변인 1위)"
-          sub="Trunk Rotation Velo (0.10) — Driveline 상대 중요도 1.0 (기준 변인) · Orishimo 2023 r²=0.25"
-          weight={0.10} mapping="Driveline Rotation" />
+          sub="Trunk Rotation Velo (0.09) — Driveline 상대 중요도 1.0 (기준 변인) · Orishimo 2023 r²=0.25"
+          weight={0.09} mapping="Driveline Rotation" />
         <div style={{ fontSize: 11, color: 'var(--d-fg2)', marginBottom: 10, lineHeight: 1.6, padding: '8px 10px', background: 'rgba(52,211,153,0.06)', borderRadius: 5 }}>
           <b style={{ color: '#34d399' }}>· 핵심 원리</b><br/>
           · 몸통이 얼마나 빠르게 도는지 = 구속의 가장 강한 단일 예측인자<br/>
@@ -1414,11 +1414,11 @@ function MechanicsBy7GroupsPanel({ p }) {
         </div>
       </div>
 
-      {/* ============ [F] CoG (0.05) — Driveline #4 ============ */}
+      {/* ============ [F] CoG (0.06) — Driveline #4 ============ */}
       <div className="panel" style={{ borderTop: '3px solid #fb923c' }}>
         <GroupHead id="F" title="CoG — 무게중심 감속 (몸 전체 운동량 → 팔 전달)"
-          sub="CoG Decel (0.05) — Driveline 0.70 (high) · 영향력 4위 모델"
-          weight={0.05} mapping="Driveline CoG" />
+          sub="CoG Decel (0.06) — Driveline 0.70 (high) · 영향력 4위 모델"
+          weight={0.06} mapping="Driveline CoG" />
         <div style={{ fontSize: 11, color: 'var(--d-fg2)', marginBottom: 10, lineHeight: 1.6, padding: '8px 10px', background: 'rgba(251,146,60,0.06)', borderRadius: 5 }}>
           <b style={{ color: '#fb923c' }}>· 핵심 원리</b><br/>
           · 풋플랜트 후 몸 전체(무게중심)가 빠르게 감속할수록 회전이 살아남<br/>
@@ -1432,11 +1432,11 @@ function MechanicsBy7GroupsPanel({ p }) {
         </div>
       </div>
 
-      {/* ============ [G] 절대 KE/Power (0.10) — 학술 + 4명 검증 ============ */}
+      {/* ============ [G] 절대 KE/Power (0.16) — 학술 + 4명 검증 ============ */}
       <div className="panel" style={{ borderTop: '3px solid #fbbf24' }}>
         <GroupHead id="G" title="절대 KE/Power — 운동에너지의 절대값"
-          sub="Peak Power Arm (0.05) · KE_arm (0.05) — Naito 2014 · Sakurai 2024"
-          weight={0.10} mapping="학술 + 4명 검증" isStarred />
+          sub="Peak Power Arm (0.10) · KE_arm (0.04) · Cocking Power (0.02) — Naito 2014 · Sakurai 2024"
+          weight={0.16} mapping="학술 + 4명 검증" isStarred />
         <div style={{ fontSize: 11, color: 'var(--d-fg2)', marginBottom: 10, lineHeight: 1.6, padding: '8px 10px', background: 'rgba(251,191,36,0.06)', borderRadius: 5 }}>
           <b style={{ color: '#fbbf24' }}>· 핵심 원리</b><br/>
           · 효율(ETI)이 같아도 절대 파워가 약하면 구속 안 나옴<br/>
@@ -1461,7 +1461,7 @@ function MechanicsBy7GroupsPanel({ p }) {
 
 // ⭐ v26 — 제구 4그룹 카테고리화 패널 (사용자 요청)
 //   사용자 가설: 근본 원인 (착지 + 회전 타이밍) + 결과 (릴리즈)
-//   학술 근거: Manzi 2019/2021, Wang 2025, Howenstein 2021, Yamada 2024
+//   학술 근거: Manzi 2019/2021, Wang 2025, Howenstein 2021, Wakamiya 2024
 function CommandBy4GroupsPanel({ p }) {
   const c = p.commandV26;
   if (!c) return null;
@@ -1557,12 +1557,12 @@ function CommandBy4GroupsPanel({ p }) {
       weight: 0.30,
       color: '#a78bfa',
       isStarred: true,
-      note: '⭐ 사용자 강조 + Wang 2025 r=0.78 (가장 강한 변동성 예측)',
+      note: '⭐ 사용자 강조 + Wang 2025 r=−0.78 (가장 강한 변동성 예측)',
       desc: '근본 원인 — 분절간 시간 일관성이 시퀀싱 안정',
       principle: [
         '· 골반 → 몸통 → 팔 순서로 가속될 때, 매번 같은 시간 간격이어야 함',
         '· 시간 간격이 매번 달라지면 = 시퀀스 어긋남 → 릴리즈 위치 흔들림',
-        '· Wang 2025: pelvic rotation 변동성이 가장 강한 변동성 예측인자 (r=0.78)',
+        '· Wang 2025: pelvic rotation 변동성이 가장 강한 변동성 예측인자 (r=−0.78)',
         '· Howenstein 2021: 11개 KS 패턴 발견 — 일관성이 핵심'
       ],
       vis: 'sequenceChart',
@@ -1584,7 +1584,7 @@ function CommandBy4GroupsPanel({ p }) {
         {
           name: '골반 회전속도 변동성', val: c.rotation.pelvisVelCv, unit: 'CV%', weight: 0.07,
           mean: c.rotation.pelvisVelMean, meanUnit: '°/s',
-          elite: '<5%', desc: '⭐ Wang 2025 r=0.78 (가장 강한 단일 변동성 예측)',
+          elite: '<5%', desc: '⭐ Wang 2025 r=−0.78 (가장 강한 단일 변동성 예측)',
           score: lowerBetterScore(c.rotation.pelvisVelCv, [[5,95],[10,75],[15,50],[22,25]]),
           varKey: 'pelvisVelCv'
         },
@@ -1642,7 +1642,7 @@ function CommandBy4GroupsPanel({ p }) {
       principle: [
         '· 릴리즈 포인트·암슬롯·머리는 코칭 현장에서 눈으로 보는 지표',
         '· 그러나 이는 결과(downstream) — 흔들리는 진짜 원인은 [A]·[B]에 있음',
-        '· Yamada 2024 (n=344 MLB): release point variability ↓ → BB/9·xFIP 개선',
+        '· Wakamiya 2024 (n=344 MLB): release point variability ↓ → BB/9·xFIP 개선',
         '· 가중치 12%로 작게 — 진단보다는 코칭 시각 cue로 활용'
       ],
       vis: 'releaseScatter',
@@ -1650,14 +1650,14 @@ function CommandBy4GroupsPanel({ p }) {
         {
           name: 'Arm slot 변동성', val: c.release.armSlotSd, unit: '° SD', weight: 0.06,
           mean: c.release.armSlotMean, meanUnit: '°',
-          elite: '<3°', desc: '코칭 현장 핵심 시각 지표 (Yamada 2024)',
+          elite: '<3°', desc: '코칭 현장 핵심 시각 지표 (Wakamiya 2024)',
           score: lowerBetterScore(c.release.armSlotSd, [[3,95],[5,75],[8,50],[12,25]]),
           varKey: 'armSlotSd'
         },
         {
           name: '손목 높이 변동성 (RPZ)', val: c.release.wristSdCm, unit: 'cm SD', weight: 0.04,
           mean: c.release.wristMean != null ? c.release.wristMean * 100 : null, meanUnit: 'cm',
-          elite: '<2cm', desc: 'Yamada 2024 (n=344 MLB): RPZ ↓ → BB/9·xFIP 개선',
+          elite: '<2cm', desc: 'Wakamiya 2024 (n=344 MLB): RPZ ↓ → BB/9·xFIP 개선',
           score: lowerBetterScore(c.release.wristSdCm, [[2,95],[4,75],[6,50],[10,25]]),
           varKey: 'wristSdCm'
         },
@@ -1714,7 +1714,7 @@ function CommandBy4GroupsPanel({ p }) {
         <div style={{ marginBottom: 12 }}>
           <div className="kicker" style={{ marginBottom: 6 }}>릴리즈 포인트 95% 신뢰 타원</div>
           <div style={{ fontSize: 10.5, color: 'var(--d-fg2)', marginBottom: 6, lineHeight: 1.6 }}>
-            · Yamada 2024 (n=344 MLB): 작은 타원 = 일관된 릴리즈 → BB/9·xFIP 개선
+            · Wakamiya 2024 (n=344 MLB): 작은 타원 = 일관된 릴리즈 → BB/9·xFIP 개선
           </div>
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <ReleasePointScatter
@@ -1735,7 +1735,7 @@ function CommandBy4GroupsPanel({ p }) {
         <div className="kicker" style={{ marginBottom: 8 }}>v26 제구 변인 가중치 분배 (사용자 가설 + 학술 근거)</div>
         <div style={{ fontSize: 11, color: 'var(--d-fg2)', marginBottom: 12, lineHeight: 1.55 }}>
           <b>사용자 가설:</b> 근본 원인 = 앞발 착지 안정성(0.40) + 회전 타이밍(0.30) · 결과 = 릴리즈/암슬롯/머리(0.12)<br/>
-          <b>학술 근거:</b> Manzi 2019 (5변인 ball location 58% 설명) · Manzi 2021 (Trunk tilt at FC 6.6% MSE) · Wang 2025 (pelvis var. r=0.78) · Howenstein 2021 (KS 일관성) · Yamada 2024 (release var. → BB/9·xFIP)
+          <b>학술 근거:</b> Manzi 2019 (5변인 ball location 58% 설명) · Manzi 2021 (Trunk tilt at FC 6.6% MSE) · Wang 2025 (pelvis var. r=−0.78) · Howenstein 2021 (KS 일관성) · Wakamiya 2024 (release var. → BB/9·xFIP)
         </div>
         <div style={{ display: 'flex', height: 28, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--d-border)' }}>
           {groups.map(g => (
@@ -3009,7 +3009,7 @@ function SinglePitcherView({ p }) {
           Section 04 (5-Model) + Section 05 (Kinetic Chain) — 모두 새 v25 Section 02에 통합
           각 sub-panel은 v24 가중치 그룹과 1:1 매핑 */}
       <SectionBlock num="02" title="Velocity Mechanics · 구속 메카닉스 (v24 7그룹)"
-        sub="· 키네틱 체인(우리 시스템) + 드라이브라인 5모델 + 절대 KE/Power — 7그룹 가중치 0.30 · 0.18 · 0.18 · 0.10 · 0.09 · 0.05 · 0.10 = 1.00">
+        sub="· 키네틱 체인(우리 시스템) + 드라이브라인 5모델 + 절대 KE/Power — 7그룹 가중치 0.28 · 0.16 · 0.16 · 0.09 · 0.09 · 0.06 · 0.16 = 1.00">
         <MechanicsBy7GroupsPanel p={p}/>
       </SectionBlock>
 
