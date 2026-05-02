@@ -247,6 +247,174 @@
     color: white;
     border-color: var(--accent);
   }
+  /* === v29 동일: 카테고리 아코디언 + 변인 점수 + 변인 설명 === */
+  .accordion-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .accordion-card.open { border-color: var(--accent); }
+  .accordion-header {
+    padding: 12px 14px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+    user-select: none;
+  }
+  .accordion-header:hover { background: rgba(255,107,53,0.08); }
+  .accordion-icon {
+    transition: transform 0.3s;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .accordion-card.open .accordion-icon { transform: rotate(90deg); color: var(--accent); }
+  .accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+  .accordion-card.open .accordion-content { max-height: 3000px; }
+  .accordion-body {
+    padding: 0 14px 14px 14px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  /* 변인 점수 행 */
+  .var-row-v29 {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .var-row-v29 .var-name { font-weight: 500; color: var(--text-secondary); font-size: 12px; }
+  .var-row-v29 .var-desc { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .var-row-v29 .var-raw {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-muted); text-align: right; min-width: 80px;
+  }
+  .var-row-v29 .var-score {
+    display: flex; align-items: center; gap: 6px; min-width: 90px;
+  }
+  .var-mini-bar {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .var-mini-bar-fill { height: 100%; border-radius: 2px; }
+  /* 점수 해석 테이블 */
+  .interp-table {
+    width: 100%;
+    font-size: 12px;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+  .interp-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .interp-table td:first-child {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    width: 70px;
+  }
+  /* 카테고리 카드 점수 미니 막대 (헤더의 점수 옆) */
+  .cat-mini-score { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; }
+
+  /* === 상단 네비 탭 === */
+  .nav-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+  .nav-tab {
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--text-muted);
+    border: none;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .nav-tab:hover { color: var(--text-primary); }
+  .nav-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  /* 뷰 전환 */
+  .view-content { display: block; }
+  .view-content.hidden { display: none; }
+
+  /* === 비교 표 (H1↔H2, 선수간) === */
+  .cmp-table {
+    width: 100%;
+    font-size: 13px;
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .cmp-table th {
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    font-weight: 600;
+    text-align: left;
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .cmp-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .cmp-table tr:last-child td { border-bottom: none; }
+  .cmp-table .cmp-num { font-family: 'JetBrains Mono', monospace; text-align: right; }
+  .cmp-table .delta-pos { color: var(--good); }
+  .cmp-table .delta-neg { color: var(--bad); }
+  .cmp-table .delta-neu { color: var(--text-muted); }
+
+  /* 저장된 리포트 카드 */
+  .saved-report-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .saved-report-card .meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .delete-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .delete-btn:hover { border-color: var(--bad); color: var(--bad); }
 </style>
 </head>
 <body class="min-h-screen">
@@ -262,9 +430,20 @@
       <span id="cohort-info"></span>
     </div>
   </div>
+  <!-- 네비 탭 (v29와 동일) -->
+  <div class="max-w-7xl mx-auto">
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-view="individual" onclick="switchView('individual')">📋 개별 선수</button>
+      <button class="nav-tab" data-view="h1h2" onclick="switchView('h1h2')">🔄 1차 ↔ 2차 비교</button>
+      <button class="nav-tab" data-view="vs"   onclick="switchView('vs')">⚔️ 선수간 비교</button>
+    </nav>
+  </div>
 </header>
 
 <main class="max-w-7xl mx-auto px-6 py-8">
+
+  <!-- ═══════════ 뷰 1: 개별 선수 (기본) ═══════════ -->
+  <div id="view-individual" class="view-content">
 
   <!-- Step 1: 선수 정보 -->
   <section class="card p-6 mb-6">
@@ -355,7 +534,7 @@
       <div class="step-title">메카닉 변수 입력 (CSV 업로드)</div>
     </div>
     <div class="info-box">
-      <strong>지원 형식</strong> ① Uplift Capture raw 시계열 CSV (Trial_XXXX.csv) — 이벤트 프레임 + FC 시점 시계열 자동 추출 ·
+      <strong>지원 형식</strong> ① Uplift Capture raw 시계열 CSV (Trial_XXXX.csv) — <strong>여러 trial 한 번에 업로드 시 평균·SD 자동 산출</strong> (제구 P1·P6 SD 변수 포함) ·
       ② BBL 메카닉 템플릿 — <code class="mono text-[11px]">field_key, value</code> ·
       ③ 와이드 포맷 — 컬럼명에 BBL 변수 키.<br>
       코호트에 분포가 있는 변수만 점수 산출에 사용됩니다 (★ Phase 2 변수는 자동 제외).
@@ -363,9 +542,9 @@
 
     <div class="file-drop mb-3" id="mech-drop-zone" onclick="document.getElementById('mech-csv-upload').click()">
       <div class="text-3xl mb-1">📤</div>
-      <div class="text-sm font-medium">메카닉 CSV 파일을 드래그 앤 드롭하거나 클릭해서 선택</div>
-      <div class="text-xs text-[var(--text-muted)] mt-1">.csv 파일 · Uplift raw 또는 BBL 템플릿/와이드 포맷</div>
-      <input type="file" id="mech-csv-upload" accept=".csv" style="display:none;" onchange="handleCsvUpload(event, 'mechanics')">
+      <div class="text-sm font-medium">메카닉 CSV 파일을 드래그 앤 드롭하거나 클릭해서 선택 (여러 파일 가능)</div>
+      <div class="text-xs text-[var(--text-muted)] mt-1">.csv 파일 · 1개 단일 trial 또는 N개 trial 다중 업로드</div>
+      <input type="file" id="mech-csv-upload" accept=".csv" multiple style="display:none;" onchange="handleCsvUpload(event, 'mechanics')">
     </div>
 
     <div class="flex gap-2 mb-4 flex-wrap">
@@ -404,6 +583,32 @@
 
   <!-- 리포트 영역 -->
   <section id="report-area" class="hidden"></section>
+
+  </div><!-- /view-individual -->
+
+  <!-- ═══════════ 뷰 2: 1차 ↔ 2차 비교 ═══════════ -->
+  <div id="view-h1h2" class="view-content hidden">
+    <section class="card p-6 mb-6">
+      <div class="display text-xl mb-2">🔄 1차 ↔ 2차 비교</div>
+      <div class="text-sm text-[var(--text-muted)] mb-4">
+        같은 선수의 두 시점(예: H1 봄 ↔ H2 가을) 측정을 비교합니다.
+        먼저 <strong>개별 선수</strong> 탭에서 각 시점의 리포트를 만들고 <strong>💾 저장</strong>한 뒤 여기로 돌아오세요.
+      </div>
+      <div id="h1h2-content"></div>
+    </section>
+  </div>
+
+  <!-- ═══════════ 뷰 3: 선수간 비교 ═══════════ -->
+  <div id="view-vs" class="view-content hidden">
+    <section class="card p-6 mb-6">
+      <div class="display text-xl mb-2">⚔️ 선수간 비교</div>
+      <div class="text-sm text-[var(--text-muted)] mb-4">
+        서로 다른 두 선수의 리포트를 나란히 비교합니다.
+        먼저 <strong>개별 선수</strong> 탭에서 각 선수 리포트를 저장한 뒤 여기로 돌아오세요.
+      </div>
+      <div id="vs-content"></div>
+    </section>
+  </div>
 
 </main>
 
@@ -604,8 +809,22 @@ function parseDateFlex(s) {
 const WIDE_CSV_CACHE = { fitness: null, mechanics: null };
 
 function handleCsvUpload(event, type) {
-  const file = event.target.files && event.target.files[0];
-  if (!file) return;
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+
+  // 다중 파일 — 메카닉 영역에서만 다중 trial 처리 지원
+  if (files.length > 1) {
+    if (type !== 'mechanics') {
+      alert('체력+구속 영역에는 한 번에 한 파일만 업로드해주세요.');
+      event.target.value = '';
+      return;
+    }
+    handleMultipleUpliftFiles(Array.from(files));
+    event.target.value = '';
+    return;
+  }
+
+  const file = files[0];
   const reader = new FileReader();
   reader.onerror = () => alert('파일을 읽지 못했습니다. 다른 파일로 다시 시도해주세요.');
   reader.onload = (e) => {
@@ -639,6 +858,274 @@ function handleCsvUpload(event, type) {
   };
   reader.readAsText(file);
   event.target.value = '';
+}
+
+// ── Uplift 파싱: 텍스트 → 구조 ──
+function parseUpliftFile(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return null;
+  const header = parseCsvLine(lines[0]);
+  const headerNorm = header.map(h => normalizeColName(h));
+  if (!headerNorm.includes('athlete_name') || !headerNorm.includes('frame') || !headerNorm.includes('fps')) return null;
+  const idx = {};
+  header.forEach((h, i) => { idx[h] = i; });
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCsvLine(lines[i]);
+    if (cols.length < 5) continue;
+    rows.push(cols);
+  }
+  if (rows.length === 0) return null;
+  return { idx, rows };
+}
+
+// ── 한 trial에서 모든 scalar 추출 ──
+function extractScalarsFromUplift(parsed) {
+  const { idx, rows } = parsed;
+  const r0 = rows[0];
+
+  const athleteName = r0[idx['athlete_name']] || '';
+  const captureDate = r0[idx['capture_datetime']] || '';
+  const fps         = parseFloat(r0[idx['fps']]) || 240;
+  const handedness  = (r0[idx['handedness']] || '').toLowerCase();
+  const armSide     = handedness === 'left' ? 'left' : 'right';
+  const kinSeq      = r0[idx['kinematic_sequence_order']] || '';
+
+  // 이벤트 프레임 절대값
+  const cur0 = parseFloat(r0[idx['frame']]) || 0;
+  const getFrameAbs = (key) => {
+    const ci = idx[key]; if (ci == null) return null;
+    const v = parseFloat(r0[ci]); return isNaN(v) ? null : cur0 - v;
+  };
+  const events = {
+    fc:  getFrameAbs('foot_contact_frame'),
+    br:  getFrameAbs('ball_release_frame'),
+    mer: getFrameAbs('max_external_rotation_frame'),
+    peakPelvis: getFrameAbs('peak_pelvis_angular_velocity_frame')
+                ?? getFrameAbs('max_pelvis_rotational_velocity_with_respect_to_ground_frame'),
+    peakTrunk:  getFrameAbs('peak_trunk_angular_velocity_frame')
+                ?? getFrameAbs('max_trunk_rotational_velocity_with_respect_to_ground_frame'),
+    peakArm:    getFrameAbs('peak_arm_angular_velocity_frame')
+                ?? getFrameAbs(`max_${armSide}_arm_rotational_velocity_with_respect_to_ground_frame`),
+  };
+
+  const frameMap = {};
+  rows.forEach((r, i) => {
+    const f = parseInt(r[idx['frame']], 10);
+    if (!isNaN(f)) frameMap[f] = i;
+  });
+  const valAt = (frame, col) => {
+    if (frame == null) return null;
+    const ci = idx[col]; if (ci == null) return null;
+    const ri = frameMap[frame]; if (ri == null) return null;
+    const v = parseFloat(rows[ri][ci]); return isNaN(v) ? null : v;
+  };
+  const colMaxBetween = (col, fromF, toF) => {
+    const ci = idx[col]; if (ci == null || fromF == null || toF == null) return null;
+    let max = null;
+    const lo = Math.min(fromF, toF), hi = Math.max(fromF, toF);
+    for (let f = lo; f <= hi; f++) {
+      const ri = frameMap[f]; if (ri == null) continue;
+      const v = parseFloat(rows[ri][ci]);
+      if (!isNaN(v) && (max == null || v > max)) max = v;
+    }
+    return max;
+  };
+  const safe = (v) => (v == null || isNaN(v)) ? null : v;
+
+  // ━━━ 메카닉(C) per-trial scalar ━━━
+  const out = {
+    meta: { athleteName, captureDate, fps, handedness, armSide, kinSeq },
+    events,
+    // 직접 메트릭
+    peak_pelvis_av:  safe(parseFloat(r0[idx['peak_pelvis_angular_velocity']])),
+    peak_trunk_av:   safe(parseFloat(r0[idx['peak_trunk_angular_velocity']])),
+    max_x_factor:    safe(parseFloat(r0[idx['max_x_factor']])),
+  };
+  // 시퀀스 lag
+  if (events.peakPelvis != null && events.peakTrunk != null)
+    out.pelvis_to_trunk_lag_ms = (events.peakTrunk - events.peakPelvis) / fps * 1000;
+  if (events.peakTrunk != null && events.peakArm != null)
+    out.trunk_to_arm_lag_ms = (events.peakArm - events.peakTrunk) / fps * 1000;
+  out.proper_sequence_binary = kinSeq.toLowerCase().includes('pelvis-trunk-arm') ? 1 : 0;
+
+  // FC at-event
+  if (events.fc != null) {
+    const trunkRot  = valAt(events.fc, 'trunk_global_rotation');
+    const pelvisRot = valAt(events.fc, 'pelvis_global_rotation');
+    out.trunk_rotation_at_fc      = trunkRot;
+    out.hip_shoulder_sep_at_fc    = (trunkRot != null && pelvisRot != null) ? Math.abs(trunkRot - pelvisRot) : null;
+    out.trunk_forward_tilt_at_fc  = valAt(events.fc, 'trunk_global_flexion');
+    const sideHadd = armSide === 'left' ? 'left_shoulder_horizontal_adduction' : 'right_shoulder_horizontal_adduction';
+    const habdRaw  = valAt(events.fc, sideHadd);
+    out.shoulder_h_abd_at_fc      = habdRaw != null ? -habdRaw : null;  // 부호 반전
+  }
+  // Window max [FC, BR]
+  if (events.fc != null && events.br != null) {
+    const leadCol = armSide === 'left' ? 'right_knee_extension_velocity' : 'left_knee_extension_velocity';
+    out.lead_knee_ext_vel_max = colMaxBetween(leadCol, events.fc, events.br);
+    const erCol   = armSide === 'left' ? 'left_shoulder_external_rotation' : 'right_shoulder_external_rotation';
+    out.max_shoulder_ER       = colMaxBetween(erCol, events.fc, events.br);
+  }
+
+  // ━━━ 제구(P) per-trial scalar ━━━
+  out.arm_slot_angle_trial   = safe(parseFloat(r0[idx['arm_slot_angle']]));
+  out.release_height_trial   = safe(parseFloat(r0[idx['wrist_height_at_release']]));
+  out.stride_length_trial    = safe(parseFloat(r0[idx['stride_length']]));
+  if (events.mer != null && events.br != null)
+    out.mer_to_br_time_trial = (events.br - events.mer) / fps * 1000;
+  // trunk tilt @ BR — 우선 Uplift 직접 컬럼, 없으면 시계열에서 추출
+  if (events.br != null) {
+    const upTilt = parseFloat(r0[idx['trunk_lateral_tilt_at_ball_release']]);
+    out.trunk_tilt_at_br_trial = isNaN(upTilt) ? valAt(events.br, 'trunk_lateral_flexion_right') : upTilt;
+  }
+  // wrist 3D 위치 @ BR (handedness 반영)
+  if (events.br != null) {
+    const wPrefix = (armSide === 'left' ? 'left' : 'right') + '_wrist_jc_3d';
+    out.wrist_x_at_br = valAt(events.br, wPrefix + '_x');
+    out.wrist_y_at_br = valAt(events.br, wPrefix + '_y');
+    out.wrist_z_at_br = valAt(events.br, wPrefix + '_z');
+  }
+
+  return out;
+}
+
+// ── 다중 trial 집계 → BBL 변수 ──
+function applyMultiTrialUplift(scalarsList) {
+  const mean = arr => arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : null;
+  const stdev = arr => {
+    if (arr.length < 2) return null;
+    const m = mean(arr);
+    const v = arr.reduce((a, x) => a + (x - m) ** 2, 0) / (arr.length - 1);
+    return Math.sqrt(v);
+  };
+  const collect = (key) => scalarsList.map(s => s[key]).filter(v => v != null && !isNaN(v));
+
+  const loaded = {};
+
+  // 메카닉(C) — 평균
+  const meanFields = {
+    'max_pelvis_rot_vel_dps':  'peak_pelvis_av',
+    'max_trunk_twist_vel_dps': 'peak_trunk_av',
+    'peak_x_factor':           'max_x_factor',
+    'max_shoulder_ER_deg':     'max_shoulder_ER',
+    'trunk_rotation_at_fc':    'trunk_rotation_at_fc',
+    'hip_shoulder_sep_at_fc':  'hip_shoulder_sep_at_fc',
+    'trunk_forward_tilt_at_fc':'trunk_forward_tilt_at_fc',
+    'shoulder_h_abd_at_fc':    'shoulder_h_abd_at_fc',
+    'lead_knee_ext_vel_max':   'lead_knee_ext_vel_max',
+    'pelvis_to_trunk_lag_ms':  'pelvis_to_trunk_lag_ms',
+    'trunk_to_arm_lag_ms':     'trunk_to_arm_lag_ms',
+  };
+  for (const [bbl, key] of Object.entries(meanFields)) {
+    const vals = collect(key);
+    if (vals.length) loaded[bbl] = mean(vals);
+  }
+  // proper_sequence (메카닉 C5 binary) — N trial 중 proper인 비율을 0/1로 (0.5↑면 1)
+  const seqVals = collect('proper_sequence_binary');
+  if (seqVals.length) {
+    loaded['proper_sequence'] = mean(seqVals) >= 0.5 ? 1 : 0;
+    loaded['proper_sequence_pct'] = mean(seqVals) * 100;  // P4 변수 (0~100%)
+  }
+
+  // ━━━ 제구(P) ━━━
+  // P2: arm_slot
+  const armSlot = collect('arm_slot_angle_trial');
+  if (armSlot.length)      loaded['arm_slot_mean_deg'] = mean(armSlot);
+  if (armSlot.length >= 2) loaded['arm_slot_sd_deg']   = stdev(armSlot);
+  // P3: release_height (m → cm for SD)
+  const rh = collect('release_height_trial');
+  if (rh.length)      loaded['release_height_m']     = mean(rh);
+  if (rh.length >= 2) loaded['release_height_sd_cm'] = stdev(rh) * 100;
+  // P4: mer→br timing SD
+  const mtb = collect('mer_to_br_time_trial');
+  if (mtb.length >= 2) loaded['mer_to_br_sd_ms'] = stdev(mtb);
+  // P5: stride
+  const stride = collect('stride_length_trial');
+  if (stride.length)      loaded['stride_mean_m'] = mean(stride);
+  if (stride.length >= 2) loaded['stride_sd_cm']  = stdev(stride) * 100;
+  // P6: trunk tilt SD @ BR
+  const tilt = collect('trunk_tilt_at_br_trial');
+  if (tilt.length >= 2) loaded['trunk_tilt_sd_deg'] = stdev(tilt);
+  // P1: wrist 3D 합성 SD (m → cm)
+  const wx = collect('wrist_x_at_br'), wy = collect('wrist_y_at_br'), wz = collect('wrist_z_at_br');
+  if (wx.length >= 2 && wy.length >= 2 && wz.length >= 2) {
+    const sdX = stdev(wx), sdY = stdev(wy), sdZ = stdev(wz);
+    loaded['wrist_3d_sd_cm'] = Math.sqrt(sdX*sdX + sdY*sdY + sdZ*sdZ) * 100;
+  }
+
+  return loaded;
+}
+
+// ── 다중 Uplift CSV 처리 ──
+function handleMultipleUpliftFiles(files) {
+  const promises = files.map(f => new Promise((resolve) => {
+    const r = new FileReader();
+    r.onload = e => resolve({ name: f.name, text: e.target.result });
+    r.onerror = () => resolve({ name: f.name, text: null });
+    r.readAsText(f);
+  }));
+
+  Promise.all(promises).then(results => {
+    const valid = []; const invalid = [];
+    for (const r of results) {
+      if (!r.text) { invalid.push(r.name + ' (읽기 실패)'); continue; }
+      const parsed = parseUpliftFile(r.text);
+      if (!parsed) { invalid.push(r.name + ' (Uplift 형식 아님)'); continue; }
+      try {
+        const scalars = extractScalarsFromUplift(parsed);
+        valid.push({ name: r.name, scalars });
+      } catch (e) {
+        console.error(`${r.name} 추출 오류:`, e);
+        invalid.push(r.name + ' (추출 오류)');
+      }
+    }
+
+    if (valid.length === 0) {
+      alert('Uplift CSV로 인식한 파일이 없습니다.\n\n' + invalid.slice(0, 10).join('\n'));
+      return;
+    }
+
+    const scalarsList = valid.map(v => v.scalars);
+    const loaded = applyMultiTrialUplift(scalarsList);
+
+    if (Object.keys(loaded).length === 0) {
+      alert('변수 추출에 실패했습니다.');
+      return;
+    }
+
+    CURRENT_INPUT.mechanics = {};
+    Object.assign(CURRENT_INPUT.mechanics, loaded);
+
+    // Step 1 자동 채움 (첫 trial 메타)
+    const firstMeta = scalarsList[0].meta;
+    if (firstMeta.athleteName) {
+      const el = document.getElementById('player-name');
+      if (!el.value || el.value === '신규 선수') el.value = firstMeta.athleteName;
+    }
+    if (firstMeta.captureDate) {
+      const el = document.getElementById('player-date');
+      if (!el.value) el.value = parseDateFlex((firstMeta.captureDate || '').split(' ')[0]);
+    }
+
+    // 선수 동일성 체크
+    const uniqueNames = [...new Set(scalarsList.map(s => s.meta.athleteName).filter(Boolean))];
+    let nameWarning = '';
+    if (uniqueNames.length > 1) {
+      nameWarning = `<br>⚠️ 여러 선수 이름이 섞여 있습니다: ${uniqueNames.join(', ')}`;
+    }
+
+    WIDE_CSV_CACHE.mechanics = null;
+    hidePlayerSelector('mechanics');
+
+    const handLabel = firstMeta.armSide === 'left' ? '좌투' : '우투';
+    renderUploadStatus('mechanics', {
+      meta: { name: firstMeta.athleteName, date: parseDateFlex((firstMeta.captureDate || '').split(' ')[0]) },
+      loaded, ignored: [],
+      sourceLabel: `Uplift Capture × <strong>${valid.length} trials</strong> (평균 + SD 산출 · ${handLabel})${nameWarning}${invalid.length ? `<br>· 인식 실패 ${invalid.length}개: <span class="mono text-[11px]">${invalid.slice(0,3).join(', ')}${invalid.length>3?' …':''}</span>` : ''}`,
+    });
+  });
 }
 
 // ── Uplift Capture raw CSV 처리 ─────────────────────────────────
@@ -748,8 +1235,8 @@ function processUpliftCsv(header, headerNorm, lines, type) {
   // 1) 직접 매핑 (Uplift 요약 메트릭 → BBL 키)
   setVal('max_pelvis_rot_vel_dps',  parseFloat(r0[idx['peak_pelvis_angular_velocity']]));
   setVal('max_trunk_twist_vel_dps', parseFloat(r0[idx['peak_trunk_angular_velocity']]));
-  setVal('max_shoulder_ER_deg',     parseFloat(r0[idx['max_layback_angle']]));
   setVal('peak_x_factor',           parseFloat(r0[idx['max_x_factor']]));
+  // max_shoulder_ER_deg는 max_layback_angle과 컨벤션이 다름 → 시계열에서 직접 추출 (아래 4번 단계에서)
 
   // 2) proper_sequence (binary 0/1)
   if (kinSeq) {
@@ -775,10 +1262,12 @@ function processUpliftCsv(header, headerNorm, lines, type) {
     }
     setVal('trunk_forward_tilt_at_fc', trunkFwd);
 
-    const sideHabd = armSide === 'left'
+    // shoulder_h_abd_at_fc: Uplift는 horizontal_adduction(수평 내전), BBL은 abduction(수평 외전) — 부호 반전
+    const sideHadd = armSide === 'left'
       ? 'left_shoulder_horizontal_adduction'
       : 'right_shoulder_horizontal_adduction';
-    setVal('shoulder_h_abd_at_fc', valAtFrame(events.fc, sideHabd));
+    const habdRaw = valAtFrame(events.fc, sideHadd);
+    setVal('shoulder_h_abd_at_fc', habdRaw != null ? -habdRaw : null);
   }
 
   // 5) 앞다리 무릎 신전속도 max [FC, BR]  (우투면 lead = left)
@@ -787,6 +1276,14 @@ function processUpliftCsv(header, headerNorm, lines, type) {
       ? 'right_knee_extension_velocity'
       : 'left_knee_extension_velocity';
     setVal('lead_knee_ext_vel_max', colMaxBetween(leadCol, events.fc, events.br));
+
+    // max_shoulder_ER_deg: 시계열의 [FC, BR] 구간 max (max_layback_angle은 컨벤션이 달라 사용 안 함)
+    //   BBL 코호트는 thoracic-frame ER 기준 (180~210° 범위)
+    //   Uplift right_shoulder_external_rotation 시계열의 max @ MER이 동일 기준
+    const erCol = armSide === 'left'
+      ? 'left_shoulder_external_rotation'
+      : 'right_shoulder_external_rotation';
+    setVal('max_shoulder_ER_deg', colMaxBetween(erCol, events.fc, events.br));
   }
 
   // 6) 제구 (P 카테고리) — 단일 trial 평균값 매핑
@@ -1064,13 +1561,14 @@ function setupDropZone(zoneId, type) {
   zone.addEventListener('drop', (e) => {
     e.preventDefault(); e.stopPropagation();
     zone.classList.remove('dragover');
-    const file = e.dataTransfer && e.dataTransfer.files[0];
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      alert('CSV 파일만 지원합니다 (.csv).');
+    const allFiles = e.dataTransfer && e.dataTransfer.files;
+    if (!allFiles || allFiles.length === 0) return;
+    const csvFiles = Array.from(allFiles).filter(f => f.name.toLowerCase().endsWith('.csv'));
+    if (csvFiles.length === 0) {
+      alert('CSV 파일이 없습니다 (.csv).');
       return;
     }
-    handleCsvUpload({ target: { files: [file], value: '' } }, type);
+    handleCsvUpload({ target: { files: csvFiles, value: '' } }, type);
   });
 }
 
@@ -1080,6 +1578,116 @@ function setupDropZone(zoneId, type) {
     if (!e.target.closest || !e.target.closest('.file-drop')) e.preventDefault();
   });
 });
+
+// ════════════════════════════════════════════════════════════════════
+// 카테고리 메타 (v29 META.category_details 그대로 — 18 카테고리)
+// 의미·산출·점수 해석·코칭·학술 근거 + (C 카테고리는) 변수별 설명
+// ════════════════════════════════════════════════════════════════════
+const CATEGORY_DETAILS = {
+  "F1_Strength": {"name":"근력","short_desc":"하체·상체 최대 근력","meaning":"폭발적 동작의 기반이 되는 최대 근력. 하체(IMTP) + 그립 근력으로 평가.","method":"IMTP 최대 수직력, 체중 정규화 IMTP, 그립 근력의 백분위 평균","interpretation":[["75-100","근력 우수 — 폭발적 동작의 기반 충분"],["50-75","평균 근력 — 추가 강화 여지 있음"],["25-50","근력 부족 — 웨이트 트레이닝 비중 ↑"],["0-25","근력 매우 부족 — 우선 보강 필요"]],"coaching":"데드리프트, 스쿼트, 그립 강화, IMTP 트레이닝","reference":"Sakurai (2024), Driveline Strength Standards"},
+  "F2_Power": {"name":"절대 파워","short_desc":"절대 출력 (W·N·s)","meaning":"CMJ·SJ로 측정되는 폭발적 출력. 구속과 가장 직접적으로 연관되는 체력 요소.","method":"CMJ/SJ 점프 높이·피크 파워·체중 정규화 파워의 백분위 평균","interpretation":[["75-100","파워 우수 — 투구 폭발력의 체력 기반 충분"],["50-75","평균 파워 — 플라이오메트릭 강화"],["25-50","파워 부족 — SSC 활용 훈련 필요"],["0-25","파워 매우 부족 — 점프 트레이닝 우선"]],"coaching":"점프 스쿼트, 박스 점프, 메디신볼 던지기, 올림픽 리프트","reference":"Lehman et al. (2013), Driveline KineticArm"},
+  "F3_Reactivity": {"name":"반응성 (SSC)","short_desc":"신축단축주기 효율","meaning":"근육이 빠르게 늘어났다가 즉시 수축하는 SSC(Stretch-Shortening Cycle) 효율. 투구의 앞다리 블로킹·몸통 회전과 직결.","method":"CMJ/SJ RSI-modified와 EUR (CMJ/SJ 비율)의 백분위 평균","interpretation":[["75-100","SSC 활용 우수 — 효율적 에너지 전달"],["50-75","평균적 SSC, 반응성 향상 여지"],["25-50","SSC 효율 낮음 — concentric만 의존"],["0-25","SSC 매우 낮음 — 단순 근력→반응적 전환 훈련"]],"coaching":"드롭 점프, 데모스 짧은 접지 시간 점프, 플라이오메트릭","reference":"McMahon (2017), Komi (2003)"},
+  "F4_Body": {"name":"체격","short_desc":"신체 구성","meaning":"구속과 관련된 신체 크기. 신장은 릴리스 높이·레버 길이, 체중은 운동량과 관련.","method":"신장·체중·BMI의 백분위 평균","interpretation":[["—","신체 크기는 직접 향상 어려움 — 다른 카테고리에 더 집중"],["","체중 증가는 근육량·체지방 비율 함께 고려"]],"coaching":"영양 섭취, 근육량 증가 (체지방 < 15%)","reference":"Werner et al. (2008)"},
+  "F5_LowerBody": {"name":"체중당 파워","short_desc":"체중 정규화 출력 (W/kg·N/kg)","meaning":"체중당 출력 파워. 작은 체격이라도 효율적으로 파워를 낼 수 있는지 평가.","method":"CMJ·SJ Peak Power/BM, IMTP/BM의 백분위 평균","interpretation":[["75-100","체중당 파워 우수 — 효율적 운동 능력"],["50-75","평균 — 하체 강화 또는 체중 조절"],["25-50","체중 대비 파워 부족"],["0-25","심각한 부족 — 체구성 개선 + 파워 훈련"]],"coaching":"스피드 스쿼트, 점프 트레이닝, 체지방 관리","reference":"Driveline체중 정규화 표준"},
+  "F6_VelocityIndex": {"name":"복합 폭발력","short_desc":"임펄스·반응성·근력 통합","meaning":"학술 연구에서 구속과 가장 강하게 연관되는 체력 변수 셋. 종합 진단용.","method":"CMJ Concentric Impulse, CMJ RSI-mod, IMTP 절대치의 백분위 평균","interpretation":[["75-100","구속 잠재력 매우 높음"],["50-75","평균적 구속 잠재력"],["25-50","구속 향상 위해 핵심 변수 강화 필요"]],"coaching":"Concentric impulse 향상 훈련, Reactive 점프","reference":"Sakurai (2024), Driveline KineticArm"},
+  "C1_Foundation": {"name":"FC시 자세","short_desc":"FC 시점 X-Factor 형성과 정렬","meaning":"Foot Contact 시점의 신체 정렬 — 몸통은 닫혀 있고 골반은 약간 열려 있어 두 분절 사이에 X-Factor(꼬임)가 형성되어야 SSC를 통한 폭발적 회전 가속의 발판이 됨. Flying open(몸통이 일찍 열리는 현상) 방지가 핵심.","method":"Stride 길이(신장 정규화), 몸통 회전 절대값(닫힘 정도), FC 시점 X-Factor의 백분위 평균. ★ Phase 2: 몸통 전방 기울기(FC 시 뒤로 기울인 상태)가 추가될 예정.","interpretation":[["75-100","FC 자세 우수 — X-Factor 형성과 닫힘 자세 모두 양호"],["50-75","평균 FC 자세 — 일부 변수 보강 가능"],["25-50","FC 자세 부족 — Flying open 경향 점검 필요"],["0-25","FC 자세 심각 — 와인드업·정렬 코칭 우선"]],"coaching":"거울/비디오 피드백으로 FC 시점 몸통 닫힘 확인, X-Factor 인식 드릴(메디신볼 회전), Stride 길이 점검","reference":"Stodden (2001), Werner (2008), Driveline"},
+  "C2_HipDrive": {"name":"하체 드라이브","short_desc":"골반 회전 + 하체 드라이브 출력","meaning":"하체에서 시작되는 가속 출력 — 골반 회전 속도와 뒷다리 고관절 내회전 속도, 그리고 무게중심을 홈플레이트 방향으로 가속시키는 능력. 드라이브 단계(가속)의 출력을 평가 (제동/블로킹은 C4로 분리됨).","method":"골반 회전 속도, 뒷다리 고관절 내회전 속도의 백분위 평균. ★ Phase 2: 무게중심 최대 전진 속도(max_cog_velo) 추가 예정.","interpretation":[["75-100","하체 드라이브 우수 — 골반 회전과 뒷다리 출력 모두 양호"],["50-75","평균 드라이브 — 골반 회전 또는 hip IR 향상 여지"],["25-50","드라이브 부족 — 뒷다리 활용 코칭 필요"],["0-25","드라이브 심각 — 우선 보강 카테고리"]],"coaching":"뒷다리 고관절 내회전 드릴, 골반 회전 가속 훈련, COM 전진 속도 향상을 위한 스트라이드 파워 강화","reference":"Matsuo (2001), Kageyama (2014)"},
+  "C3_TrunkPower": {"name":"몸통 파워","short_desc":"몸통 회전·굴곡 출력과 SSC 활용도","meaning":"몸통의 실제 출력 — 비틀림 가속 + 굴곡 가속이 핵심. 진짜 SSC 활용도는 스트라이드 직전 정점에 도달하는 Peak X-Factor가 직접적 지표. Driveline·Stodden 연구에서 구속의 가장 강한 단일 결정 요인 (모델 가중치 37%로 최대).","method":"몸통 회전 속도 max, 몸통 굴곡 속도 max의 백분위 평균. ★ Phase 2: Peak X-Factor (스트라이드 직전 골반-몸통 꼬임 최대값) 추가 예정.","interpretation":[["75-100","몸통 출력 우수 — 회전·굴곡 가속 모두 양호"],["50-75","평균 출력 — 비틀림 또는 굴곡 속도 향상 여지"],["25-50","몸통 출력 부족 — 코어·회전 강화 필요"],["0-25","몸통 출력 심각 — 우선 보강 카테고리"]],"coaching":"메디신볼 회전 던지기(rotational med-ball throws), 몸통 분절 회전 드릴, 코어 회전 가속 훈련","reference":"Stodden (2001), Aguinaldo (2007), Driveline"},
+  "C4_LeadLegBlock": {"name":"앞다리 블로킹 및 신전 활용","short_desc":"앞다리 SSC + 블로킹 + COM 감속","meaning":"앞다리(stride 다리)의 제동 단계 출력 — 착지 시 굴곡되었다가 빠르게 신전하면서 운동 사슬에 에너지를 전달하는 SSC(Stretch-Shortening Cycle), 그리고 무게중심 감속(블로킹)을 통한 회전 가속 효율을 평가. C2(가속/드라이브)와 분리된 제동 단계의 출력.","method":"앞다리 무릎 신전 속도, 신전 변화량(FC→BR), COM 감속률의 백분위 평균. ★ Phase 2: SSC amortization 시간(굴곡→신전 전환 소요 시간) 추가 예정.","interpretation":[["75-100","앞다리 블로킹 우수 — SSC 활용과 COM 감속 모두 양호"],["50-75","평균 — 신전 속도 또는 블로킹 효율 향상 여지"],["25-50","블로킹 부족 — 무너지는 앞다리, COM 감속 효율 저하"],["0-25","블로킹 심각 — 앞다리 안정성·SSC 회복 우선"]],"coaching":"드롭 점프, 한 다리 SSC 점프(plyometric), 앞다리 강화 + 블로킹 시 안정성 드릴","reference":"Kageyama (2014), Wood-Smith (2019, Driveline)"},
+  "C5_Sequencing": {"name":"운동사슬 시퀀싱","short_desc":"타이밍 적정성","meaning":"골반 → 몸통 → 팔 순서로 회전 속도가 정점을 찍는 운동 사슬의 타이밍. 순서뿐 아니라 lag 시간(40-50ms 최적)이 중요.","method":"Pelvis-Trunk lag (45ms 최적, 가우시안 점수), Trunk-Arm lag (45ms 최적), 순서(0/1)","interpretation":[["75-100","이상적 시퀀싱 — Pelvis-Trunk-Arm 순서 + 적정 lag"],["50-75","평균 — 순서는 OK, lag 최적화 여지"],["25-50","Lag 너무 짧거나 김 — 타이밍 드릴 필요"],["0-25","운동사슬 깨짐 — 순서 자체 재학습"]],"coaching":"메디신볼 회전 던지기, 분절적 회전 드릴, 비디오 피드백","reference":"Aguinaldo (2007), Driveline KineticArm"},
+  "C6_ArmCocking": {"name":"어깨 코킹","short_desc":"어깨 가동범위","meaning":"팔이 던질 준비를 하는 코킹 자세의 가동범위. MER(최대 외회전)과 어깨 수평 외전을 평가. 한국 고1에서 구속 예측력은 약하나 부상 위험·릴리스 안정성에 중요.","method":"최대 어깨 외회전(MER), FC 시점 어깨 수평 외전의 백분위 평균","interpretation":[["75-100","어깨 가동범위 우수"],["50-75","평균"],["25-50","어깨 가동범위 부족 — 모빌리티 훈련 필요"],["0-25","심각한 가동범위 부족 — 부상 위험 검토"]],"coaching":"어깨 외회전 모빌리티, Sleeper Stretch, 견갑골 안정화","reference":"Werner (2008), Reinold (2009)"},
+  "P1_ReleaseConsistency": {"name":"릴리스 점 일관성 (3D)","short_desc":"손목 X·Y·Z 결합 SD","meaning":"여러 trial에서 릴리스 시점 손목의 3차원 위치가 얼마나 일관된지. 제구의 가장 직접적 지표.","method":"Trial-to-trial 손목 X·Y·Z SD를 결합한 3D SD (cm). 작을수록 좋음.","interpretation":[["75-100","릴리스 매우 일관 — 제구 우수"],["50-75","평균적 일관성"],["25-50","릴리스 변동 — 제구 불안정"],["0-25","릴리스 매우 변동 — 폼 안정화 우선"]],"coaching":"반복 폼 연습, 거울·비디오 피드백, 셋업 일관성","reference":"Whiteley (2018), Driveline Pitch Design"},
+  "P2_ArmSlot": {"name":"팔 슬롯 안정성","short_desc":"팔 각도 일관성","meaning":"Trial마다 팔 슬롯(어깨-팔꿈치 각도)이 얼마나 일관된지. 다른 슬롯에서 던지면 구질이 달라짐.","method":"팔 슬롯 각도의 trial-to-trial SD (degrees)","interpretation":[["75-100","슬롯 매우 일관"],["50-75","평균"],["25-50","슬롯 변동"],["0-25","슬롯 매우 변동 — 일관 폼 우선"]],"coaching":"같은 슬롯 반복 연습, Tilt drill","reference":"Whiteley (2018)"},
+  "P3_ReleaseHeight": {"name":"릴리스 높이 안정성","short_desc":"수직 위치만 (Y SD)","meaning":"릴리스 시 손의 높이가 일관된지. 변동이 크면 공이 위/아래로 벗어남.","method":"손목 Y 좌표의 trial-to-trial SD (cm)","interpretation":[["75-100","릴리스 높이 매우 일관"],["50-75","평균"],["25-50","높이 변동"],["0-25","높이 매우 변동"]],"coaching":"릴리스 포인트 표시판, 일관 폼 훈련","reference":"Whiteley (2018)"},
+  "P4_TimingConsistency": {"name":"타이밍 일관성","short_desc":"운동사슬 타이밍 안정성","meaning":"운동 사슬 순서(Pelvis-Trunk-Arm)가 매번 동일한지 + MER→BR 시간 일관성.","method":"proper_sequence 비율(%) + MER→BR 시간 SD (ms)","interpretation":[["75-100","타이밍 매우 일관"],["50-75","평균"],["25-50","타이밍 변동"],["0-25","타이밍 매우 불안정"]],"coaching":"템포 메트로놈 드릴, 메디신볼 타이밍","reference":"Aguinaldo (2007)"},
+  "P5_StrideConsistency": {"name":"스트라이드 일관성","short_desc":"발 위치 일관성","meaning":"매 trial 앞발 착지 위치(stride 길이)가 일관된지. 변동이 크면 모든 후속 단계가 무너짐.","method":"Stride 길이의 trial-to-trial SD (cm)","interpretation":[["75-100","발 위치 매우 일관"],["50-75","평균"],["25-50","발 위치 변동"],["0-25","발 위치 매우 변동"]],"coaching":"착지 마크 훈련, 일관 셋업","reference":"Driveline Stride 표준"},
+  "P6_TrunkConsistency": {"name":"몸통 자세 일관성","short_desc":"몸통 기울기 안정성","meaning":"BR 시점 몸통 전방 기울기가 일관된지. 변동이 크면 공이 높낮이 차이.","method":"몸통 전방 기울기의 trial-to-trial SD (degrees)","interpretation":[["75-100","몸통 자세 매우 일관"],["50-75","평균"],["25-50","몸통 변동"],["0-25","몸통 매우 변동"]],"coaching":"몸통 안정성 훈련, 코어","reference":"Werner (2008)"}
+};
+
+// 카테고리 아코디언 — 헤더(이름·점수) → 변인별 점수 → 의미·해석·코칭·근거
+function renderCategoryAccordion(catId, varScores, catScore) {
+  const d = CATEGORY_DETAILS[catId];
+  if (!d) return '';
+  const vars = (COHORT.category_vars[catId] || []);
+  const seen = new Set();
+  const catColor = scoreColor(catScore);
+
+  // 변인별 점수 행
+  const varRows = vars.filter(v => !seen.has(v[0]) && (seen.add(v[0]), true)).map(v => {
+    const [key, name, unit, dec, polarity] = v;
+    const score = varScores[key];
+    const inputVal = (CURRENT_INPUT.fitness[key] != null) ? CURRENT_INPUT.fitness[key] : CURRENT_INPUT.mechanics[key];
+    const decN = dec != null ? dec : 2;
+    const rawStr = inputVal != null ? Number(inputVal).toFixed(decN) + (unit ? ' ' + unit : '') : '—';
+    const scoreStr = score != null ? Math.round(score) : '—';
+    const w = score != null ? Math.max(0, Math.min(100, score)) : 0;
+    const vColor = scoreColor(score);
+    const dirIndicator = polarity === 'lower' ? ' <span style="opacity:0.5">↓</span>' : '';
+    return `
+      <div class="var-row-v29">
+        <div>
+          <div class="var-name">${name}${dirIndicator}</div>
+          <div class="var-desc">${key}</div>
+        </div>
+        <div class="var-raw">${rawStr}</div>
+        <div class="var-score">
+          <div class="var-mini-bar"><div class="var-mini-bar-fill" style="width:${w}%; background:${vColor}"></div></div>
+          <span class="cat-mini-score" style="color:${vColor}">${scoreStr}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  const interpRows = (d.interpretation || []).map(([range, text]) =>
+    `<tr><td>${range}</td><td>${text}</td></tr>`
+  ).join('');
+
+  return `
+    <div class="accordion-card" data-cat="${catId}">
+      <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="flex-1">
+          <div class="flex items-center gap-3">
+            <div class="text-sm font-bold">${d.name}</div>
+            <div class="cat-mini-score" style="color:${catColor}">${catScore != null ? Math.round(catScore) : '—'}점</div>
+          </div>
+          <div class="mono text-[10px] text-[var(--text-muted)] mt-1">${d.short_desc || ''}</div>
+        </div>
+        <span class="accordion-icon">▶</span>
+      </div>
+      <div class="accordion-content">
+        <div class="accordion-body">
+          ${varRows ? `
+          <div class="mb-4">
+            <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-2">세부 변수 점수 (코호트 백분위)</div>
+            ${varRows}
+          </div>` : ''}
+          <div class="mb-3">
+            <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1">의미</div>
+            <div class="text-xs text-[var(--text-secondary)] leading-relaxed">${d.meaning || ''}</div>
+          </div>
+          ${d.method ? `
+          <div class="mb-3">
+            <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1">산출 방식</div>
+            <div class="text-xs text-[var(--text-secondary)] leading-relaxed">${d.method}</div>
+          </div>` : ''}
+          ${interpRows ? `
+          <div class="mb-3">
+            <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1">점수 해석</div>
+            <table class="interp-table"><tbody>${interpRows}</tbody></table>
+          </div>` : ''}
+          ${d.coaching ? `
+          <div class="mb-3">
+            <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1">코칭 포인트</div>
+            <div class="text-xs text-[var(--text-secondary)] leading-relaxed">${d.coaching}</div>
+          </div>` : ''}
+          ${d.reference ? `
+          <div>
+            <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1">학술 근거</div>
+            <div class="mono text-[10px] text-[var(--text-muted)]">${d.reference}</div>
+          </div>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
 
 // ════════════════════════════════════════════════════════════════════
 // Driveline 5각형 메카닉 매핑 (v29 일치)
@@ -1422,22 +2030,10 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
       <div class="text-sm text-[var(--text-muted)] py-12 text-center">변수 입력 부족 — 점수 산출 불가</div>
     </div>`;
 
+    // v29 동일 — 카테고리 아코디언 (변인 점수 + 변인 설명 포함)
     const catRows = sec.cats.map(catId => {
-      const meta = COHORT.category_meta[catId] || {};
       const catScore = r.cat_scores[catId];
-      if (catScore == null) return `<div class="text-xs text-[var(--text-muted)] py-1">${meta.name}: 데이터 없음</div>`;
-      const w = Math.max(0, Math.min(100, catScore));
-      return `
-        <div class="py-2 border-b border-dashed border-[#2a2c31] last:border-0">
-          <div class="flex justify-between items-center mb-1">
-            <span class="text-sm">${meta.name}</span>
-            <span class="mono text-sm font-bold" style="color: ${scoreColor(catScore)}">${Math.round(catScore)}</span>
-          </div>
-          <div class="score-bar-container">
-            <div class="score-bar-fill" style="width: ${w}%; background: ${scoreColor(catScore)}"></div>
-          </div>
-          <div class="text-[10px] text-[var(--text-muted)] mt-1">${meta.short_desc || ''}</div>
-        </div>`;
+      return renderCategoryAccordion(catId, r.var_scores || {}, catScore);
     }).join('');
 
     // 메카닉 카드에만 5각/6각 토글 버튼 추가
@@ -1521,56 +2117,349 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
       </div>` : ''}
     </div>`;
   
-  // 변수별 상세 (아코디언)
-  const detailsHtml = sections.map(sec => {
-    const cats = sec.cats;
-    return `
-      <details class="card p-4 mt-4">
-        <summary class="display text-base" style="color: ${sec.color}">${sec.label} 변수별 상세</summary>
-        <div class="mt-3">
-          ${cats.map(catId => {
-            const meta = COHORT.category_meta[catId] || {};
-            const vars = COHORT.category_vars[catId] || [];
-            const seen = new Set();
-            const rows = vars.filter(v => !seen.has(v[0]) && (seen.add(v[0]), true)).map(v => {
-              const [key, name, unit, dec, polarity] = v;
-              const inputVal = CURRENT_INPUT.fitness[key] ?? CURRENT_INPUT.mechanics[key];
-              const score = r.var_scores[key];
-              const w = score != null ? Math.max(0, Math.min(100, score)) : 0;
-              return `
-                <div class="var-row">
-                  <div>
-                    <div class="var-name">${name}</div>
-                    <div class="var-key">${key}</div>
-                  </div>
-                  <div class="var-raw">${inputVal != null ? inputVal.toFixed(dec || 2) + (unit ? ' ' + unit : '') : '—'}</div>
-                  <div>
-                    <div class="score-bar-container" style="width: 50px;">
-                      <div class="score-bar-fill" style="width: ${w}%; background: ${scoreColor(score)}"></div>
-                    </div>
-                  </div>
-                  <div class="var-score" style="color: ${scoreColor(score)}">${score != null ? Math.round(score) : '—'}</div>
-                </div>`;
-            }).join('');
-            if (!rows.trim()) return '';
-            return `
-              <div class="mt-3">
-                <div class="text-sm font-bold mb-2">${meta.name} <span class="text-xs text-[var(--text-muted)] font-normal">— ${meta.short_desc}</span></div>
-                ${rows}
-              </div>`;
-          }).join('')}
-        </div>
-      </details>`;
-  }).join('');
-  
-  // 다운로드 버튼
+  // 변수별 상세는 각 카테고리 아코디언 안으로 통합됨 (v29와 동일) — 별도 영역 제거
+
+  // 다운로드 + 저장 버튼
   const downloadBtn = `
     <div class="text-center mt-6">
-      <button class="btn btn-secondary" onclick="downloadHtmlReport()">📄 HTML 리포트 다운로드</button>
+      <button class="btn btn-primary" onclick="saveCurrentReport()">💾 이 리포트 저장 (비교용)</button>
+      <button class="btn btn-secondary" onclick="downloadHtmlReport()">📄 HTML 다운로드</button>
       <button class="btn btn-secondary" onclick="window.print()">🖨 인쇄/PDF</button>
     </div>`;
-  
-  return header + `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">` + sectionsHtml + `</div>` + summary + detailsHtml + downloadBtn;
+
+  return header + `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">` + sectionsHtml + `</div>` + summary + downloadBtn;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 저장된 리포트 (localStorage) + 탭 전환 + 비교 뷰
+// ════════════════════════════════════════════════════════════════════
+const SAVED_REPORTS_KEY = 'BBL_SAVED_REPORTS_v1';
+let SAVED_REPORTS = [];
+
+function loadSavedReports() {
+  try {
+    const raw = localStorage.getItem(SAVED_REPORTS_KEY);
+    if (raw) SAVED_REPORTS = JSON.parse(raw);
+  } catch (e) { SAVED_REPORTS = []; }
+}
+function persistSavedReports() {
+  try { localStorage.setItem(SAVED_REPORTS_KEY, JSON.stringify(SAVED_REPORTS)); }
+  catch (e) { console.error('localStorage 저장 실패:', e); }
+}
+
+function saveCurrentReport() {
+  const name = document.getElementById('player-name').value || '신규 선수';
+  const date = document.getElementById('player-date').value || '';
+  const velo = parseFloat(document.getElementById('player-velo').value) || null;
+  const result = calculateScores(CURRENT_INPUT, CURRENT_AGE, velo);
+
+  // 변수 입력 0개면 저장 거부
+  const totalVars = Object.keys(CURRENT_INPUT.fitness).length + Object.keys(CURRENT_INPUT.mechanics).length;
+  if (totalVars === 0) {
+    alert('⚠️ 입력 변수가 없어 저장할 수 없습니다. CSV를 업로드하고 리포트를 먼저 생성해주세요.');
+    return;
+  }
+
+  const report = {
+    id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    name, age: CURRENT_AGE, date,
+    measuredVelo: velo,
+    inputs: JSON.parse(JSON.stringify(CURRENT_INPUT)),
+    scores: result,
+    savedAt: new Date().toISOString(),
+  };
+  SAVED_REPORTS.push(report);
+  persistSavedReports();
+  alert(`✅ 리포트 저장 완료: ${name}${date ? ' (' + date + ')' : ''}\n총 저장 ${SAVED_REPORTS.length}개`);
+}
+
+function deleteSavedReport(id) {
+  if (!confirm('이 리포트를 삭제할까요?')) return;
+  SAVED_REPORTS = SAVED_REPORTS.filter(r => r.id !== id);
+  persistSavedReports();
+  // 현재 활성 뷰 다시 렌더
+  const active = document.querySelector('.nav-tab.active')?.dataset.view;
+  if (active === 'h1h2') renderH1H2View();
+  else if (active === 'vs') renderVsView();
+}
+
+function switchView(view) {
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  document.querySelectorAll('.view-content').forEach(d => {
+    d.classList.toggle('hidden', d.id !== ('view-' + view));
+  });
+  if (view === 'h1h2') renderH1H2View();
+  else if (view === 'vs') renderVsView();
+}
+
+// ── 비교 뷰 헬퍼 ──
+function _emptyState(msg) {
+  return `<div class="text-center text-sm text-[var(--text-muted)] py-8 border border-dashed border-[var(--border)] rounded">${msg}</div>`;
+}
+function _savedReportsListHtml() {
+  if (SAVED_REPORTS.length === 0) return '';
+  return `<details class="mt-4">
+    <summary class="text-xs text-[var(--text-secondary)] py-2 cursor-pointer">📋 저장된 리포트 (${SAVED_REPORTS.length}개) — 관리</summary>
+    <div class="mt-2">
+      ${SAVED_REPORTS.map(r => `
+        <div class="saved-report-card">
+          <div>
+            <div class="text-sm font-medium">${r.name}</div>
+            <div class="meta">${r.age || '—'} · ${r.date || '날짜 없음'} · 저장 ${new Date(r.savedAt).toLocaleString('ko-KR', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'})}</div>
+          </div>
+          <button class="delete-btn" onclick="deleteSavedReport('${r.id}')">🗑 삭제</button>
+        </div>`).join('')}
+    </div>
+  </details>`;
+}
+
+// ── H1↔H2 뷰 (같은 선수, 두 시점) ──
+function renderH1H2View() {
+  const container = document.getElementById('h1h2-content');
+  if (SAVED_REPORTS.length < 2) {
+    container.innerHTML = _emptyState('저장된 리포트가 2개 이상 필요합니다. 먼저 개별 선수 탭에서 두 시점의 리포트를 생성·저장하세요.') + _savedReportsListHtml();
+    return;
+  }
+
+  // 같은 이름이 2번 이상 저장된 선수만 후보
+  const byName = {};
+  SAVED_REPORTS.forEach(r => { (byName[r.name] = byName[r.name] || []).push(r); });
+  const eligible = Object.keys(byName).filter(n => byName[n].length >= 2);
+
+  if (eligible.length === 0) {
+    container.innerHTML = _emptyState('같은 이름의 리포트가 2개 이상이어야 비교 가능합니다. (예: "김강연" 리포트를 봄·가을 두 번 저장)') + _savedReportsListHtml();
+    return;
+  }
+
+  const playerOptions = eligible.map(n => `<option value="${n}">${n} (${byName[n].length}회 저장)</option>`).join('');
+  const firstName = eligible[0];
+  const reports = byName[firstName].slice().sort((a,b) => (a.date||'').localeCompare(b.date||''));
+  const r1Options = reports.map((r, i) => `<option value="${r.id}">${r.date || '날짜 없음'} (저장 ${new Date(r.savedAt).toLocaleDateString('ko-KR')})</option>`).join('');
+
+  container.innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">선수 선택</label>
+        <select id="h1h2-player" class="input-field" onchange="onH1H2PlayerChange()">${playerOptions}</select>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">1차 리포트</label>
+        <select id="h1h2-r1" class="input-field" onchange="renderH1H2Comparison()">${r1Options}</select>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">2차 리포트</label>
+        <select id="h1h2-r2" class="input-field" onchange="renderH1H2Comparison()">${r1Options}</select>
+      </div>
+    </div>
+    <div id="h1h2-result"></div>
+    ${_savedReportsListHtml()}
+  `;
+  // 기본 선택: 가장 오래된 = 1차, 가장 최근 = 2차
+  if (reports.length >= 2) {
+    document.getElementById('h1h2-r1').value = reports[0].id;
+    document.getElementById('h1h2-r2').value = reports[reports.length-1].id;
+  }
+  renderH1H2Comparison();
+}
+
+function onH1H2PlayerChange() {
+  const name = document.getElementById('h1h2-player').value;
+  const reports = SAVED_REPORTS.filter(r => r.name === name)
+                               .sort((a,b) => (a.date||'').localeCompare(b.date||''));
+  const opts = reports.map(r => `<option value="${r.id}">${r.date || '날짜 없음'} (저장 ${new Date(r.savedAt).toLocaleDateString('ko-KR')})</option>`).join('');
+  document.getElementById('h1h2-r1').innerHTML = opts;
+  document.getElementById('h1h2-r2').innerHTML = opts;
+  if (reports.length >= 2) {
+    document.getElementById('h1h2-r1').value = reports[0].id;
+    document.getElementById('h1h2-r2').value = reports[reports.length-1].id;
+  }
+  renderH1H2Comparison();
+}
+
+function renderH1H2Comparison() {
+  const r1Id = document.getElementById('h1h2-r1')?.value;
+  const r2Id = document.getElementById('h1h2-r2')?.value;
+  const r1 = SAVED_REPORTS.find(r => r.id === r1Id);
+  const r2 = SAVED_REPORTS.find(r => r.id === r2Id);
+  if (!r1 || !r2) return;
+  document.getElementById('h1h2-result').innerHTML = renderComparisonHtml(r1, r2, ['1차', '2차'], 'h1h2');
+  setTimeout(() => renderComparisonRadars('h1h2', r1, r2, ['1차', '2차']), 30);
+}
+
+// ── 선수간 비교 뷰 ──
+function renderVsView() {
+  const container = document.getElementById('vs-content');
+  if (SAVED_REPORTS.length < 2) {
+    container.innerHTML = _emptyState('저장된 리포트가 2개 이상 필요합니다.') + _savedReportsListHtml();
+    return;
+  }
+  const opts = SAVED_REPORTS.map(r =>
+    `<option value="${r.id}">${r.name}${r.date ? ' · ' + r.date : ''}</option>`
+  ).join('');
+  container.innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">선수 A</label>
+        <select id="vs-a" class="input-field" onchange="renderVsComparison()">${opts}</select>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">선수 B</label>
+        <select id="vs-b" class="input-field" onchange="renderVsComparison()">${opts}</select>
+      </div>
+    </div>
+    <div id="vs-result"></div>
+    ${_savedReportsListHtml()}
+  `;
+  // 기본: 첫 번째 / 두 번째
+  if (SAVED_REPORTS.length >= 2) {
+    document.getElementById('vs-a').value = SAVED_REPORTS[0].id;
+    document.getElementById('vs-b').value = SAVED_REPORTS[1].id;
+  }
+  renderVsComparison();
+}
+function renderVsComparison() {
+  const aId = document.getElementById('vs-a')?.value;
+  const bId = document.getElementById('vs-b')?.value;
+  const a = SAVED_REPORTS.find(r => r.id === aId);
+  const b = SAVED_REPORTS.find(r => r.id === bId);
+  if (!a || !b) return;
+  document.getElementById('vs-result').innerHTML = renderComparisonHtml(a, b, [a.name, b.name], 'vs');
+  setTimeout(() => renderComparisonRadars('vs', a, b, [a.name, b.name]), 30);
+}
+
+// ── 공통 비교 렌더 ──
+function renderComparisonHtml(rA, rB, labels, prefix) {
+  const sA = rA.scores, sB = rB.scores;
+  const fmt = (v) => v != null ? Number(v).toFixed(1) : '—';
+  const delta = (a, b) => {
+    if (a == null || b == null) return null;
+    return Math.round((b - a) * 10) / 10;
+  };
+  const deltaCell = (d) => {
+    if (d == null) return '<span class="delta-neu">—</span>';
+    if (Math.abs(d) < 0.5) return `<span class="delta-neu mono">±0</span>`;
+    const cls = d > 0 ? 'delta-pos' : 'delta-neg';
+    const sign = d > 0 ? '+' : '';
+    return `<span class="${cls} mono">${sign}${d.toFixed(1)}</span>`;
+  };
+
+  // 헤더 카드 두 개 + Δ
+  const header = `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      ${[[rA, labels[0]], [rB, labels[1]]].map(([r, lab], i) => `
+        <div class="card p-4" style="border: 2px solid ${i===0 ? 'var(--fitness)' : 'var(--accent)'};">
+          <div class="mono text-[10px] text-[var(--text-muted)]">${lab}</div>
+          <div class="display text-xl mt-1">${r.name}</div>
+          <div class="text-xs text-[var(--text-muted)] mt-1">${r.age || '—'} · ${r.date || '날짜 없음'}</div>
+          <div class="grid grid-cols-4 gap-2 mt-3">
+            <div><div class="text-[10px] text-[var(--text-muted)]">측정</div><div class="mono text-sm font-bold">${r.measuredVelo != null ? r.measuredVelo.toFixed(1) : '—'}</div></div>
+            <div><div class="text-[10px] text-[var(--text-muted)]">체력</div><div class="mono text-sm font-bold" style="color:${scoreColor(r.scores.Fitness_Score)}">${r.scores.Fitness_Score ?? '—'}</div></div>
+            <div><div class="text-[10px] text-[var(--text-muted)]">메카닉</div><div class="mono text-sm font-bold" style="color:${scoreColor(r.scores.Mechanics_Score)}">${r.scores.Mechanics_Score ?? '—'}</div></div>
+            <div><div class="text-[10px] text-[var(--text-muted)]">제구</div><div class="mono text-sm font-bold" style="color:${scoreColor(r.scores.Control_Score)}">${r.scores.Control_Score ?? '—'}</div></div>
+          </div>
+        </div>`).join('')}
+    </div>
+    <!-- 종합 Δ 한 줄 -->
+    <div class="card p-3 mb-6 mono text-xs flex flex-wrap gap-x-6 gap-y-1 justify-center">
+      <span>측정구속 Δ: ${deltaCell(delta(rA.measuredVelo, rB.measuredVelo))} km/h</span>
+      <span>체력 Δ: ${deltaCell(delta(sA.Fitness_Score, sB.Fitness_Score))}</span>
+      <span>메카닉 Δ: ${deltaCell(delta(sA.Mechanics_Score, sB.Mechanics_Score))}</span>
+      <span>제구 Δ: ${deltaCell(delta(sA.Control_Score, sB.Control_Score))}</span>
+      <span>잠재 구속 Δ: ${deltaCell(delta(sA.ceiling, sB.ceiling))} km/h</span>
+    </div>
+  `;
+
+  // 3개 영역 레이더 (overlay)
+  const radarSection = `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      ${['fitness', 'mechanics', 'control'].map(area => {
+        const labelMap = { fitness: '체력', mechanics: '메카닉', control: '제구' };
+        const colorMap = { fitness: 'var(--fitness)', mechanics: 'var(--accent)', control: 'var(--control)' };
+        return `<div class="card p-4">
+          <div class="display text-base mb-3" style="color:${colorMap[area]}">${labelMap[area]}</div>
+          <div class="relative" style="height:220px;"><canvas id="${prefix}-radar-${area}"></canvas></div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // 카테고리별 비교 표
+  const allAreas = [
+    { name: '체력', cats: COHORT.fitness_cats },
+    { name: '메카닉', cats: COHORT.mechanics_cats },
+    { name: '제구', cats: COHORT.control_cats },
+  ];
+  const tableHtml = `
+    <div class="card p-4 mb-6">
+      <div class="display text-base mb-3">📊 카테고리별 점수 비교</div>
+      <table class="cmp-table">
+        <thead><tr>
+          <th>영역</th><th>카테고리</th>
+          <th class="text-right">${labels[0]}</th>
+          <th class="text-right">${labels[1]}</th>
+          <th class="text-right">Δ (B−A)</th>
+        </tr></thead>
+        <tbody>
+          ${allAreas.flatMap(area => area.cats.map(catId => {
+            const meta = CATEGORY_DETAILS[catId] || {};
+            const a = sA.cat_scores?.[catId];
+            const b = sB.cat_scores?.[catId];
+            const d = delta(a, b);
+            return `<tr>
+              <td class="text-[var(--text-muted)] text-xs">${area.name}</td>
+              <td>${meta.name || catId}</td>
+              <td class="cmp-num" style="color:${scoreColor(a)}">${fmt(a)}</td>
+              <td class="cmp-num" style="color:${scoreColor(b)}">${fmt(b)}</td>
+              <td class="cmp-num">${deltaCell(d)}</td>
+            </tr>`;
+          })).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  return header + radarSection + tableHtml;
+}
+
+// 비교용 레이더 — 한 차트에 두 dataset (선수 A vs 선수 B)
+function renderComparisonRadars(prefix, rA, rB, labels) {
+  if (typeof Chart === 'undefined') return;
+  const sets = [
+    { area: 'fitness',   cats: COHORT.fitness_cats,   color: '#60a5fa' },
+    { area: 'mechanics', cats: COHORT.mechanics_cats, color: '#ff6b35' },
+    { area: 'control',   cats: COHORT.control_cats,   color: '#c084fc' },
+  ];
+  for (const s of sets) {
+    const canvas = document.getElementById(`${prefix}-radar-${s.area}`);
+    if (!canvas) continue;
+    const labelsTxt = s.cats.map(c => CATEGORY_DETAILS[c]?.name || c);
+    const aVals = s.cats.map(c => rA.scores.cat_scores?.[c] != null ? Math.round(rA.scores.cat_scores[c]) : 0);
+    const bVals = s.cats.map(c => rB.scores.cat_scores?.[c] != null ? Math.round(rB.scores.cat_scores[c]) : 0);
+    if (_RADAR_INSTANCES[`${prefix}-${s.area}`]) {
+      try { _RADAR_INSTANCES[`${prefix}-${s.area}`].destroy(); } catch(e) {}
+    }
+    _RADAR_INSTANCES[`${prefix}-${s.area}`] = new Chart(canvas, {
+      type: 'radar',
+      data: {
+        labels: labelsTxt,
+        datasets: [
+          { label: labels[0], data: aVals,
+            backgroundColor: s.color + '22', borderColor: s.color, borderWidth: 2,
+            pointRadius: 3, pointBackgroundColor: s.color },
+          { label: labels[1], data: bVals,
+            backgroundColor: '#ffffff15', borderColor: '#e8e9ec', borderWidth: 2,
+            borderDash: [4, 3], pointRadius: 3, pointBackgroundColor: '#e8e9ec' },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { r: { min: 0, max: 100,
+          ticks: { color: '#5f636b', stepSize: 25, backdropColor: 'transparent', font: { size: 9 } },
+          grid: { color: 'rgba(95,99,107,0.2)' },
+          angleLines: { color: 'rgba(95,99,107,0.3)' },
+          pointLabels: { color: '#b3b5b9', font: { size: 11 } } } },
+        plugins: { legend: { display: true, position: 'bottom', labels: { color: '#b3b5b9', font: { size: 11 } } } }
+      }
+    });
+  }
 }
 
 function downloadHtmlReport() {
@@ -1637,6 +2526,7 @@ window.addEventListener('DOMContentLoaded', () => {
   selectAge('고교');
   setupDropZone('fitness-drop-zone', 'fitness');
   setupDropZone('mech-drop-zone', 'mechanics');
+  loadSavedReports();
 });
 </script>
 
