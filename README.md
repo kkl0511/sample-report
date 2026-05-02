@@ -1,19 +1,40 @@
-# BBL Pitching Report — 신규 선수 리포트 (Phase 1)
+# BBL Pitching Report — 신규 선수 리포트
 
 국민대학교 BBL Lab. (Baseball Biomechanics Lab.) 야구 바이오메카닉스 평가 도구.
 신규 투수의 체력·메카닉·구속·제구 측정값을 입력하면 v29 코호트(고교 134명) 기준으로
 점수·예상 구속·잠재 구속·코칭 해설을 자동 산출하는 단일 HTML 웹앱입니다.
 
-## 사용법 (CSV 드래그 앤 드롭)
+## 사용법
 
 브라우저에서 [https://kkl0511.github.io/BBL_Pitching_Report1/](https://kkl0511.github.io/BBL_Pitching_Report1/)
 에 접속한 뒤,
 
 1. **Step 1 — 연령군 선택**: 중학·고교·대학·프로 중 하나 (이름·날짜·구속은 CSV가 자동 채움)
 2. **Step 2 — 체력 + 구속 CSV 업로드**: Hawkin/포스플레이트 와이드 CSV를 드래그앤드롭
-3. **Step 3 — 메카닉 CSV 업로드**: Uplift Capture raw CSV (`Trial_XXXX.csv`)를 드래그앤드롭
-4. **리포트 생성** 버튼 클릭 → 종합 점수, 예상 구속, 강점·약점, 코칭 해설 자동 출력
-5. 결과는 HTML 다운로드 또는 브라우저 인쇄(PDF 저장) 가능
+3. **Step 3 — 메카닉 CSV 업로드**: Uplift Capture raw CSV (`Trial_XXXX.csv`) — **여러 개 동시 업로드 지원** (10개 trial 평균·SD 자동 계산)
+4. **(선택) 코칭 세션 동영상 업로드**: 240fps · 0.1배속 디폴트로 프레임 단위 분석
+5. **리포트 생성** → 종합 점수, 예상/잠재 구속, 강점·약점, 코칭 해설 자동 출력
+6. 결과는 자동 저장되어 좌측 상단 **저장된 선수** 드롭다운에서 다시 불러오기 가능
+
+## 4가지 뷰
+
+상단 탭으로 전환:
+
+| 뷰 | 설명 |
+|---|---|
+| **개별 선수** | 새 선수 입력 + 종합 리포트 |
+| **1차 ↔ 2차 비교** | 같은 선수 두 시점 점수·구속 변화 (Δ 표시) |
+| **선수간 비교** | 최대 4명 동시 비교 (레이더 overlay + 카테고리표 + 총평) |
+| **저장 관리** | 저장된 선수 목록 / 삭제 |
+
+## 오프라인 패키지 다운로드
+
+세 가지 뷰에서 각각 **📦 오프라인 패키지 다운로드** 버튼 제공:
+- **개별 리포트**: Chart.js · 동영상까지 base64 인라인 → 인터넷 없이 그대로 재생 가능 (240Hz · 0.1× 디폴트)
+- **1차↔2차 비교**: 두 시점 비교 + 레이더 차트 + 총평
+- **선수간 비교**: 2~4명 비교 + 레이더 overlay + 카테고리별 비교표
+
+선수·지도자에게 단일 HTML 파일로 전달하면 PC·태블릿 어디서나 동일한 결과를 볼 수 있습니다.
 
 ## 지원 CSV 형식
 
@@ -24,23 +45,39 @@
 - `Name` / `Date` / `Max Velocity` 컬럼은 Step 1 필드를 자동으로 채움
 
 ### Step 3 (메카닉)
-- **Uplift Capture raw CSV** (`Trial_XXXX.csv`) — 시계열 1500+ 프레임 그대로 업로드
+- **Uplift Capture raw CSV** (`Trial_XXXX.csv`) — 시계열 1500+ 프레임 그대로 업로드, 여러 trial 동시 가능
   - 자동으로 이벤트 프레임(KH·FC·MER·MIR·BR) 검출
-  - 요약 메트릭(`peak_pelvis_angular_velocity`, `max_layback_angle`, `max_x_factor` 등) 직접 매핑
-  - FC 시점에서 시계열 추출 (`trunk_global_rotation`, `pelvis_global_rotation` 등)
+  - 요약 메트릭(`peak_pelvis_angular_velocity`, `max_layback_angle`, `max_x_factor`, `peak_trunk_flex_velocity` 등) 직접 매핑
+  - FC 시점에서 시계열 추출 (`trunk_global_rotation`, `pelvis_global_rotation`, `trunk_forward_tilt`, `lead_knee_flexion` 등)
   - handedness(좌투/우투) 자동 인식 → lead leg 변수 정확히 추출
+  - 다중 trial 시: 평균 + SD (제구 변수의 일관성 측정에 사용)
 - **BBL 메카닉 템플릿 (롱 포맷)** — `field_key, value`
 - **와이드 포맷** — 컬럼명에 BBL 변수 키
 
 ## 평가 체계
 
-3 영역 × 6 카테고리 = 18 카테고리
+### 3 영역 × 6 카테고리 = 18 카테고리
 
 | 영역 | 카테고리 |
 |---|---|
 | 체력 (F1–F6) | 근력 / 절대파워 / 반응성 / 체격 / 체중당파워 / 복합폭발력 |
 | 메카닉 (C1–C6) | FC자세 / 하체드라이브 / 몸통출력 / 앞다리블록 / 시퀀싱 / 코킹 |
 | 제구 (P1–P6) | 릴리스점 / 팔슬롯 / 릴리스높이 / 타이밍 / Stride / 몸통기울기 |
+
+### 메카닉 모드 토글
+
+리포트 화면에서 **BBL 6각형 ↔ Driveline 5각형** 전환 가능:
+- BBL 6각: C1~C6 표준 평가
+- Driveline 5각: Posture / Block / Rotation / ArmAction / CoG (PPTX 가중치 기반 weighted scoring)
+
+## 잠재 구속 산출
+
+세 가지 시나리오 자동 계산:
+- **F100**: 체력 100점 가정 → 메카닉 그대로
+- **M100**: 메카닉 100점 가정 → 체력 그대로
+- **FM100**: 체력·메카닉 모두 100점 (이론적 최대)
+
+학습 곡선 페널티 (`pow(score/100, 1.5)`) + 연령군 상한선 적용으로 비현실적 과대 추정 방지.
 
 ## 코호트 기준
 
@@ -59,18 +96,27 @@
 | 대학 | +5 km/h | +10 | 고교 상위 10% 대비 |
 | 프로 | +10 km/h | +20 | 대학 +5/+10 |
 
+## 코칭 세션 (선택)
+
+동영상 업로드 시 자동 활성화:
+- **240fps · 0.1배속 디폴트** 동영상 플레이어 (프레임 단위 좌우 이동)
+- **키네매틱 시퀀스 차트**: 골반→몸통→어깨→팔꿈치 피크 속도 시간차 시각화 (Gaussian)
+- **3D 마네킹 다이어그램**: 핵심 변수(레이백, 무릎 무너짐, X-factor 등) 라벨
+- **자동 코칭 해설 카드**
+
 ## 기술 스택
 
-단일 HTML 파일 — Tailwind CSS (CDN) + 순수 JavaScript.
-v29 134명 코호트 통계·회귀·보정값을 JSON으로 임베드 (`cohort_v29_export.json` 기반).
+단일 HTML 파일 — Tailwind CSS (CDN) + Chart.js + 순수 JavaScript.
+v29 134명 코호트 통계·회귀·보정값을 JSON으로 임베드.
 서버·빌드 과정 없이 브라우저에서 바로 동작.
-드래그 앤 드롭 업로드, CSV 자동 포맷 감지(Uplift / 롱 / 와이드).
+드래그 앤 드롭 업로드, CSV 자동 포맷 감지(Uplift / 롱 / 와이드), 다중 trial 처리.
+저장된 선수는 브라우저 localStorage에 보관되어 알고리즘 변경 시 자동 재계산.
 
 ## 데이터 보호
 
 - 본 저장소에는 **익명화된 통계 분포만** 포함됩니다 (개별 선수 식별 정보 없음).
 - 코호트 원본 데이터(P001~P133 ↔ 실명 매핑)는 비공개입니다.
-- 사용자가 입력한 신규 선수 데이터는 브라우저 메모리 안에서만 처리되며 외부로 전송되지 않습니다.
+- 사용자가 입력한 신규 선수 데이터는 브라우저 메모리·localStorage 안에서만 처리되며 외부로 전송되지 않습니다.
 - `<meta name="robots" content="noindex, nofollow">`로 검색 엔진 색인을 차단합니다.
 
 ## 라이선스
