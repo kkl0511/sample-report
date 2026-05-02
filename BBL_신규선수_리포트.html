@@ -337,14 +337,16 @@
       <div class="step-title">메카닉 변수 입력 (CSV 업로드)</div>
     </div>
     <div class="info-box">
-      Uplift 추출 데이터(BBL 메카닉 템플릿 — 롱 포맷) 또는 와이드 포맷 CSV를 업로드하세요.
+      <strong>지원 형식</strong> ① Uplift Capture raw 시계열 CSV (Trial_XXXX.csv) — 이벤트 프레임 + FC 시점 시계열 자동 추출 ·
+      ② BBL 메카닉 템플릿 — <code class="mono text-[11px]">field_key, value</code> ·
+      ③ 와이드 포맷 — 컬럼명에 BBL 변수 키.<br>
       코호트에 분포가 있는 변수만 점수 산출에 사용됩니다 (★ Phase 2 변수는 자동 제외).
     </div>
 
     <div class="file-drop mb-3" id="mech-drop-zone" onclick="document.getElementById('mech-csv-upload').click()">
       <div class="text-3xl mb-1">📤</div>
       <div class="text-sm font-medium">메카닉 CSV 파일을 드래그 앤 드롭하거나 클릭해서 선택</div>
-      <div class="text-xs text-[var(--text-muted)] mt-1">.csv 파일 · BBL 메카닉 템플릿 또는 Uplift 추출 와이드 포맷</div>
+      <div class="text-xs text-[var(--text-muted)] mt-1">.csv 파일 · Uplift raw 또는 BBL 템플릿/와이드 포맷</div>
       <input type="file" id="mech-csv-upload" accept=".csv" style="display:none;" onchange="handleCsvUpload(event, 'mechanics')">
     </div>
 
@@ -600,11 +602,184 @@ function handleCsvUpload(event, type) {
       headerNorm.some(h => h === 'field_key' || h === 'fieldkey' || h === 'key') &&
       headerNorm.some(h => h === 'value');
 
-    if (isLongFormat) processLongCsv(header, headerNorm, lines, type);
+    // Uplift Capture raw 시계열 CSV — athlete_name/frame/fps + 시계열 행이 다수
+    const isUpliftFormat =
+      headerNorm.includes('athlete_name') &&
+      headerNorm.includes('frame') &&
+      headerNorm.includes('fps');
+
+    if (isUpliftFormat) processUpliftCsv(header, headerNorm, lines, type);
+    else if (isLongFormat) processLongCsv(header, headerNorm, lines, type);
     else processWideCsv(header, headerNorm, lines, type);
   };
   reader.readAsText(file);
   event.target.value = '';
+}
+
+// ── Uplift Capture raw CSV 처리 ─────────────────────────────────
+// 이벤트 프레임 + 요약 메트릭 + FC 시점 시계열 추출 → BBL 메카닉 변수
+function processUpliftCsv(header, headerNorm, lines, type) {
+  if (type !== 'mechanics') {
+    alert('Uplift Capture CSV는 메카닉(Step 3) 영역에 업로드해주세요.');
+    return;
+  }
+
+  // 헤더 인덱스 (raw 컬럼명 그대로 lookup)
+  const idx = {};
+  header.forEach((h, i) => { idx[h] = i; });
+
+  // 데이터 행 파싱
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCsvLine(lines[i]);
+    if (cols.length < 5) continue;
+    rows.push(cols);
+  }
+  if (rows.length === 0) { alert('Uplift CSV에 데이터 행이 없습니다.'); return; }
+
+  const r0 = rows[0];
+
+  // 메타데이터 (모든 행에 동일)
+  const athleteName  = r0[idx['athlete_name']] || '';
+  const captureDate  = r0[idx['capture_datetime']] || '';
+  const fps          = parseFloat(r0[idx['fps']]) || 240;
+  const handedness   = (r0[idx['handedness']] || '').toLowerCase();
+  const kinSeq       = r0[idx['kinematic_sequence_order']] || '';
+
+  // 이벤트 프레임 (절대 frame index = current_frame - event_relative_value)
+  const cur0 = parseFloat(r0[idx['frame']]) || 0;
+  const getFrameAbs = (key) => {
+    const ci = idx[key];
+    if (ci == null) return null;
+    const v = parseFloat(r0[ci]);
+    if (isNaN(v)) return null;
+    return cur0 - v;
+  };
+  // peak_*_angular_velocity_frame이 비어있을 수 있어 max_*_rotational_velocity_with_respect_to_ground_frame을 fallback
+  const armSide = handedness === 'left' ? 'left' : 'right';
+  const events = {
+    fc:   getFrameAbs('foot_contact_frame'),
+    br:   getFrameAbs('ball_release_frame'),
+    mer:  getFrameAbs('max_external_rotation_frame'),
+    mir:  getFrameAbs('max_internal_rotation_frame'),
+    kh:   getFrameAbs('max_knee_raise_frame'),
+    peakPelvis: getFrameAbs('peak_pelvis_angular_velocity_frame')
+                ?? getFrameAbs('max_pelvis_rotational_velocity_with_respect_to_ground_frame'),
+    peakTrunk:  getFrameAbs('peak_trunk_angular_velocity_frame')
+                ?? getFrameAbs('max_trunk_rotational_velocity_with_respect_to_ground_frame'),
+    peakArm:    getFrameAbs('peak_arm_angular_velocity_frame')
+                ?? getFrameAbs(`max_${armSide}_arm_rotational_velocity_with_respect_to_ground_frame`),
+    maxXFactor: getFrameAbs('max_x_factor_frame'),
+  };
+
+  // frame → row index lookup
+  const frameMap = {};
+  rows.forEach((r, i) => {
+    const f = parseInt(r[idx['frame']], 10);
+    if (!isNaN(f)) frameMap[f] = i;
+  });
+
+  const valAtFrame = (frameAbs, colName) => {
+    if (frameAbs == null) return null;
+    const ci = idx[colName];
+    if (ci == null) return null;
+    const ri = frameMap[frameAbs];
+    if (ri == null) return null;
+    const v = parseFloat(rows[ri][ci]);
+    return isNaN(v) ? null : v;
+  };
+  const colMaxBetween = (colName, fromF, toF) => {
+    const ci = idx[colName];
+    if (ci == null || fromF == null || toF == null) return null;
+    let max = null;
+    const lo = Math.min(fromF, toF), hi = Math.max(fromF, toF);
+    for (let f = lo; f <= hi; f++) {
+      const ri = frameMap[f];
+      if (ri == null) continue;
+      const v = parseFloat(rows[ri][ci]);
+      if (!isNaN(v) && (max == null || v > max)) max = v;
+    }
+    return max;
+  };
+
+  // ── BBL 메카닉 변수 추출 ──
+  const loaded = {};
+  const setVal = (bblKey, val) => {
+    if (val != null && !isNaN(val)) loaded[bblKey] = val;
+  };
+
+  // 1) 직접 매핑 (Uplift 요약 메트릭 → BBL 키)
+  setVal('max_pelvis_rot_vel_dps',  parseFloat(r0[idx['peak_pelvis_angular_velocity']]));
+  setVal('max_trunk_twist_vel_dps', parseFloat(r0[idx['peak_trunk_angular_velocity']]));
+  setVal('max_shoulder_ER_deg',     parseFloat(r0[idx['max_layback_angle']]));
+  setVal('peak_x_factor',           parseFloat(r0[idx['max_x_factor']]));
+
+  // 2) proper_sequence (binary 0/1)
+  if (kinSeq) {
+    loaded['proper_sequence'] = kinSeq.toLowerCase().includes('pelvis-trunk-arm') ? 1 : 0;
+  }
+
+  // 3) 시퀀스 lag (peak frame 차이 → ms)
+  if (events.peakPelvis != null && events.peakTrunk != null) {
+    setVal('pelvis_to_trunk_lag_ms', (events.peakTrunk - events.peakPelvis) / fps * 1000);
+  }
+  if (events.peakTrunk != null && events.peakArm != null) {
+    setVal('trunk_to_arm_lag_ms', (events.peakArm - events.peakTrunk) / fps * 1000);
+  }
+
+  // 4) FC 시점 시계열 추출
+  if (events.fc != null) {
+    const trunkRot  = valAtFrame(events.fc, 'trunk_global_rotation');
+    const pelvisRot = valAtFrame(events.fc, 'pelvis_global_rotation');
+    const trunkFwd  = valAtFrame(events.fc, 'trunk_global_flexion');
+    setVal('trunk_rotation_at_fc', trunkRot);
+    if (trunkRot != null && pelvisRot != null) {
+      setVal('hip_shoulder_sep_at_fc', Math.abs(trunkRot - pelvisRot));
+    }
+    setVal('trunk_forward_tilt_at_fc', trunkFwd);
+
+    const sideHabd = armSide === 'left'
+      ? 'left_shoulder_horizontal_adduction'
+      : 'right_shoulder_horizontal_adduction';
+    setVal('shoulder_h_abd_at_fc', valAtFrame(events.fc, sideHabd));
+  }
+
+  // 5) 앞다리 무릎 신전속도 max [FC, BR]  (우투면 lead = left)
+  if (events.fc != null && events.br != null) {
+    const leadCol = armSide === 'left'
+      ? 'right_knee_extension_velocity'
+      : 'left_knee_extension_velocity';
+    setVal('lead_knee_ext_vel_max', colMaxBetween(leadCol, events.fc, events.br));
+  }
+
+  // ── 입력 적용 + Step 1 자동 채움 ──
+  CURRENT_INPUT.mechanics = {};
+  for (const [k, v] of Object.entries(loaded)) CURRENT_INPUT.mechanics[k] = v;
+
+  const dateIso = parseDateFlex((captureDate || '').split(' ')[0]);
+  const metaApplied = {};
+  if (athleteName) {
+    const el = document.getElementById('player-name');
+    // fitness가 먼저 채웠으면 덮어쓰지 않음
+    if (!el.value || el.value === '신규 선수') { el.value = athleteName; metaApplied.name = athleteName; }
+  }
+  if (dateIso) {
+    const el = document.getElementById('player-date');
+    if (!el.value) { el.value = dateIso; metaApplied.date = dateIso; }
+  }
+
+  // 셀렉터 닫고, 결과 카드 렌더
+  WIDE_CSV_CACHE.mechanics = null;
+  hidePlayerSelector('mechanics');
+
+  const handLabel = armSide === 'left' ? '좌투' : '우투';
+  const eventsLabel = `KH=${events.kh ?? '?'} · FC=${events.fc ?? '?'} · MER=${events.mer ?? '?'} · BR=${events.br ?? '?'}`;
+  renderUploadStatus('mechanics', {
+    meta: metaApplied,
+    loaded,
+    ignored: [],
+    sourceLabel: `Uplift Capture raw 시계열 (${rows.length} 프레임 · ${fps.toFixed(1)} fps · ${handLabel})<br>· 이벤트 프레임: <span class="mono text-[11px]">${eventsLabel}</span>`,
+  });
 }
 
 // ── 롱 포맷: 한 변수 한 행 ────────────────────────────────────
