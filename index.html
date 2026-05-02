@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <title>BBL 신규 선수 리포트 생성 — v29 코호트 기반</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
     --bg-primary: #0a0b0d;
@@ -229,6 +230,23 @@
   .badge-bad { background: rgba(239,68,68,0.15); color: #f87171; }
   .badge-stale { background: rgba(95,99,107,0.2); color: var(--text-muted); }
   .hidden { display: none !important; }
+  .mech-mode-btn {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mech-mode-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+  .mech-mode-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
 </style>
 </head>
 <body class="min-h-screen">
@@ -589,28 +607,35 @@ function handleCsvUpload(event, type) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
+  reader.onerror = () => alert('파일을 읽지 못했습니다. 다른 파일로 다시 시도해주세요.');
   reader.onload = (e) => {
-    let text = e.target.result;
-    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length < 2) { alert('CSV가 비어 있습니다.'); return; }
+    try {
+      let text = e.target.result;
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { alert('CSV가 비어 있습니다.'); return; }
 
-    const header = parseCsvLine(lines[0]);
-    const headerNorm = header.map(h => normalizeColName(h));
+      const header = parseCsvLine(lines[0]);
+      const headerNorm = header.map(h => normalizeColName(h));
 
-    const isLongFormat =
-      headerNorm.some(h => h === 'field_key' || h === 'fieldkey' || h === 'key') &&
-      headerNorm.some(h => h === 'value');
+      const isLongFormat =
+        headerNorm.some(h => h === 'field_key' || h === 'fieldkey' || h === 'key') &&
+        headerNorm.some(h => h === 'value');
 
-    // Uplift Capture raw 시계열 CSV — athlete_name/frame/fps + 시계열 행이 다수
-    const isUpliftFormat =
-      headerNorm.includes('athlete_name') &&
-      headerNorm.includes('frame') &&
-      headerNorm.includes('fps');
+      // Uplift Capture raw 시계열 CSV — athlete_name/frame/fps 컬럼이 모두 있을 때
+      const isUpliftFormat =
+        headerNorm.includes('athlete_name') &&
+        headerNorm.includes('frame') &&
+        headerNorm.includes('fps');
 
-    if (isUpliftFormat) processUpliftCsv(header, headerNorm, lines, type);
-    else if (isLongFormat) processLongCsv(header, headerNorm, lines, type);
-    else processWideCsv(header, headerNorm, lines, type);
+      if (isUpliftFormat) processUpliftCsv(header, headerNorm, lines, type);
+      else if (isLongFormat) processLongCsv(header, headerNorm, lines, type);
+      else processWideCsv(header, headerNorm, lines, type);
+    } catch (err) {
+      console.error('CSV 처리 오류:', err);
+      alert('CSV 처리 중 오류가 발생했습니다:\n' + (err && err.message ? err.message : err)
+            + '\n\n브라우저 개발자 콘솔(F12)에 자세한 내용이 출력됩니다.');
+    }
   };
   reader.readAsText(file);
   event.target.value = '';
@@ -620,7 +645,7 @@ function handleCsvUpload(event, type) {
 // 이벤트 프레임 + 요약 메트릭 + FC 시점 시계열 추출 → BBL 메카닉 변수
 function processUpliftCsv(header, headerNorm, lines, type) {
   if (type !== 'mechanics') {
-    alert('Uplift Capture CSV는 메카닉(Step 3) 영역에 업로드해주세요.');
+    alert('Uplift Capture CSV는 메카닉(Step 3) 영역에 업로드해주세요.\n현재 영역(체력+구속)에는 다른 형식의 CSV가 필요합니다.');
     return;
   }
 
@@ -628,7 +653,19 @@ function processUpliftCsv(header, headerNorm, lines, type) {
   const idx = {};
   header.forEach((h, i) => { idx[h] = i; });
 
-  // 데이터 행 파싱
+  // 필수 컬럼 사전 검증
+  const requiredCols = ['athlete_name', 'frame', 'fps', 'foot_contact_frame', 'ball_release_frame'];
+  const missing = requiredCols.filter(c => idx[c] == null);
+  if (missing.length) {
+    alert('Uplift CSV의 필수 컬럼이 빠져 있습니다:\n  ' + missing.join(', ')
+          + '\n\nUplift Capture에서 정상 export된 CSV인지 확인해주세요.');
+    return;
+  }
+
+  // 데이터 행 파싱 (성능: 너무 큰 파일 경고)
+  if (lines.length > 50000) {
+    if (!confirm(`CSV가 매우 큽니다 (${lines.length.toLocaleString()} 행). 처리에 시간이 걸릴 수 있습니다. 계속할까요?`)) return;
+  }
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = parseCsvLine(lines[i]);
@@ -750,6 +787,23 @@ function processUpliftCsv(header, headerNorm, lines, type) {
       ? 'right_knee_extension_velocity'
       : 'left_knee_extension_velocity';
     setVal('lead_knee_ext_vel_max', colMaxBetween(leadCol, events.fc, events.br));
+  }
+
+  // 6) 제구 (P 카테고리) — 단일 trial 평균값 매핑
+  //    SD 변수(release point/timing/trunk consistency)는 다중 trial 필요 → 미입력
+  setVal('arm_slot_mean_deg', parseFloat(r0[idx['arm_slot_angle']]));
+  setVal('release_height_m',   parseFloat(r0[idx['wrist_height_at_release']]));
+  setVal('stride_mean_m',      parseFloat(r0[idx['stride_length']]));
+  // proper_sequence_pct: 단일 trial에서는 0/100 (binary × 100)
+  if (kinSeq) {
+    loaded['proper_sequence_pct'] = kinSeq.toLowerCase().includes('pelvis-trunk-arm') ? 100 : 0;
+  }
+
+  // 추출 0개면 경고
+  if (Object.keys(loaded).length === 0) {
+    alert('⚠️ Uplift CSV에서 BBL 메카닉 변수를 하나도 추출하지 못했습니다.\n'
+          + 'CSV에 요약 메트릭(peak_pelvis_angular_velocity 등)과 이벤트 프레임이 들어있는지 확인해주세요.');
+    return;
   }
 
   // ── 입력 적용 + Step 1 자동 채움 ──
@@ -944,9 +998,10 @@ function renderUploadStatus(type, { meta, loaded, ignored, sourceLabel }) {
     cats = [...COHORT.fitness_cats, ...COHORT.control_cats];
   } else {
     const mC = COHORT.mechanics_cats.reduce((a,c) => a + (COHORT.category_vars[c]||[]).filter(v => loaded[v[0]]!=null).length, 0);
+    const pC = COHORT.control_cats.reduce((a,c) => a + (COHORT.category_vars[c]||[]).filter(v => loaded[v[0]]!=null).length, 0);
     const phase2 = COHORT.mechanics_cats.reduce((a,c) => a + (COHORT.category_vars[c]||[]).filter(v => !COHORT.var_distributions[v[0]]).length, 0);
-    countLine = `· 메카닉 변수 <strong>${mC}개</strong> 적용 (Phase 2 변수 ${phase2}개는 자동 제외)`;
-    cats = COHORT.mechanics_cats;
+    countLine = `· 메카닉 변수 <strong>${mC}개</strong>${pC ? `, 제구 변수 <strong>${pC}개</strong>` : ''} 적용 (Phase 2 변수 ${phase2}개는 자동 제외)`;
+    cats = [...COHORT.mechanics_cats, ...COHORT.control_cats];
   }
 
   summary.innerHTML = `
@@ -1027,9 +1082,55 @@ function setupDropZone(zoneId, type) {
 });
 
 // ════════════════════════════════════════════════════════════════════
+// Driveline 5각형 메카닉 매핑 (v29 일치)
+// ════════════════════════════════════════════════════════════════════
+const DRIVELINE_5_ORDER = ['Posture', 'Block', 'Rotation', 'Arm Action', 'CoG'];
+const DRIVELINE_5_LABELS_KO = {
+  'Posture':    'Posture · 자세',
+  'Block':      'Block · 앞다리 블록',
+  'Rotation':   'Rotation · 회전',
+  'Arm Action': 'Arm Action · 팔 동작',
+  'CoG':        'CoG · 무게중심',
+};
+// 각 카테고리 → BBL 메카닉 변수 키 매핑
+// (코호트 분포가 없는 변수는 자동으로 평균에서 제외됨)
+const DRIVELINE_5_CATS = {
+  'Posture':    ['pelvis_rotation_at_fc', 'trunk_rotation_at_fc', 'hip_shoulder_sep_at_fc',
+                 'trunk_forward_tilt_at_fc', 'peak_torso_counter_rot'],
+  'Block':      ['stride_norm_height', 'lead_knee_ext_change_fc_to_br', 'lead_knee_ext_vel_max'],
+  'Rotation':   ['max_pelvis_rot_vel_dps', 'max_trunk_twist_vel_dps'],
+  'Arm Action': ['max_shoulder_ER_deg', 'shoulder_h_abd_at_fc',
+                 'elbow_ext_vel_max', 'shoulder_ir_vel_max', 'scap_load_at_fc'],
+  'CoG':        ['com_decel_pct', 'max_cog_velo'],
+};
+
+// 변수별 백분위 점수에서 Driveline 5 카테고리 점수 산출
+function drivelineFiveCatScores(varScores) {
+  const out = {};
+  for (const cat of DRIVELINE_5_ORDER) {
+    const vals = (DRIVELINE_5_CATS[cat] || [])
+      .map(k => varScores[k])
+      .filter(s => s != null && !isNaN(s));
+    out[cat] = vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : null;
+  }
+  return out;
+}
+
+// 메카닉 차트 모드 토글
+let MECH_VIEW_MODE = '6';  // '6' = BBL 6각형, '5' = Driveline 5각형
+function setMechMode(mode) {
+  MECH_VIEW_MODE = mode;
+  document.querySelectorAll('.mech-mode-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.getElementById('mech-mode-' + mode);
+  if (activeBtn) activeBtn.classList.add('active');
+  // 메카닉 차트만 다시 그리기 (sec.key === 'Mechanics_Score' 인 것)
+  renderRadarCharts();
+}
+
+// ════════════════════════════════════════════════════════════════════
 // 점수 계산 (v29 로직 포팅)
 // ════════════════════════════════════════════════════════════════════
-function calculateScores(input, age) {
+function calculateScores(input, age, measuredVelo) {
   const adj = COHORT.age_group_adjustment[age] || {velo_offset:0, score_offset:0};
   const allVarScores = {};
   const catScores = {};
@@ -1082,10 +1183,27 @@ function calculateScores(input, age) {
   
   const PV = fitRaw != null ? Math.round((fr.slope * fitRaw + fr.intercept + adj.velo_offset) * 10) / 10 : null;
   const MV = mechRaw != null ? Math.round((mr.slope * mechRaw + mr.intercept + adj.velo_offset) * 10) / 10 : null;
-  
-  // 4) 잠재 구속 (메카닉 100점 가정)
-  const ceiling = mechRaw != null ? Math.round((mr.slope * 100 + mr.intercept + adj.velo_offset) * 10) / 10 : null;
-  
+
+  // 4) 잠재 구속 — v29 산식 일치
+  //    측정 구속이 있으면: 본인 측정 구속 + 체력·메카닉 부족분 × 각 회귀 slope
+  //                        (= 체력·메카닉 100점화 시 추가 도달 구속)
+  //                        v29의 drvLineCeiling 패턴 (개인화 보정)
+  //    측정 구속이 없으면: 메카닉 절대 회귀 ceiling (mr.slope*100 + mr.intercept) — fallback
+  let ceiling = null;
+  if (measuredVelo != null && fitRaw != null && mechRaw != null) {
+    const fitGap  = Math.max(0, 100 - fitRaw);   // 체력 부족분
+    const mechGap = Math.max(0, 100 - mechRaw);  // 메카닉 부족분
+    ceiling = measuredVelo + fr.slope * fitGap + mr.slope * mechGap;
+  } else if (measuredVelo != null && mechRaw != null) {
+    // 체력 점수가 없을 때 — 메카닉만 보정
+    const mechGap = Math.max(0, 100 - mechRaw);
+    ceiling = measuredVelo + mr.slope * mechGap;
+  } else if (mechRaw != null) {
+    // 측정 구속 미입력 fallback — 절대 회귀
+    ceiling = mr.slope * 100 + mr.intercept + adj.velo_offset;
+  }
+  if (ceiling != null) ceiling = Math.round(ceiling * 10) / 10;
+
   return {
     age, adj,
     var_scores: allVarScores,
@@ -1094,6 +1212,7 @@ function calculateScores(input, age) {
     PV_predicted: PV,
     MV_predicted: MV,
     ceiling,
+    measuredVelo,
   };
 }
 
@@ -1109,16 +1228,97 @@ function generateReport() {
     return;
   }
   
-  const result = calculateScores(CURRENT_INPUT, CURRENT_AGE);
   const playerName = document.getElementById('player-name').value || '신규 선수';
   const measuredVelo = parseFloat(document.getElementById('player-velo').value) || null;
   const date = document.getElementById('player-date').value || '';
+  const result = calculateScores(CURRENT_INPUT, CURRENT_AGE, measuredVelo);
   
   const reportHtml = renderReportHtml(playerName, measuredVelo, date, result, totalFit, totalMech);
   const area = document.getElementById('report-area');
   area.innerHTML = reportHtml;
   area.classList.remove('hidden');
+  // DOM에 캔버스가 박힌 후 레이더 차트 렌더
+  renderRadarCharts();
   area.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── 레이더 차트 (Chart.js) ─────────────────────────────────────
+const _RADAR_INSTANCES = {};
+function renderRadarCharts() {
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js가 로드되지 않았습니다. 인터넷 연결 또는 CDN 차단을 확인하세요.');
+    return;
+  }
+  const data = window.__BBL_RADAR_DATA__ || [];
+  for (const d of data) {
+    if (!d) continue;
+    const canvas = document.getElementById(d.canvasId);
+    if (!canvas) continue;
+    // 기존 인스턴스 파괴 (재렌더 대비)
+    if (_RADAR_INSTANCES[d.canvasId]) {
+      try { _RADAR_INSTANCES[d.canvasId].destroy(); } catch(e) {}
+    }
+    // 메카닉 카드는 현재 모드(6각형 BBL / 5각형 Driveline)에 따라 데이터 분기
+    const useDriveline = d.isMechanics && MECH_VIEW_MODE === '5';
+    const labels = useDriveline ? d.drivelineLabels : d.labels;
+    const values = useDriveline ? d.drivelineValues : d.values;
+    const playerLabel = useDriveline ? '선수 점수 (Driveline)' : '선수 점수';
+
+    _RADAR_INSTANCES[d.canvasId] = new Chart(canvas, {
+      type: 'radar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: '코호트 평균 (50)',
+            data: labels.map(() => 50),
+            backgroundColor: 'rgba(95,99,107,0.08)',
+            borderColor: 'rgba(95,99,107,0.4)',
+            borderWidth: 1,
+            borderDash: [3, 3],
+            pointRadius: 0,
+          },
+          {
+            label: playerLabel,
+            data: values,
+            backgroundColor: d.color + '33',  // ~20% 투명
+            borderColor: d.color,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: d.color,
+            pointBorderColor: '#0a0b0d',
+            pointBorderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            min: 0, max: 100,
+            ticks: { color: '#5f636b', stepSize: 25, backdropColor: 'transparent', font: { size: 9 } },
+            grid: { color: 'rgba(95,99,107,0.2)' },
+            angleLines: { color: 'rgba(95,99,107,0.3)' },
+            pointLabels: { color: '#b3b5b9', font: { size: 11 } },
+          },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#141518',
+            borderColor: '#2a2c31',
+            borderWidth: 1,
+            titleColor: '#e8e9ec',
+            bodyColor: '#b3b5b9',
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.r}`,
+            },
+          },
+        },
+      },
+    });
+  }
 }
 
 function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
@@ -1191,20 +1391,37 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
       </div>
     </div>`;
   
-  // 종합 카드 3개 (체력·메카닉·제구)
+  // 종합 카드 3개 (체력·메카닉·제구) — 레이더 차트 포함
   const sections = [
-    {key: 'Fitness_Score', label: '체력', cats: COHORT.fitness_cats, color: 'var(--fitness)'},
-    {key: 'Mechanics_Score', label: '메카닉', cats: COHORT.mechanics_cats, color: 'var(--accent)'},
-    {key: 'Control_Score', label: '제구', cats: COHORT.control_cats, color: 'var(--control)'},
+    {key: 'Fitness_Score',   label: '체력',   cats: COHORT.fitness_cats,   color: 'var(--fitness)',  hex: '#60a5fa', radarId: 'radar-fit'},
+    {key: 'Mechanics_Score', label: '메카닉', cats: COHORT.mechanics_cats, color: 'var(--accent)',   hex: '#ff6b35', radarId: 'radar-mech'},
+    {key: 'Control_Score',   label: '제구',   cats: COHORT.control_cats,   color: 'var(--control)',  hex: '#c084fc', radarId: 'radar-ctrl'},
   ];
-  
+
+  // 차트 데이터 캐시 (innerHTML 이후 Chart.js 렌더링에 사용)
+  // 메카닉은 6각형(BBL) + 5각형(Driveline) 두 가지 데이터를 모두 저장 → 토글 시 교체
+  window.__BBL_RADAR_DATA__ = sections.map(sec => {
+    const score = r[sec.key];
+    if (score == null) return null;
+    const labels = sec.cats.map(c => (COHORT.category_meta[c]?.name) || c);
+    const values = sec.cats.map(c => r.cat_scores[c] != null ? Math.round(r.cat_scores[c]) : 0);
+    const data = { canvasId: sec.radarId, color: sec.hex, labels, values };
+    if (sec.key === 'Mechanics_Score') {
+      data.isMechanics = true;
+      const dvScores = drivelineFiveCatScores(r.var_scores || {});
+      data.drivelineLabels = DRIVELINE_5_ORDER.map(c => DRIVELINE_5_LABELS_KO[c]);
+      data.drivelineValues = DRIVELINE_5_ORDER.map(c => dvScores[c] != null ? Math.round(dvScores[c]) : 0);
+    }
+    return data;
+  });
+
   const sectionsHtml = sections.map(sec => {
     const score = r[sec.key];
     if (score == null) return `<div class="card p-6">
-      <div class="display text-lg mb-2">${sec.label}</div>
-      <div class="text-sm text-[var(--text-muted)]">변수 입력 부족 — 점수 산출 불가</div>
+      <div class="display text-lg mb-2" style="color: ${sec.color}">${sec.label}</div>
+      <div class="text-sm text-[var(--text-muted)] py-12 text-center">변수 입력 부족 — 점수 산출 불가</div>
     </div>`;
-    
+
     const catRows = sec.cats.map(catId => {
       const meta = COHORT.category_meta[catId] || {};
       const catScore = r.cat_scores[catId];
@@ -1222,7 +1439,16 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
           <div class="text-[10px] text-[var(--text-muted)] mt-1">${meta.short_desc || ''}</div>
         </div>`;
     }).join('');
-    
+
+    // 메카닉 카드에만 5각/6각 토글 버튼 추가
+    const isMech = sec.key === 'Mechanics_Score';
+    const toggleHtml = isMech ? `
+      <div class="flex items-center justify-end gap-1 mb-2">
+        <span class="mono text-[10px] text-[var(--text-muted)] mr-1">VIEW</span>
+        <button id="mech-mode-6" class="mech-mode-btn ${MECH_VIEW_MODE==='6'?'active':''}" onclick="setMechMode('6')">6각 (BBL)</button>
+        <button id="mech-mode-5" class="mech-mode-btn ${MECH_VIEW_MODE==='5'?'active':''}" onclick="setMechMode('5')">5각 (Driveline)</button>
+      </div>` : '';
+
     return `
       <div class="card p-6">
         <div class="flex justify-between items-end mb-4">
@@ -1234,6 +1460,10 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
             <div class="display text-4xl" style="color: ${scoreColor(score)}">${Math.round(score)}</div>
             <div class="text-[10px] text-[var(--text-muted)] mono uppercase">/100</div>
           </div>
+        </div>
+        ${toggleHtml}
+        <div class="mb-4 relative" style="height: 240px;">
+          <canvas id="${sec.radarId}"></canvas>
         </div>
         ${catRows}
       </div>`;
@@ -1253,7 +1483,9 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
       ${utilLine}
       
       ${r.ceiling != null ? `<p class="text-sm leading-relaxed mb-3">
-        메카닉 점수를 100점까지 끌어올리면 <strong>${r.ceiling.toFixed(1)} km/h</strong>까지 도달 가능합니다.
+        ${measuredVelo != null
+          ? `현재 측정 구속 <strong>${measuredVelo.toFixed(1)} km/h</strong> 기준, 체력·메카닉을 100점까지 끌어올리면 <strong>${r.ceiling.toFixed(1)} km/h</strong>까지 도달 가능합니다.`
+          : `메카닉 점수를 100점까지 끌어올리면 <strong>${r.ceiling.toFixed(1)} km/h</strong>까지 도달 가능합니다 <span class="text-xs text-[var(--text-muted)]">(코호트 절대 회귀 기준 — 측정 구속 입력 시 더 정확)</span>.`}
         ${growth != null ? `현재로부터 <strong>+${growth.toFixed(1)} km/h</strong>의 성장 여지가 있습니다.` : ''}
       </p>` : ''}
       
@@ -1343,9 +1575,50 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
 
 function downloadHtmlReport() {
   const reportHtml = document.getElementById('report-area').innerHTML;
-  const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BBL Report</title>
+  // 다운로드 시점의 메카닉 모드(6각형/5각형)를 반영해 데이터 고정
+  const radarData = (window.__BBL_RADAR_DATA__ || []).map(d => {
+    if (d && d.isMechanics && MECH_VIEW_MODE === '5') {
+      return { ...d, labels: d.drivelineLabels, values: d.drivelineValues };
+    }
+    return d;
+  });
+  const radarInitJs = `
+const __BBL_RADAR_DATA__ = ${JSON.stringify(radarData)};
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof Chart === 'undefined') return;
+  for (const d of __BBL_RADAR_DATA__) {
+    if (!d) continue;
+    const canvas = document.getElementById(d.canvasId);
+    if (!canvas) continue;
+    new Chart(canvas, {
+      type: 'radar',
+      data: { labels: d.labels, datasets: [
+        { label: '코호트 평균 (50)', data: d.labels.map(()=>50),
+          backgroundColor: 'rgba(95,99,107,0.08)', borderColor: 'rgba(95,99,107,0.4)',
+          borderWidth: 1, borderDash: [3,3], pointRadius: 0 },
+        { label: '선수 점수', data: d.values,
+          backgroundColor: d.color + '33', borderColor: d.color, borderWidth: 2,
+          pointRadius: 4, pointBackgroundColor: d.color,
+          pointBorderColor: '#0a0b0d', pointBorderWidth: 1 }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false,
+        scales: { r: { min: 0, max: 100,
+          ticks: { color: '#5f636b', stepSize: 25, backdropColor: 'transparent', font: { size: 9 } },
+          grid: { color: 'rgba(95,99,107,0.2)' },
+          angleLines: { color: 'rgba(95,99,107,0.3)' },
+          pointLabels: { color: '#b3b5b9', font: { size: 11 } } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+});`;
+  const fullHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BBL Report — ${(document.getElementById('player-name').value || '신규 선수')}</title>
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>
     <style>${document.querySelector('style').textContent}</style>
-    </head><body class="min-h-screen p-8">${reportHtml}</body></html>`;
+    </head><body class="min-h-screen p-8">${reportHtml}
+    <script>${radarInitJs}<\/script>
+    </body></html>`;
   const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
