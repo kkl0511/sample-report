@@ -276,6 +276,13 @@ window.COHORT = {
         "0=미충족 / 1=충족",
         0,
         "higher"
+      ],
+      [
+        "arm_trunk_speedup",
+        "몸통→팔 가속 비율 ★",
+        "ratio",
+        2,
+        "higher"
       ]
     ],
     "C6_ArmCocking": [
@@ -9582,7 +9589,9 @@ window.COHORT = {
     "proper_sequence_pct": "higher",
     "stride_sd_cm": "lower",
     "stride_mean_m": "higher",
-    "trunk_tilt_sd_deg": "lower"
+    "trunk_tilt_sd_deg": "lower",
+    "arm_trunk_speedup": "higher",
+    "pelvis_trunk_speedup": "higher"
   },
   "binary_vars": [
     "proper_sequence"
