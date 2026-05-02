@@ -284,50 +284,94 @@
     </div>
   </section>
 
-  <!-- Step 2: 체력 + 제구 입력 -->
+  <!-- Step 2: 체력 + 구속 (CSV 전용 + 드래그앤드롭) -->
   <section class="card p-6 mb-6">
     <div class="step-header">
       <div class="step-num">2</div>
-      <div class="step-title">체력 + 제구 변수 입력</div>
+      <div class="step-title">체력 + 구속 변수 입력 (CSV 업로드)</div>
     </div>
     <div class="info-box">
-      <strong>입력 방법</strong>: 직접 폼에 입력하거나, CSV 파일로 업로드. 측정 못 한 변수는 비워두면 점수 산출에서 자동 제외됩니다.
-      각 변수의 polarity는 (높을수록 좋음 / 낮을수록 좋음)을 의미합니다.
+      <strong>지원 형식</strong> ① BBL 템플릿 — <code class="mono text-[11px]">field_key, value</code> (한 변수 한 행) ·
+      ② Hawkin/포스플레이트 와이드 포맷 — 첫 행이 컬럼명, 다음 행마다 한 선수.<br>
+      코호트와 매칭되는 측정값만 자동 적용됩니다. 코호트에 없는 컬럼(Shoulder IR, 30m Sprint 등)은 자동으로 무시.
+      <code class="mono text-[11px]">Name</code>·<code class="mono text-[11px]">Date</code>·<code class="mono text-[11px]">Max Velocity</code> 컬럼이 있으면 <strong>Step 1의 선수명·측정일·구속도 자동 입력</strong>됩니다.
     </div>
-    
-    <div class="flex gap-2 mb-4">
-      <button class="btn btn-secondary" onclick="downloadTemplate('fitness')">📥 체력+제구 CSV 템플릿 다운로드</button>
-      <label class="btn btn-secondary cursor-pointer">
-        📤 CSV 업로드
-        <input type="file" id="fitness-csv-upload" accept=".csv" style="display:none;" onchange="handleCsvUpload(event, 'fitness')">
-      </label>
-      <button class="btn btn-secondary" onclick="clearInputs('fitness')">🗑 입력 초기화</button>
+
+    <div class="file-drop mb-3" id="fitness-drop-zone" onclick="document.getElementById('fitness-csv-upload').click()">
+      <div class="text-3xl mb-1">📤</div>
+      <div class="text-sm font-medium">CSV 파일을 드래그 앤 드롭하거나 클릭해서 선택</div>
+      <div class="text-xs text-[var(--text-muted)] mt-1">.csv 파일 · BBL 템플릿 또는 와이드 포맷</div>
+      <input type="file" id="fitness-csv-upload" accept=".csv" style="display:none;" onchange="handleCsvUpload(event, 'fitness')">
     </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8" id="fitness-inputs"></div>
+
+    <div class="flex gap-2 mb-4 flex-wrap">
+      <button class="btn btn-secondary text-xs" onclick="downloadTemplate('fitness')">📥 BBL 템플릿 다운로드</button>
+      <button class="btn btn-secondary text-xs" onclick="clearInputs('fitness')">🗑 초기화</button>
+    </div>
+
+    <!-- 선수 선택 (와이드 CSV에 여러 선수가 있을 때만 노출) -->
+    <div id="fitness-player-selector" class="hidden mb-4">
+      <label class="text-xs text-[var(--text-muted)] block mb-1">선수 선택 (CSV에 여러 명 포함됨)</label>
+      <select class="input-field" id="fitness-player-select" onchange="selectPlayerFromCsv(this.value)"></select>
+    </div>
+
+    <!-- 업로드 결과 요약 -->
+    <div id="fitness-upload-status" class="hidden">
+      <div id="fitness-upload-summary" class="info-box" style="border-left-color: var(--good); background: rgba(74,222,128,0.05);"></div>
+      <details class="mt-2">
+        <summary class="text-xs text-[var(--text-secondary)] py-1">📋 로드된 변수 보기</summary>
+        <div id="fitness-loaded-table" class="mt-3"></div>
+      </details>
+    </div>
+
+    <!-- 빈 상태 -->
+    <div id="fitness-empty-state" class="text-center text-sm text-[var(--text-muted)] py-6 border border-dashed border-[var(--border)] rounded">
+      아직 업로드된 데이터가 없습니다. CSV 파일을 업로드하세요.
+    </div>
   </section>
 
-  <!-- Step 3: 메카닉 변수 입력 -->
+  <!-- Step 3: 메카닉 (CSV 전용 + 드래그앤드롭) -->
   <section class="card p-6 mb-6">
     <div class="step-header">
       <div class="step-num">3</div>
-      <div class="step-title">메카닉 변수 입력</div>
+      <div class="step-title">메카닉 변수 입력 (CSV 업로드)</div>
     </div>
     <div class="info-box">
-      ✓는 v29 코호트에 분포가 있는 변수, ★는 Phase 2 (코호트 미보유, 점수 산출 불가).
-      Uplift CSV로부터 추출한 메카닉 변수 값을 입력하세요. 또는 CSV로 일괄 업로드.
+      Uplift 추출 데이터(BBL 메카닉 템플릿 — 롱 포맷) 또는 와이드 포맷 CSV를 업로드하세요.
+      코호트에 분포가 있는 변수만 점수 산출에 사용됩니다 (★ Phase 2 변수는 자동 제외).
     </div>
-    
-    <div class="flex gap-2 mb-4">
-      <button class="btn btn-secondary" onclick="downloadTemplate('mechanics')">📥 메카닉 CSV 템플릿 다운로드</button>
-      <label class="btn btn-secondary cursor-pointer">
-        📤 CSV 업로드
-        <input type="file" id="mech-csv-upload" accept=".csv" style="display:none;" onchange="handleCsvUpload(event, 'mechanics')">
-      </label>
-      <button class="btn btn-secondary" onclick="clearInputs('mechanics')">🗑 입력 초기화</button>
+
+    <div class="file-drop mb-3" id="mech-drop-zone" onclick="document.getElementById('mech-csv-upload').click()">
+      <div class="text-3xl mb-1">📤</div>
+      <div class="text-sm font-medium">메카닉 CSV 파일을 드래그 앤 드롭하거나 클릭해서 선택</div>
+      <div class="text-xs text-[var(--text-muted)] mt-1">.csv 파일 · BBL 메카닉 템플릿 또는 Uplift 추출 와이드 포맷</div>
+      <input type="file" id="mech-csv-upload" accept=".csv" style="display:none;" onchange="handleCsvUpload(event, 'mechanics')">
     </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8" id="mechanics-inputs"></div>
+
+    <div class="flex gap-2 mb-4 flex-wrap">
+      <button class="btn btn-secondary text-xs" onclick="downloadTemplate('mechanics')">📥 BBL 메카닉 템플릿 다운로드</button>
+      <button class="btn btn-secondary text-xs" onclick="clearInputs('mechanics')">🗑 초기화</button>
+    </div>
+
+    <!-- 선수 선택 (와이드 CSV 다중 행) -->
+    <div id="mech-player-selector" class="hidden mb-4">
+      <label class="text-xs text-[var(--text-muted)] block mb-1">선수 선택 (CSV에 여러 명 포함됨)</label>
+      <select class="input-field" id="mech-player-select" onchange="selectMechanicsPlayerFromCsv(this.value)"></select>
+    </div>
+
+    <!-- 업로드 결과 요약 -->
+    <div id="mech-upload-status" class="hidden">
+      <div id="mech-upload-summary" class="info-box" style="border-left-color: var(--accent); background: rgba(255,107,53,0.05);"></div>
+      <details class="mt-2">
+        <summary class="text-xs text-[var(--text-secondary)] py-1">📋 로드된 변수 보기</summary>
+        <div id="mech-loaded-table" class="mt-3"></div>
+      </details>
+    </div>
+
+    <!-- 빈 상태 -->
+    <div id="mech-empty-state" class="text-center text-sm text-[var(--text-muted)] py-6 border border-dashed border-[var(--border)] rounded">
+      아직 업로드된 데이터가 없습니다. CSV 파일을 업로드하세요.
+    </div>
   </section>
 
   <!-- Step 4: 계산 + 리포트 -->
@@ -413,86 +457,9 @@ function percentileOfCohort(varKey, value, polarity) {
 // 폼 렌더링
 // ════════════════════════════════════════════════════════════════════
 function renderInputs() {
-  // 체력 + 제구 폼
-  const fcDiv = document.getElementById('fitness-inputs');
-  let fcHtml = '';
-  const fcCats = [...COHORT.fitness_cats, ...COHORT.control_cats];
-  for (const catId of fcCats) {
-    const meta = COHORT.category_meta[catId] || {};
-    const vars = COHORT.category_vars[catId] || [];
-    if (!vars.length) continue;
-    fcHtml += `<div class="mb-4">
-      <div class="text-xs font-bold uppercase tracking-wider mb-2" style="color: ${catId.startsWith('F') ? 'var(--fitness)' : 'var(--control)'}">
-        ${meta.name || catId}
-      </div>`;
-    const seen = new Set();
-    for (const v of vars) {
-      const [key, name, unit, dec, polarity] = v;
-      if (seen.has(key)) continue;  // 중복 방지 (CMJ RSI-mod가 F3, F6 두 곳에 있음)
-      seen.add(key);
-      const pol = polarity === 'lower' ? '↓ 낮을수록 좋음' : '↑ 높을수록 좋음';
-      const polClass = polarity === 'lower' ? 'lower' : '';
-      const inCohort = COHORT.var_distributions[key] ? '' : '<span class="badge badge-stale ml-1">N/A</span>';
-      fcHtml += `
-        <div class="label-row">
-          <div class="label-text">
-            ${name} <span class="polarity-pill ${polClass}">${pol}</span>${inCohort}
-            <span class="key">${key}</span>
-          </div>
-          <input type="number" step="any" class="input-field" data-cat="fitness" data-key="${key}" data-polarity="${polarity || 'higher'}" oninput="onInputChange(event)">
-          <div class="label-unit">${unit || ''}</div>
-        </div>`;
-    }
-    fcHtml += '</div>';
-  }
-  fcDiv.innerHTML = fcHtml;
-  
-  // 메카닉 폼
-  const mDiv = document.getElementById('mechanics-inputs');
-  let mHtml = '';
-  for (const catId of COHORT.mechanics_cats) {
-    const meta = COHORT.category_meta[catId] || {};
-    const vars = COHORT.category_vars[catId] || [];
-    if (!vars.length) continue;
-    mHtml += `<div class="mb-4">
-      <div class="text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--mechanics)">
-        ${meta.name || catId}
-      </div>`;
-    for (const v of vars) {
-      const [key, name, unit, dec, polarity] = v;
-      let pol = '↑ 높을수록 좋음';
-      let polClass = '';
-      if (polarity === 'lower') { pol = '↓ 낮을수록 좋음'; polClass = 'lower'; }
-      else if (polarity === 'absolute') { pol = '|x| 절대값 기준'; polClass = 'absolute'; }
-      const inCohort = COHORT.var_distributions[key];
-      const phase2 = !inCohort ? '<span class="badge badge-warn ml-1">★ Phase 2</span>' : '';
-      mHtml += `
-        <div class="label-row">
-          <div class="label-text">
-            ${name} <span class="polarity-pill ${polClass}">${pol}</span>${phase2}
-            <span class="key">${key}</span>
-          </div>
-          <input type="number" step="any" class="input-field" data-cat="mechanics" data-key="${key}" data-polarity="${polarity || 'higher'}" ${!inCohort ? 'disabled' : ''} oninput="onInputChange(event)">
-          <div class="label-unit">${unit || ''}</div>
-        </div>`;
-    }
-    mHtml += '</div>';
-  }
-  mDiv.innerHTML = mHtml;
-  
-  document.getElementById('cohort-info').textContent = 
+  // 모든 입력 폼은 CSV 전용 UI로 대체됨. 코호트 정보 헤더만 갱신.
+  document.getElementById('cohort-info').textContent =
     `코호트: ${COHORT.meta.cohort_n_players}명 / ${COHORT.meta.cohort_size}회 측정 · 18 카테고리 / ${Object.keys(COHORT.var_distributions).length} 변수`;
-}
-
-function onInputChange(event) {
-  const key = event.target.dataset.key;
-  const cat = event.target.dataset.cat;
-  const val = event.target.value === '' ? null : parseFloat(event.target.value);
-  if (val !== null && !isNaN(val)) {
-    CURRENT_INPUT[cat][key] = val;
-  } else {
-    delete CURRENT_INPUT[cat][key];
-  }
 }
 
 function selectAge(age) {
@@ -533,8 +500,91 @@ function downloadTemplate(type) {
   URL.revokeObjectURL(url);
 }
 
+// ── CSV 파싱 유틸 ─────────────────────────────────────────────────
+// 따옴표 안의 콤마를 보존하는 안전한 한 줄 파서
+function parseCsvLine(line) {
+  const out = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"' && line[i+1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') { inQ = false; }
+      else cur += ch;
+    } else {
+      if (ch === '"') inQ = true;
+      else if (ch === ',') { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+// 컬럼명 정규화: 소문자 + 모든 공백 제거 (브래킷·괄호는 유지하면 코호트 키와 더 잘 매칭됨)
+function normalizeColName(s) {
+  return (s || '').toLowerCase().replace(/\s+/g, '');
+}
+
+// 와이드 CSV 컬럼명 → 코호트 변수 키 alias (정규화된 키 기준)
+const FITNESS_KEY_ALIASES = {
+  'bw[kg]':       'Weight[KG]',
+  'bw':           'Weight[KG]',
+  'weight':       'Weight[KG]',
+  'weight[kg]':   'Weight[KG]',
+  'bodyweight':   'Weight[KG]',
+  'height':       'Height[M]',
+  'height[m]':    'Height[M]',
+  'bodyheight':   'Height[M]',
+};
+
+// 메타 컬럼: Step 1 입력 필드로 자동 채움
+const META_COL_MAP = {
+  'name':          'name',
+  'playername':    'name',
+  'date':          'date',
+  'measurementdate': 'date',
+  'maxvelocity':   'velocity',
+  'maxvelo':       'velocity',
+  'velocity':      'velocity',
+  'topvelocity':   'velocity',
+};
+
+// 코호트 변수 키 정규화 → 원본 키 lookup (alias 적용) — type별 캐시
+const _COHORT_KEY_LOOKUP = { fitness: null, mechanics: null };
+function getCohortKeyLookup(type) {
+  if (_COHORT_KEY_LOOKUP[type]) return _COHORT_KEY_LOOKUP[type];
+  const lookup = {};
+  let cats;
+  if (type === 'fitness') cats = [...COHORT.fitness_cats, ...COHORT.control_cats];
+  else cats = COHORT.mechanics_cats;
+  for (const cat of cats) {
+    for (const v of (COHORT.category_vars[cat] || [])) {
+      lookup[normalizeColName(v[0])] = v[0];
+    }
+  }
+  if (type === 'fitness') Object.assign(lookup, FITNESS_KEY_ALIASES);
+  _COHORT_KEY_LOOKUP[type] = lookup;
+  return lookup;
+}
+
+// 날짜 유연 파싱: YYYY-MM-DD / YYYY/MM/DD / DD/MM/YYYY / DD-MM-YYYY
+function parseDateFlex(s) {
+  if (!s) return '';
+  s = String(s).trim();
+  let m = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return s;
+}
+
+// ── CSV 업로드 (자동 포맷 감지) ─────────────────────────────────
+const WIDE_CSV_CACHE = { fitness: null, mechanics: null };
+
 function handleCsvUpload(event, type) {
-  const file = event.target.files[0];
+  const file = event.target.files && event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -542,38 +592,264 @@ function handleCsvUpload(event, type) {
     if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 2) { alert('CSV가 비어 있습니다.'); return; }
-    
-    const header = lines[0].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-    const keyIdx = header.findIndex(h => h.toLowerCase().includes('key') || h.toLowerCase() === 'field_key');
-    const valIdx = header.findIndex(h => h.toLowerCase() === 'value' || h.toLowerCase().includes('value'));
-    
-    if (keyIdx < 0 || valIdx < 0) {
-      alert('CSV 형식 오류. field_key, value 컬럼이 필요합니다.');
-      return;
-    }
-    
-    let count = 0;
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-      const key = cols[keyIdx];
-      const val = parseFloat(cols[valIdx]);
-      if (key && !isNaN(val)) {
-        CURRENT_INPUT[type][key] = val;
-        const inp = document.querySelector(`input[data-cat="${type}"][data-key="${CSS.escape(key)}"]`);
-        if (inp) inp.value = val;
-        count++;
-      }
-    }
-    alert(`✅ ${count}개 변수 입력 완료`);
+
+    const header = parseCsvLine(lines[0]);
+    const headerNorm = header.map(h => normalizeColName(h));
+
+    const isLongFormat =
+      headerNorm.some(h => h === 'field_key' || h === 'fieldkey' || h === 'key') &&
+      headerNorm.some(h => h === 'value');
+
+    if (isLongFormat) processLongCsv(header, headerNorm, lines, type);
+    else processWideCsv(header, headerNorm, lines, type);
   };
   reader.readAsText(file);
   event.target.value = '';
 }
 
+// ── 롱 포맷: 한 변수 한 행 ────────────────────────────────────
+function processLongCsv(header, headerNorm, lines, type) {
+  const keyIdx = headerNorm.findIndex(h => h === 'field_key' || h === 'fieldkey' || h === 'key');
+  const valIdx = headerNorm.findIndex(h => h === 'value');
+
+  const lookup = getCohortKeyLookup(type);
+  const loaded = {};
+  const ignored = [];
+
+  CURRENT_INPUT[type] = {};
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCsvLine(lines[i]);
+    const rawKey = cols[keyIdx];
+    const val = parseFloat(cols[valIdx]);
+    if (!rawKey || isNaN(val)) continue;
+    const cohortKey = lookup[normalizeColName(rawKey)]
+      || (COHORT.var_distributions[rawKey] ? rawKey : null);
+    if (cohortKey) {
+      CURRENT_INPUT[type][cohortKey] = val;
+      loaded[cohortKey] = val;
+    } else {
+      ignored.push(rawKey);
+    }
+  }
+
+  WIDE_CSV_CACHE[type] = null;
+  hidePlayerSelector(type);
+  renderUploadStatus(type, { meta: {}, loaded, ignored, sourceLabel: 'BBL 템플릿 (롱 포맷)' });
+}
+
+// ── 와이드 포맷: 한 행 = 한 선수 ────────────────────────────────
+function processWideCsv(header, headerNorm, lines, type) {
+  const lookup = getCohortKeyLookup(type);
+  const colMap = [];
+  const metaMap = [];
+  const ignored = [];
+
+  for (let i = 0; i < header.length; i++) {
+    const norm = headerNorm[i];
+    if (META_COL_MAP[norm]) { metaMap.push({ idx: i, metaKey: META_COL_MAP[norm] }); continue; }
+    if (lookup[norm]) colMap.push({ idx: i, cohortKey: lookup[norm] });
+    else if (header[i]) ignored.push(header[i]);
+  }
+
+  if (colMap.length === 0) {
+    alert('⚠️ 매칭되는 변수 컬럼을 찾지 못했습니다. CSV 헤더를 확인해주세요.');
+    return;
+  }
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCsvLine(lines[i]);
+    if (cols.every(c => !c)) continue;
+    rows.push(cols);
+  }
+  if (rows.length === 0) { alert('CSV에 데이터 행이 없습니다.'); return; }
+
+  WIDE_CSV_CACHE[type] = { header, headerNorm, rows, colMap, metaMap, ignored };
+
+  if (rows.length === 1) {
+    hidePlayerSelector(type);
+  } else {
+    const selId    = type === 'fitness' ? 'fitness-player-select'    : 'mech-player-select';
+    const wrapId   = type === 'fitness' ? 'fitness-player-selector'  : 'mech-player-selector';
+    const sel = document.getElementById(selId);
+    sel.innerHTML = rows.map((r, i) => {
+      const nameMeta = metaMap.find(m => m.metaKey === 'name');
+      const dateMeta = metaMap.find(m => m.metaKey === 'date');
+      const nm = nameMeta ? (r[nameMeta.idx] || `Row ${i+1}`) : `Row ${i+1}`;
+      const dt = dateMeta ? r[dateMeta.idx] : '';
+      return `<option value="${i}">${nm}${dt ? ' · ' + dt : ''}</option>`;
+    }).join('');
+    sel.value = '0';
+    document.getElementById(wrapId).classList.remove('hidden');
+  }
+  applyRow(type, 0);
+}
+
+function hidePlayerSelector(type) {
+  const wrapId = type === 'fitness' ? 'fitness-player-selector' : 'mech-player-selector';
+  const el = document.getElementById(wrapId);
+  if (el) el.classList.add('hidden');
+}
+
+// 와이드 한 행 적용 (변수 + 메타 + 요약)
+function applyRow(type, rowIdx) {
+  const cache = WIDE_CSV_CACHE[type];
+  if (!cache) return;
+  const { rows, colMap, metaMap, ignored } = cache;
+  if (rowIdx < 0 || rowIdx >= rows.length) return;
+  const row = rows[rowIdx];
+
+  // 1) 변수 적용 (해당 type만 초기화 후 채우기)
+  CURRENT_INPUT[type] = {};
+  const loaded = {};
+  for (const { idx, cohortKey } of colMap) {
+    const v = parseFloat(row[idx]);
+    if (!isNaN(v)) {
+      CURRENT_INPUT[type][cohortKey] = v;
+      loaded[cohortKey] = v;
+    }
+  }
+
+  // 2) 메타 → Step 1 자동 입력
+  // fitness CSV는 항상 덮어쓰고, mechanics CSV는 비어있는 경우에만 채움 (fitness가 우선)
+  const overwrite = (type === 'fitness');
+  const metaApplied = {};
+  for (const { idx, metaKey } of metaMap) {
+    const raw = row[idx];
+    if (!raw) continue;
+    if (metaKey === 'name') {
+      const el = document.getElementById('player-name');
+      if (overwrite || !el.value || el.value === '신규 선수') { el.value = raw; metaApplied.name = raw; }
+    } else if (metaKey === 'date') {
+      const el = document.getElementById('player-date');
+      const iso = parseDateFlex(raw);
+      if (overwrite || !el.value) { el.value = iso; metaApplied.date = iso; }
+    } else if (metaKey === 'velocity') {
+      const el = document.getElementById('player-velo');
+      const v = parseFloat(raw);
+      if (!isNaN(v) && (overwrite || !el.value)) { el.value = v; metaApplied.velocity = v; }
+    }
+  }
+
+  const sourceLabel = rows.length > 1
+    ? `와이드 포맷 (${rows.length}명 중 ${rowIdx+1}번째)`
+    : '와이드 포맷';
+  renderUploadStatus(type, { meta: metaApplied, loaded, ignored, sourceLabel });
+}
+
+// 셀렉터 onchange
+function selectPlayerFromCsv(rowIdx) { applyRow('fitness', parseInt(rowIdx, 10)); }
+function selectMechanicsPlayerFromCsv(rowIdx) { applyRow('mechanics', parseInt(rowIdx, 10)); }
+
+// 업로드 결과 카드 렌더 (type별)
+function renderUploadStatus(type, { meta, loaded, ignored, sourceLabel }) {
+  const ids = type === 'fitness'
+    ? { empty: 'fitness-empty-state', status: 'fitness-upload-status', summary: 'fitness-upload-summary', table: 'fitness-loaded-table' }
+    : { empty: 'mech-empty-state',    status: 'mech-upload-status',    summary: 'mech-upload-summary',    table: 'mech-loaded-table' };
+
+  document.getElementById(ids.empty).classList.add('hidden');
+  document.getElementById(ids.status).classList.remove('hidden');
+  const summary = document.getElementById(ids.summary);
+  const tableDiv = document.getElementById(ids.table);
+
+  // 메타 (이름·날짜·구속) 표시
+  const metaBits = [];
+  if (meta.name)             metaBits.push(`<strong>${meta.name}</strong>`);
+  if (meta.date)             metaBits.push(meta.date);
+  if (meta.velocity != null) metaBits.push(`측정 ${meta.velocity} km/h`);
+
+  // type별 카운트
+  let countLine = '';
+  let cats = [];
+  if (type === 'fitness') {
+    const fitC = COHORT.fitness_cats.reduce((a,c) => a + (COHORT.category_vars[c]||[]).filter(v => loaded[v[0]]!=null).length, 0);
+    const ctrlC = COHORT.control_cats.reduce((a,c) => a + (COHORT.category_vars[c]||[]).filter(v => loaded[v[0]]!=null).length, 0);
+    countLine = `· 체력 변수 <strong>${fitC}개</strong>${ctrlC ? `, 제구 변수 <strong>${ctrlC}개</strong>` : ''} 적용`;
+    cats = [...COHORT.fitness_cats, ...COHORT.control_cats];
+  } else {
+    const mC = COHORT.mechanics_cats.reduce((a,c) => a + (COHORT.category_vars[c]||[]).filter(v => loaded[v[0]]!=null).length, 0);
+    const phase2 = COHORT.mechanics_cats.reduce((a,c) => a + (COHORT.category_vars[c]||[]).filter(v => !COHORT.var_distributions[v[0]]).length, 0);
+    countLine = `· 메카닉 변수 <strong>${mC}개</strong> 적용 (Phase 2 변수 ${phase2}개는 자동 제외)`;
+    cats = COHORT.mechanics_cats;
+  }
+
+  summary.innerHTML = `
+    ✅ <strong>${sourceLabel}</strong> 로드 완료
+    ${metaBits.length ? `<br>· ${metaBits.join(' · ')}` : ''}
+    <br>${countLine}
+    ${ignored.length ? `<br>· 무시된 컬럼 ${ignored.length}개: <span class="mono text-[11px] text-[var(--text-muted)]">${ignored.slice(0,8).join(', ')}${ignored.length>8?' …':''}</span>` : ''}
+  `;
+
+  let html = '<table class="preview-table"><thead><tr><th>카테고리</th><th>변수</th><th class="text-right">값</th><th>단위</th></tr></thead><tbody>';
+  for (const cat of cats) {
+    const meta2 = COHORT.category_meta[cat] || {};
+    for (const v of (COHORT.category_vars[cat] || [])) {
+      const [key, name, unit, dec] = v;
+      if (loaded[key] == null) continue;
+      const val = loaded[key];
+      const decN = dec != null ? dec : 2;
+      html += `<tr>
+        <td class="text-[var(--text-muted)]">${cat.split('_')[0]} ${meta2.name||''}</td>
+        <td>${name}</td>
+        <td class="text-right mono">${(typeof val === 'number' ? val.toFixed(decN) : val)}</td>
+        <td class="text-[var(--text-muted)]">${unit || ''}</td>
+      </tr>`;
+    }
+  }
+  html += '</tbody></table>';
+  tableDiv.innerHTML = html;
+}
+
 function clearInputs(type) {
   CURRENT_INPUT[type] = {};
-  document.querySelectorAll(`input[data-cat="${type}"]`).forEach(inp => inp.value = '');
+  WIDE_CSV_CACHE[type] = null;
+  const ids = type === 'fitness'
+    ? { empty: 'fitness-empty-state', status: 'fitness-upload-status', sel: 'fitness-player-selector' }
+    : { empty: 'mech-empty-state',    status: 'mech-upload-status',    sel: 'mech-player-selector' };
+  const sel = document.getElementById(ids.sel);
+  const status = document.getElementById(ids.status);
+  const empty = document.getElementById(ids.empty);
+  if (sel) sel.classList.add('hidden');
+  if (status) status.classList.add('hidden');
+  if (empty) empty.classList.remove('hidden');
 }
+
+// ── 드래그앤드롭 ─────────────────────────────────────────────────
+function setupDropZone(zoneId, type) {
+  const zone = document.getElementById(zoneId);
+  if (!zone) return;
+  ['dragover', 'dragenter'].forEach(evt => {
+    zone.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      zone.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'dragend'].forEach(evt => {
+    zone.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      zone.classList.remove('dragover');
+    });
+  });
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    zone.classList.remove('dragover');
+    const file = e.dataTransfer && e.dataTransfer.files[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      alert('CSV 파일만 지원합니다 (.csv).');
+      return;
+    }
+    handleCsvUpload({ target: { files: [file], value: '' } }, type);
+  });
+}
+
+// 외부 영역에 파일이 떨어져 navigation 되는 것을 방지
+['dragover', 'drop'].forEach(evt => {
+  document.addEventListener(evt, (e) => {
+    if (!e.target.closest || !e.target.closest('.file-drop')) e.preventDefault();
+  });
+});
 
 // ════════════════════════════════════════════════════════════════════
 // 점수 계산 (v29 로직 포팅)
@@ -911,6 +1187,8 @@ function downloadHtmlReport() {
 window.addEventListener('DOMContentLoaded', () => {
   renderInputs();
   selectAge('고교');
+  setupDropZone('fitness-drop-zone', 'fitness');
+  setupDropZone('mech-drop-zone', 'mechanics');
 });
 </script>
 
