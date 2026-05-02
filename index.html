@@ -3568,6 +3568,7 @@ function renderDrivelineCategoryAccordion(dvCat, catScore, varScores) {
       else pos = '상위25↑';
       cohortInfo = `<div class="text-[9px] text-[var(--text-muted)] mt-0.5" style="font-family:'JetBrains Mono',monospace;" title="코호트 ${inCohort.n}명 분포">코호트 q25/q50/q75: ${fmt(inCohort.q25)}/${fmt(inCohort.median)}/${fmt(inCohort.q75)} · <span style="color:#9ca3af;">${pos}</span></div>`;
     }
+    const contextNote = '';  // Driveline accordion에서는 사용 안 함 (빈 값)
     const scoreStr = score != null ? Math.round(score) : '—';
     const w = score != null ? Math.max(0, Math.min(100, score)) : 0;
     const vColor = scoreColor(score);
