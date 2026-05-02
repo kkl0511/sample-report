@@ -2734,6 +2734,34 @@ function renderCategoryAccordion(catId, varScores, catScore) {
     `<tr><td>${range}</td><td>${text}</td></tr>`
   ).join('');
 
+  // ★ Contextual 해석 (2026-05-03) — C3/C5 시너지 패턴 인식
+  let contextNote = '';
+  const _ctxInputs = CURRENT_INPUT.mechanics || {};
+  if (catId === 'C3_TrunkPower') {
+    const trunkVel = _ctxInputs['max_trunk_twist_vel_dps'];
+    const speedup  = _ctxInputs['arm_trunk_speedup'];
+    const trunkFlexVel = _ctxInputs['trunk_flex_vel_max'];
+    const speedupScore = varScores['arm_trunk_speedup'];
+    if (trunkVel != null && trunkVel < 950 && speedupScore != null && speedupScore >= 85) {
+      contextNote = `<div style="background:rgba(74,222,128,0.08);border-left:3px solid #4ade80;padding:8px 12px;margin-top:8px;border-radius:3px;font-size:12px;line-height:1.6;">
+        💡 <strong style="color:#4ade80;">시너지 인사이트</strong>: 회전 속도(${trunkVel.toFixed(0)} °/s)는 평균 수준이지만 <strong>몸통→팔 에너지 전달 비율(${speedup?.toFixed(2)})</strong>이 매우 우수합니다.
+        ${trunkFlexVel != null && trunkFlexVel >= 600 ? `또한 <strong>몸통 굴곡 속도(${trunkFlexVel.toFixed(0)} °/s)</strong>가 회전 부족분을 보완합니다. ` : ''}
+        이 패턴은 약점이 아니라 <strong>"효율 타입" 엘리트의 특징</strong>이며 제구 안정성에 유리합니다.
+      </div>`;
+    }
+  }
+  if (catId === 'C5_Sequencing') {
+    const speedup = _ctxInputs['arm_trunk_speedup'];
+    const speedupScore = varScores['arm_trunk_speedup'];
+    const properSeq = _ctxInputs['proper_sequence'];
+    if (speedupScore != null && speedupScore >= 85 && properSeq === 1) {
+      contextNote = `<div style="background:rgba(74,222,128,0.08);border-left:3px solid #4ade80;padding:8px 12px;margin-top:8px;border-radius:3px;font-size:12px;line-height:1.6;">
+        ⚡ <strong style="color:#4ade80;">에너지 전달 우수</strong>: speedup ${speedup?.toFixed(2)} (elite 1.8~2.2)은 <strong>몸통의 회전 에너지를 거의 손실 없이 팔로 전달</strong>한다는 의미입니다.
+        시퀀싱 충족률 100%와 결합되어 <strong>구속의 진짜 원천</strong>이 됩니다.
+      </div>`;
+    }
+  }
+
   return `
     <div class="accordion-card" data-cat="${catId}">
       <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
@@ -3568,6 +3596,7 @@ function renderDrivelineCategoryAccordion(dvCat, catScore, varScores) {
       else pos = '상위25↑';
       cohortInfo = `<div class="text-[9px] text-[var(--text-muted)] mt-0.5" style="font-family:'JetBrains Mono',monospace;" title="코호트 ${inCohort.n}명 분포">코호트 q25/q50/q75: ${fmt(inCohort.q25)}/${fmt(inCohort.median)}/${fmt(inCohort.q75)} · <span style="color:#9ca3af;">${pos}</span></div>`;
     }
+    const contextNote = '';  // Driveline accordion에서는 사용 안 함 (빈 값)
     const scoreStr = score != null ? Math.round(score) : '—';
     const w = score != null ? Math.max(0, Math.min(100, score)) : 0;
     const vColor = scoreColor(score);
