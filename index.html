@@ -3591,6 +3591,142 @@ function deleteSelectedSavedPlayer() {
   alert(`✅ 삭제 완료: ${saved.name}`);
 }
 
+// ════════════════════════════════════════════════════════════════════
+// 비교 뷰 (H1↔H2 / 선수간) 오프라인 패키지 다운로드
+// 인터넷 없이 비교 결과를 선수·지도자에게 전달
+// ════════════════════════════════════════════════════════════════════
+async function downloadComparisonOfflinePackage(prefix) {
+  // 1) 선택된 선수 모음
+  let reports, labels, titlePrefix;
+  if (prefix === 'h1h2') {
+    const r1Id = document.getElementById('h1h2-r1')?.value;
+    const r2Id = document.getElementById('h1h2-r2')?.value;
+    const r1 = SAVED_REPORTS.find(r => r.id === r1Id);
+    const r2 = SAVED_REPORTS.find(r => r.id === r2Id);
+    if (!r1 || !r2) { alert('1차/2차 리포트를 모두 선택해주세요.'); return; }
+    reports = [r1, r2];
+    labels = ['1차', '2차'];
+    titlePrefix = `${r1.name} 1차↔2차 비교`;
+  } else {
+    const ids = ['vs-a', 'vs-b', 'vs-c', 'vs-d']
+      .map(id => document.getElementById(id)?.value)
+      .filter(v => v);
+    reports = ids.map(id => SAVED_REPORTS.find(r => r.id === id)).filter(r => r);
+    if (reports.length < 2) { alert('비교할 선수를 2명 이상 선택해주세요.'); return; }
+    labels = reports.map(r => r.name);
+    titlePrefix = `선수간 비교 (${labels.join(' vs ')})`;
+  }
+
+  const progress = document.createElement('div');
+  progress.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#141518; padding:24px 32px; border:2px solid var(--accent); border-radius:8px; z-index:99999; color:#e8e9ec; font-size:14px; box-shadow:0 20px 60px rgba(0,0,0,0.6); min-width:340px; text-align:center;';
+  progress.innerHTML = '📦 오프라인 패키지 만드는 중...';
+  document.body.appendChild(progress);
+
+  try {
+    // 2) Chart.js
+    progress.innerHTML = '📦 (1/3) Chart.js 다운로드 중...';
+    const chartJsSrc = await fetch('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js').then(r => r.text());
+
+    // 3) 비교 HTML 새로 생성 (selector·버튼 등 인터랙션 요소 제외, 순수 결과만)
+    progress.innerHTML = '📦 (2/3) 비교 HTML 조립 중...';
+    const comparisonHtml = renderComparisonHtml(reports, labels, prefix);
+
+    // 4) 모든 inline style + 컴파일된 CSS 캡처
+    let allStyles = '';
+    Array.from(document.querySelectorAll('style')).forEach(s => { allStyles += s.textContent + '\n'; });
+    Array.from(document.styleSheets).forEach(sheet => {
+      try { for (const rule of sheet.cssRules) allStyles += rule.cssText + '\n'; } catch (e) {}
+    });
+
+    // 5) 레이더 차트 데이터 — 오프라인에서 init 시 그릴 수 있도록 직렬화
+    progress.innerHTML = '📦 (3/3) HTML 패키지 마무리...';
+    const cmpColors = ['#60a5fa', '#ff6b35', '#4ade80', '#c084fc'];
+    const sets = [
+      { area: 'fitness',   cats: COHORT.fitness_cats },
+      { area: 'mechanics', cats: COHORT.mechanics_cats },
+      { area: 'control',   cats: COHORT.control_cats },
+    ];
+    const radarConfigs = sets.map(s => ({
+      canvasId: `${prefix}-radar-${s.area}`,
+      labels: s.cats.map(c => CATEGORY_DETAILS[c]?.name || c),
+      datasets: reports.map((r, i) => ({
+        label: labels[i],
+        data: s.cats.map(c => r.scores.cat_scores?.[c] != null ? Math.round(r.scores.cat_scores[c]) : 0),
+        backgroundColor: cmpColors[i] + '20',
+        borderColor: cmpColors[i],
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: cmpColors[i],
+      })),
+    }));
+
+    const safeChartJs = chartJsSrc.replace(/<\/script>/gi, '<\\/script>');
+    const safeJson = (obj) => JSON.stringify(obj).replace(/</g, '\\u003c');
+
+    const initScript = `
+const __RADAR_CFG__ = ${safeJson(radarConfigs)};
+window.addEventListener("DOMContentLoaded", function(){
+  if (typeof Chart === 'undefined') return;
+  setTimeout(function(){
+    for (const cfg of __RADAR_CFG__) {
+      const canvas = document.getElementById(cfg.canvasId);
+      if (!canvas) continue;
+      new Chart(canvas, {
+        type: 'radar',
+        data: { labels: cfg.labels, datasets: cfg.datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: { r: { min: 0, max: 100,
+            ticks: { color: '#5f636b', stepSize: 25, backdropColor: 'transparent', font: { size: 9 } },
+            grid: { color: 'rgba(95,99,107,0.2)' },
+            angleLines: { color: 'rgba(95,99,107,0.3)' },
+            pointLabels: { color: '#b3b5b9', font: { size: 11 } } } },
+          plugins: { legend: { display: true, position: 'bottom', labels: { color: '#b3b5b9', font: { size: 10 }, boxWidth: 12, padding: 8 } } }
+        }
+      });
+    }
+  }, 100);
+});`;
+
+    const fullHtml = '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'
+      + '<title>BBL ' + titlePrefix + '</title>'
+      + '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+      + '<meta name="robots" content="noindex, nofollow">'
+      + '<style>' + allStyles + '</style>'
+      + '<script>' + safeChartJs + '<\/script>'
+      + '</head>'
+      + '<body class="min-h-screen" style="background:#0a0b0d; color:#e8e9ec; font-family: \'Inter\', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">'
+      + '<div class="max-w-7xl mx-auto px-6 py-8">'
+      + '<header class="border-b border-[#2a2c31] mb-6 pb-4">'
+      +   '<div class="display text-2xl">📋 BBL ' + (prefix === 'h1h2' ? '1차 ↔ 2차 비교' : '선수간 비교') + '</div>'
+      +   '<div class="text-xs text-[var(--text-muted)] mt-1 mono">' + labels.join(' · ') + ' · 생성 ' + new Date().toLocaleString('ko-KR') + '</div>'
+      +   '<div class="text-xs text-[var(--text-muted)] mt-1">오프라인 패키지 — 인터넷 없이 작동 (레이더 차트 + 비교표 + 총평)</div>'
+      + '</header>'
+      + comparisonHtml
+      + '</div>'
+      + '<script>' + initScript + '<\/script>'
+      + '</body></html>';
+
+    document.body.removeChild(progress);
+
+    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeName = titlePrefix.replace(/[^\w가-힣]/g, '_');
+    a.download = `BBL_${safeName}_offline.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    const sizeMb = (blob.size / 1024 / 1024).toFixed(2);
+    alert(`✅ 오프라인 패키지 다운로드 완료!\n\n파일 크기: ${sizeMb} MB\n파일명: ${a.download}\n\n선수·지도자에게 전송하면 인터넷 없이 그대로 볼 수 있습니다.`);
+  } catch (err) {
+    if (document.body.contains(progress)) document.body.removeChild(progress);
+    console.error('비교 오프라인 패키지 생성 오류:', err);
+    alert('❌ 오프라인 패키지 생성 실패\n\n' + (err.message || err) + '\n\n네트워크 또는 CORS 문제일 수 있습니다.');
+  }
+}
+
 // 알고리즘 변경 시 — 저장된 모든 리포트 자동 재계산
 function recomputeAllSavedReports() {
   if (!SAVED_REPORTS || SAVED_REPORTS.length === 0) return 0;
@@ -3691,6 +3827,9 @@ function renderH1H2View() {
         <select id="h1h2-r2" class="input-field" onchange="renderH1H2Comparison()">${r1Options}</select>
       </div>
     </div>
+    <div class="text-center mb-4">
+      <button class="btn btn-primary" onclick="downloadComparisonOfflinePackage('h1h2')" style="background:#4ade80; color:#0a0b0d;">📦 오프라인 패키지 다운로드 (선수·지도자 전송용)</button>
+    </div>
     <div id="h1h2-result"></div>
     ${_savedReportsListHtml()}
   `;
@@ -3755,6 +3894,9 @@ function renderVsView() {
         <label class="text-xs text-[var(--text-muted)] block mb-1" style="color:#c084fc">선수 D (선택)</label>
         <select id="vs-d" class="input-field" onchange="renderVsComparison()">${empty}${opts}</select>
       </div>
+    </div>
+    <div class="text-center mb-4">
+      <button class="btn btn-primary" onclick="downloadComparisonOfflinePackage('vs')" style="background:#4ade80; color:#0a0b0d;">📦 오프라인 패키지 다운로드 (선수·지도자 전송용)</button>
     </div>
     <div id="vs-result"></div>
     ${_savedReportsListHtml()}
