@@ -641,13 +641,72 @@ function scoreToWord(s) {
   return '심각하게 부족';
 }
 
+// ── Lag 변수 가우시안 스코어링 (양극단 페널티) ──
+// proximal-to-distal 시퀀싱에서 lag이 너무 짧으면 동시 발화·전달 비효율
+// 너무 길면 운동량 손실 → 40~50ms가 sweet spot (Aguinaldo 2007, Driveline)
+const LAG_OPTIMAL_VARS = {
+  'pelvis_to_trunk_lag_ms': { optimal: 45, sigma: 15 },
+  'trunk_to_arm_lag_ms':    { optimal: 45, sigma: 15 },
+};
+
+// ── ★Phase2 변수 점수화 (코호트 분포 없는 변수의 문헌 기반 정규 범위) ──
+// linear: { min, max, polarity } | gaussian: { optimal, sigma } | useAbs: 절대값 사용
+// 출처: Driveline OBP, Stodden 2001, Aguinaldo 2007, Werner 2008, Kageyama 2014, Wood-Smith 2019
+const EXTRA_VAR_SCORING = {
+  // C2 하체 드라이브
+  'hip_ir_vel_max_drive':         { min: 200, max: 1000, polarity: 'higher' },  // °/s — 뒷다리 hip IR vel
+  'max_cog_velo':                 { min: 1.0, max: 4.0,  polarity: 'higher' },  // m/s — 몸통 COM 전진 속도
+  // C3 몸통 파워
+  'peak_x_factor':                { min: 25,  max: 65,   polarity: 'higher', useAbs: true },  // ° — Peak hip-shoulder 분리
+  // C4 앞다리 블로킹
+  'lead_knee_ext_change_fc_to_br':{ min: 10,  max: 60,   polarity: 'higher' },  // ° — 무릎 신전량
+  'com_decel_pct':                { min: 20,  max: 80,   polarity: 'higher' },  // % — COM 감속률
+  'lead_knee_amortization_ms':    { min: 30,  max: 150,  polarity: 'lower'  },  // ms — SSC 전환 시간 (짧을수록 ↑)
+  // C1 — Phase2 자세 변수
+  'stride_norm_height':           { min: 0.70, max: 1.00, polarity: 'higher' }, // 신장 정규화
+  'trunk_forward_tilt_at_fc':     { optimal: -30, sigma: 20 },                  // ° — 약간 뒤로 기울임이 좋음
+  // ── Driveline 5각형 추가 변수 (PPTX 9페이지) ──
+  'elbow_ext_vel_max':            { min: 1800, max: 3200, polarity: 'higher' }, // °/s — Driveline elite ~2300
+  'shoulder_ir_vel_max':          { min: 3000, max: 5500, polarity: 'higher' }, // °/s — elite ~4700
+  'peak_torso_counter_rot':       { min: 25,   max: 60,   polarity: 'higher', useAbs: true }, // ° — elite -37
+  'torso_side_bend_at_mer':       { optimal: 25, sigma: 10, useAbs: true },    // ° — elite 25
+  'torso_rotation_at_br':         { optimal: 110, sigma: 25, useAbs: true },   // ° — elite 111
+  'elbow_flexion_at_fp':          { optimal: 95, sigma: 20 },                  // ° — elite 93
+};
+
 // 백분위 계산: raw 값 → 코호트 안에서 N백분위
 function percentileOfCohort(varKey, value, polarity) {
   if (value == null || isNaN(value)) return null;
-  
+
+  // Lag 변수는 가우시안 (45ms 최적, ±15ms 평균)
+  if (LAG_OPTIMAL_VARS[varKey]) {
+    const { optimal, sigma } = LAG_OPTIMAL_VARS[varKey];
+    return Math.round(100 * Math.exp(-((value - optimal) ** 2) / (2 * sigma * sigma)));
+  }
+
   // proper_sequence는 binary 변수 — raw × 100
   if (COHORT.binary_vars && COHORT.binary_vars.includes(varKey)) {
     return Math.max(0, Math.min(100, value * 100));
+  }
+
+  // 코호트 분포가 없는 ★Phase2 변수 → 문헌 기반 정규 범위로 점수
+  const sortedCheck = COHORT.var_sorted_lookup[varKey];
+  if (!sortedCheck || sortedCheck.length < 30) {
+    const x = EXTRA_VAR_SCORING[varKey];
+    if (x) {
+      let v = x.useAbs ? Math.abs(value) : value;
+      if (x.optimal != null) {
+        // Gaussian
+        return Math.round(100 * Math.exp(-((v - x.optimal) ** 2) / (2 * x.sigma * x.sigma)));
+      }
+      if (x.min != null && x.max != null) {
+        // Linear
+        let s = ((v - x.min) / (x.max - x.min)) * 100;
+        if (x.polarity === 'lower') s = 100 - s;
+        return Math.round(Math.max(0, Math.min(100, s)));
+      }
+    }
+    return null;  // 코호트도 없고 EXTRA도 없으면 점수 산출 불가
   }
   
   const sorted = COHORT.var_sorted_lookup[varKey];
@@ -902,6 +961,7 @@ function extractScalarsFromUplift(parsed) {
     fc:  getFrameAbs('foot_contact_frame'),
     br:  getFrameAbs('ball_release_frame'),
     mer: getFrameAbs('max_external_rotation_frame'),
+    kh:  getFrameAbs('max_knee_raise_frame'),
     peakPelvis: getFrameAbs('peak_pelvis_angular_velocity_frame')
                 ?? getFrameAbs('max_pelvis_rotational_velocity_with_respect_to_ground_frame'),
     peakTrunk:  getFrameAbs('peak_trunk_angular_velocity_frame')
@@ -956,17 +1016,242 @@ function extractScalarsFromUplift(parsed) {
     const pelvisRot = valAt(events.fc, 'pelvis_global_rotation');
     out.trunk_rotation_at_fc      = trunkRot;
     out.hip_shoulder_sep_at_fc    = (trunkRot != null && pelvisRot != null) ? Math.abs(trunkRot - pelvisRot) : null;
-    out.trunk_forward_tilt_at_fc  = valAt(events.fc, 'trunk_global_flexion');
+    // BBL 컨벤션: 음수 = 뒤로 기울임(이상), 0 = 똑바로, 양수 = 앞으로 기울임
+    // Uplift trunk_global_flexion: 180° = upright, >180° = back tilt, <180° = forward tilt
+    // 변환: BBL = 180 - Uplift  (예: Uplift 183 → BBL -3°, 거의 똑바로)
+    const upFlexFc = valAt(events.fc, 'trunk_global_flexion');
+    out.trunk_forward_tilt_at_fc  = upFlexFc != null ? (180 - upFlexFc) : null;
     const sideHadd = armSide === 'left' ? 'left_shoulder_horizontal_adduction' : 'right_shoulder_horizontal_adduction';
     const habdRaw  = valAt(events.fc, sideHadd);
     out.shoulder_h_abd_at_fc      = habdRaw != null ? -habdRaw : null;  // 부호 반전
   }
-  // Window max [FC, BR]
+  // Window max [FC, BR]  — lead knee
   if (events.fc != null && events.br != null) {
     const leadCol = armSide === 'left' ? 'right_knee_extension_velocity' : 'left_knee_extension_velocity';
     out.lead_knee_ext_vel_max = colMaxBetween(leadCol, events.fc, events.br);
-    const erCol   = armSide === 'left' ? 'left_shoulder_external_rotation' : 'right_shoulder_external_rotation';
-    out.max_shoulder_ER       = colMaxBetween(erCol, events.fc, events.br);
+
+    // lead_knee_ext_change_fc_to_br — 신전량 (FC→BR 차이, 절대값)  ★Phase2
+    const leadKneeCol = armSide === 'left' ? 'right_knee_extension' : 'left_knee_extension';
+    const kneeFc = valAt(events.fc, leadKneeCol);
+    const kneeBr = valAt(events.br, leadKneeCol);
+    if (kneeFc != null && kneeBr != null) out.lead_knee_ext_change_fc_to_br = kneeBr - kneeFc;
+  }
+
+  // ── trunk_flex_vel_max ★ — trunk_global_flexion 시계열 1차 미분 max ──
+  // (cohort 있는 변수인데 그동안 미추출 — 이번 추가)
+  if (events.fc != null && events.br != null) {
+    const tflexCol = idx['trunk_global_flexion'];
+    const dt = 1 / fps;
+    let maxAbsVel = null;
+    const lo = Math.max(0, events.fc - 30);
+    const hi = events.br + 30;
+    if (tflexCol != null) {
+      let prev = null, prevFrame = null;
+      for (let f = lo; f <= hi; f++) {
+        const ri = frameMap[f];
+        if (ri == null) continue;
+        const v = parseFloat(rows[ri][tflexCol]);
+        if (isNaN(v)) { prev = null; continue; }
+        if (prev != null && prevFrame != null) {
+          const vel = Math.abs(v - prev) / ((f - prevFrame) * dt);
+          if (maxAbsVel == null || vel > maxAbsVel) maxAbsVel = vel;
+        }
+        prev = v; prevFrame = f;
+      }
+    }
+    out.trunk_flex_vel_max = maxAbsVel;
+  }
+
+  // ── max_cog_velo ★ — Uplift 직접 컬럼 max_trunk_com_velocity가 있으면 사용 ──
+  const cogVelCol = idx['max_trunk_com_velocity'];
+  if (cogVelCol != null) {
+    const v = parseFloat(r0[cogVelCol]);
+    if (!isNaN(v)) out.max_cog_velo = v;
+  }
+
+  // ── hip_ir_vel_max_drive ★ — drive 다리 (handedness 반영) hip IR velocity max [KH, FC] ──
+  if (events.kh != null && events.fc != null) {
+    const driveSide = armSide === 'left' ? 'left' : 'right';  // 우투면 drive=right
+    const hipIrCol = driveSide + '_hip_internal_rotation_velocity_with_respect_to_pelvis';
+    const v = colMaxBetween(hipIrCol, events.kh, events.fc);
+    if (v != null) out.hip_ir_vel_max_drive = v;
+  }
+
+  // ── com_decel_pct ★ — COM 전진 속도 감속률 [FC → BR] ──
+  // (peak_velo - end_velo) / peak_velo × 100
+  // 큰 값 = 효과적 블로킹 (운동량을 회전으로 전환)
+  if (events.fc != null && events.br != null && idx['whole_body_center_of_mass_x'] != null) {
+    const comCol = idx['whole_body_center_of_mass_x'];
+    const dt = 1 / fps;
+    // [KH-20, BR+5]에서 COM 위치 시계열 → 속도 시계열
+    const lo = Math.max(0, (events.kh != null ? events.kh : events.fc) - 20);
+    const hi = events.br + 5;
+    const xSeries = [], frameList = [];
+    for (let f = lo; f <= hi; f++) {
+      const ri = frameMap[f];
+      if (ri == null) continue;
+      const x = parseFloat(rows[ri][comCol]);
+      if (!isNaN(x)) { xSeries.push(x); frameList.push(f); }
+    }
+    if (xSeries.length >= 5) {
+      const velos = []; const veloFrames = [];
+      for (let i = 1; i < xSeries.length; i++) {
+        const dx = xSeries[i] - xSeries[i-1];
+        const df = frameList[i] - frameList[i-1];
+        if (df > 0) {
+          velos.push(Math.abs(dx) / (df * dt));
+          veloFrames.push(frameList[i]);
+        }
+      }
+      // peak velo: [FC-10, BR] 안 max
+      let peakV = 0, peakIdx = -1;
+      for (let i = 0; i < velos.length; i++) {
+        if (veloFrames[i] >= events.fc - 10 && veloFrames[i] <= events.br && velos[i] > peakV) {
+          peakV = velos[i]; peakIdx = i;
+        }
+      }
+      // end velo: BR 시점 (또는 가장 가까운 프레임)
+      let endV = null;
+      for (let i = velos.length - 1; i >= 0; i--) {
+        if (veloFrames[i] <= events.br) { endV = velos[i]; break; }
+      }
+      if (peakV > 0 && endV != null) {
+        const decelPct = ((peakV - endV) / peakV) * 100;
+        if (decelPct >= 0 && decelPct <= 100) out.com_decel_pct = decelPct;
+      }
+    }
+  }
+
+  // ── lead_knee_amortization_ms ★ — 앞다리 무릎 (min → max 신전) 시간 ──
+  // 짧을수록 SSC 효율 ↑
+  if (events.fc != null && events.br != null) {
+    const kneeCol = armSide === 'left' ? 'right_knee_extension' : 'left_knee_extension';
+    const ci = idx[kneeCol];
+    if (ci != null) {
+      const lo = Math.max(0, events.fc - 5);
+      const hi = events.br + 30;
+      let minVal = null, minFrame = null;
+      let maxValAfterMin = null, maxFrameAfterMin = null;
+      // 1) [FC-5, BR] 사이 min (max flexion = 가장 굽은 시점)
+      for (let f = lo; f <= events.br; f++) {
+        const ri = frameMap[f];
+        if (ri == null) continue;
+        const v = parseFloat(rows[ri][ci]);
+        if (isNaN(v)) continue;
+        if (minVal == null || v < minVal) { minVal = v; minFrame = f; }
+      }
+      // 2) min 이후 max (full extension)
+      if (minFrame != null) {
+        for (let f = minFrame + 1; f <= hi; f++) {
+          const ri = frameMap[f];
+          if (ri == null) continue;
+          const v = parseFloat(rows[ri][ci]);
+          if (isNaN(v)) continue;
+          if (maxValAfterMin == null || v > maxValAfterMin) { maxValAfterMin = v; maxFrameAfterMin = f; }
+        }
+      }
+      if (minFrame != null && maxFrameAfterMin != null && maxFrameAfterMin > minFrame) {
+        out.lead_knee_amortization_ms = (maxFrameAfterMin - minFrame) / fps * 1000;
+      }
+    }
+  }
+
+  // ── trunk_forward_tilt_at_br_trial — 제구 P6 composite SD에 사용 ──
+  if (events.br != null) {
+    const upFwdBr = parseFloat(r0[idx['trunk_forward_tilt_at_ball_release']]);
+    out.trunk_forward_tilt_at_br_trial = isNaN(upFwdBr) ? valAt(events.br, 'trunk_global_flexion') : upFwdBr;
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Driveline 5각형 추가 변수 (PPTX 9페이지 상대적 중요도 적용 대상)
+  // ════════════════════════════════════════════════════════════════════
+
+  // ── elbow_ext_vel_max ★ — 팔꿈치 신전 속도 max [FC, BR] (Arm Action 0.56) ──
+  if (events.fc != null && events.br != null) {
+    const elbowVelCol = armSide === 'left' ? 'left_elbow_flexion_velocity' : 'right_elbow_flexion_velocity';
+    const ci = idx[elbowVelCol];
+    if (ci != null) {
+      let maxAbs = null;
+      for (let f = events.fc; f <= events.br + 5; f++) {
+        const ri = frameMap[f]; if (ri == null) continue;
+        const v = parseFloat(rows[ri][ci]); if (isNaN(v)) continue;
+        const abs = Math.abs(v);
+        if (maxAbs == null || abs > maxAbs) maxAbs = abs;
+      }
+      out.elbow_ext_vel_max = maxAbs;
+    }
+  }
+
+  // ── shoulder_ir_vel_max ★ — 어깨 내회전 속도 max [MER, BR] (Arm Action 0.36) ──
+  if (events.mer != null && events.br != null) {
+    const irVelCol = armSide === 'left' ? 'left_shoulder_external_rotation_velocity' : 'right_shoulder_external_rotation_velocity';
+    const ci = idx[irVelCol];
+    if (ci != null) {
+      let maxAbs = null;
+      for (let f = events.mer; f <= events.br + 10; f++) {
+        const ri = frameMap[f]; if (ri == null) continue;
+        const v = parseFloat(rows[ri][ci]); if (isNaN(v)) continue;
+        const abs = Math.abs(v);
+        if (maxAbs == null || abs > maxAbs) maxAbs = abs;
+      }
+      out.shoulder_ir_vel_max = maxAbs;
+    }
+  }
+
+  // ── peak_torso_counter_rot ★ — 와인드업 시 trunk가 뒤로 회전한 max (Posture 0.38) ──
+  // [KH-50, FC] 사이 trunk_global_rotation의 (max - min) — counter rotation 진폭
+  if (events.kh != null && events.fc != null) {
+    const tCol = idx['trunk_global_rotation'];
+    if (tCol != null) {
+      let minV = null, maxV = null;
+      for (let f = Math.max(0, events.kh - 50); f <= events.fc; f++) {
+        const ri = frameMap[f]; if (ri == null) continue;
+        const v = parseFloat(rows[ri][tCol]); if (isNaN(v)) continue;
+        if (minV == null || v < minV) minV = v;
+        if (maxV == null || v > maxV) maxV = v;
+      }
+      if (minV != null && maxV != null) out.peak_torso_counter_rot = Math.abs(maxV - minV);
+    }
+  }
+
+  // ── torso_side_bend_at_mer ★ — MER 시점 측면 기울기 (Posture 0.26) ──
+  if (events.mer != null) {
+    const v = valAt(events.mer, 'trunk_lateral_flexion_right');
+    if (v != null) out.torso_side_bend_at_mer = Math.abs(v);
+  }
+
+  // ── torso_rotation_at_br ★ — BR 시점 몸통 회전 절대값 (Posture 0.25) ──
+  if (events.br != null) {
+    const v = valAt(events.br, 'trunk_global_rotation');
+    if (v != null) out.torso_rotation_at_br = Math.abs(v);
+  }
+
+  // ── elbow_flexion_at_fp ★ — FC 시점 팔꿈치 굴곡 각도 (Arm Action 0.25) ──
+  if (events.fc != null) {
+    const elbowCol = armSide === 'left' ? 'left_elbow_flexion' : 'right_elbow_flexion';
+    out.elbow_flexion_at_fp = valAt(events.fc, elbowCol);
+  }
+
+  // ── MER (max external rotation) — 견고한 추출 ──
+  //   1) Uplift가 검출한 MER 프레임 시점 값
+  //   2) 확장 윈도우 [KH-10 ~ BR+30] 의 max
+  //   3) max_layback_angle 컬럼 (단, BBL 코호트와 컨벤션 다를 수 있어 fallback만)
+  //   세 후보 중 가장 큰 값 사용 (MER은 항상 양의 큰 값이어야 정상)
+  const erCol = armSide === 'left' ? 'left_shoulder_external_rotation' : 'right_shoulder_external_rotation';
+  const erCandidates = [];
+  if (events.mer != null) {
+    const v = valAt(events.mer, erCol);
+    if (v != null) erCandidates.push(v);
+  }
+  // 확장 윈도우 — KH(없으면 FC-100)부터 BR+30까지
+  const winFrom = events.kh != null ? (events.kh - 10) : (events.fc != null ? events.fc - 100 : null);
+  const winTo   = events.br != null ? (events.br + 30) : null;
+  if (winFrom != null && winTo != null) {
+    const v = colMaxBetween(erCol, winFrom, winTo);
+    if (v != null) erCandidates.push(v);
+  }
+  if (erCandidates.length > 0) {
+    out.max_shoulder_ER = Math.max(...erCandidates);
   }
 
   // ━━━ 제구(P) per-trial scalar ━━━
@@ -1006,17 +1291,30 @@ function applyMultiTrialUplift(scalarsList) {
 
   // 메카닉(C) — 평균
   const meanFields = {
-    'max_pelvis_rot_vel_dps':  'peak_pelvis_av',
-    'max_trunk_twist_vel_dps': 'peak_trunk_av',
-    'peak_x_factor':           'max_x_factor',
-    'max_shoulder_ER_deg':     'max_shoulder_ER',
-    'trunk_rotation_at_fc':    'trunk_rotation_at_fc',
-    'hip_shoulder_sep_at_fc':  'hip_shoulder_sep_at_fc',
-    'trunk_forward_tilt_at_fc':'trunk_forward_tilt_at_fc',
-    'shoulder_h_abd_at_fc':    'shoulder_h_abd_at_fc',
-    'lead_knee_ext_vel_max':   'lead_knee_ext_vel_max',
-    'pelvis_to_trunk_lag_ms':  'pelvis_to_trunk_lag_ms',
-    'trunk_to_arm_lag_ms':     'trunk_to_arm_lag_ms',
+    'max_pelvis_rot_vel_dps':       'peak_pelvis_av',
+    'max_trunk_twist_vel_dps':      'peak_trunk_av',
+    'trunk_flex_vel_max':           'trunk_flex_vel_max',     // 새로 추가 (cohort 있는 변수)
+    'peak_x_factor':                'max_x_factor',
+    'max_shoulder_ER_deg':          'max_shoulder_ER',
+    'trunk_rotation_at_fc':         'trunk_rotation_at_fc',
+    'hip_shoulder_sep_at_fc':       'hip_shoulder_sep_at_fc',
+    'trunk_forward_tilt_at_fc':     'trunk_forward_tilt_at_fc',
+    'shoulder_h_abd_at_fc':         'shoulder_h_abd_at_fc',
+    'lead_knee_ext_vel_max':        'lead_knee_ext_vel_max',
+    'lead_knee_ext_change_fc_to_br':'lead_knee_ext_change_fc_to_br', // ★Phase2
+    'max_cog_velo':                 'max_cog_velo',                  // ★Phase2
+    'hip_ir_vel_max_drive':         'hip_ir_vel_max_drive',          // ★Phase2
+    'com_decel_pct':                'com_decel_pct',                 // ★Phase2
+    'lead_knee_amortization_ms':    'lead_knee_amortization_ms',     // ★Phase2
+    // Driveline 5각형 추가 변수
+    'elbow_ext_vel_max':            'elbow_ext_vel_max',             // ★Phase2 (Arm Action)
+    'shoulder_ir_vel_max':          'shoulder_ir_vel_max',           // ★Phase2 (Arm Action)
+    'peak_torso_counter_rot':       'peak_torso_counter_rot',        // ★Phase2 (Posture)
+    'torso_side_bend_at_mer':       'torso_side_bend_at_mer',        // ★Phase2 (Posture)
+    'torso_rotation_at_br':         'torso_rotation_at_br',          // ★Phase2 (Posture)
+    'elbow_flexion_at_fp':          'elbow_flexion_at_fp',           // ★Phase2 (Arm Action)
+    'pelvis_to_trunk_lag_ms':       'pelvis_to_trunk_lag_ms',
+    'trunk_to_arm_lag_ms':          'trunk_to_arm_lag_ms',
   };
   for (const [bbl, key] of Object.entries(meanFields)) {
     const vals = collect(key);
@@ -1045,9 +1343,24 @@ function applyMultiTrialUplift(scalarsList) {
   const stride = collect('stride_length_trial');
   if (stride.length)      loaded['stride_mean_m'] = mean(stride);
   if (stride.length >= 2) loaded['stride_sd_cm']  = stdev(stride) * 100;
-  // P6: trunk tilt SD @ BR
-  const tilt = collect('trunk_tilt_at_br_trial');
-  if (tilt.length >= 2) loaded['trunk_tilt_sd_deg'] = stdev(tilt);
+  // C1: stride_norm_height ★ — stride_length / Height[M] (체력 CSV에 신장 있을 때만)
+  const heightM = CURRENT_INPUT.fitness?.['Height[M]'];
+  if (loaded['stride_mean_m'] != null && heightM != null && heightM > 0) {
+    loaded['stride_norm_height'] = loaded['stride_mean_m'] / heightM;
+  }
+  // P6: trunk tilt SD @ BR — 좌우(lateral) + 전후(forward) composite
+  //   √(σ_lateral² + σ_forward²) = 두 평면 변동성의 결합 (Pythagorean SD)
+  const tiltLat = collect('trunk_tilt_at_br_trial');
+  const tiltFwd = collect('trunk_forward_tilt_at_br_trial');
+  const sdLat = tiltLat.length >= 2 ? stdev(tiltLat) : null;
+  const sdFwd = tiltFwd.length >= 2 ? stdev(tiltFwd) : null;
+  if (sdLat != null && sdFwd != null) {
+    loaded['trunk_tilt_sd_deg'] = Math.sqrt(sdLat * sdLat + sdFwd * sdFwd);
+  } else if (sdLat != null) {
+    loaded['trunk_tilt_sd_deg'] = sdLat;
+  } else if (sdFwd != null) {
+    loaded['trunk_tilt_sd_deg'] = sdFwd;
+  }
   // P1: wrist 3D 합성 SD (m → cm)
   const wx = collect('wrist_x_at_br'), wy = collect('wrist_y_at_br'), wz = collect('wrist_z_at_br');
   if (wx.length >= 2 && wy.length >= 2 && wz.length >= 2) {
@@ -1700,26 +2013,66 @@ const DRIVELINE_5_LABELS_KO = {
   'Arm Action': 'Arm Action · 팔 동작',
   'CoG':        'CoG · 무게중심',
 };
-// 각 카테고리 → BBL 메카닉 변수 키 매핑
-// (코호트 분포가 없는 변수는 자동으로 평균에서 제외됨)
+// 각 카테고리 → BBL 메카닉 변수 키 매핑 (PPTX 9페이지 갱신)
 const DRIVELINE_5_CATS = {
-  'Posture':    ['pelvis_rotation_at_fc', 'trunk_rotation_at_fc', 'hip_shoulder_sep_at_fc',
-                 'trunk_forward_tilt_at_fc', 'peak_torso_counter_rot'],
+  'Posture':    ['trunk_rotation_at_fc', 'hip_shoulder_sep_at_fc',
+                 'trunk_forward_tilt_at_fc', 'peak_torso_counter_rot',
+                 'torso_side_bend_at_mer', 'torso_rotation_at_br'],
   'Block':      ['stride_norm_height', 'lead_knee_ext_change_fc_to_br', 'lead_knee_ext_vel_max'],
   'Rotation':   ['max_pelvis_rot_vel_dps', 'max_trunk_twist_vel_dps'],
   'Arm Action': ['max_shoulder_ER_deg', 'shoulder_h_abd_at_fc',
-                 'elbow_ext_vel_max', 'shoulder_ir_vel_max', 'scap_load_at_fc'],
+                 'elbow_ext_vel_max', 'shoulder_ir_vel_max', 'elbow_flexion_at_fp'],
   'CoG':        ['com_decel_pct', 'max_cog_velo'],
 };
 
-// 변수별 백분위 점수에서 Driveline 5 카테고리 점수 산출
+// PPTX 9페이지 — 몸통 회전 속도(=1.00) 기준 상대적 중요도
+const DRIVELINE_5_WEIGHTS = {
+  'Posture': {
+    'trunk_rotation_at_fc':       0.35,  // Torso Rotation at FP
+    'hip_shoulder_sep_at_fc':     0.44,  // Hip-Shoulder Sep at FP
+    'trunk_forward_tilt_at_fc':   0.36,  // Torso Forward Tilt at FP
+    'peak_torso_counter_rot':     0.38,  // Peak Torso Counter Rot
+    'torso_side_bend_at_mer':     0.26,  // Torso Side Bend at MER
+    'torso_rotation_at_br':       0.25,  // Torso Rotation at BR
+  },
+  'Block': {
+    'stride_norm_height':              0.58,  // Stride Length
+    'lead_knee_ext_change_fc_to_br':   0.58,  // Lead Knee Extension
+    'lead_knee_ext_vel_max':           0.19,  // Peak Lead Knee Ext Velo
+  },
+  'Rotation': {
+    'max_pelvis_rot_vel_dps':  0.27,  // Pelvis Rotation Velo
+    'max_trunk_twist_vel_dps': 1.00,  // Torso Rotation Velo (가장 중요!)
+  },
+  'Arm Action': {
+    'max_shoulder_ER_deg':   0.86,  // Layback (두 번째로 중요)
+    'shoulder_h_abd_at_fc':  0.51,  // Shoulder Abduction at FP
+    'elbow_ext_vel_max':     0.56,  // Elbow Extension Velo
+    'shoulder_ir_vel_max':   0.36,  // Shoulder Rotation Velo (IR)
+    'elbow_flexion_at_fp':   0.25,  // Elbow Flexion at FP
+  },
+  'CoG': {
+    'com_decel_pct':  0.70,  // CoG Decel
+    'max_cog_velo':   0.29,  // Max CoG Velo
+  },
+};
+
+// 변수별 백분위 점수에서 Driveline 5 카테고리 점수 산출 (가중 평균)
 function drivelineFiveCatScores(varScores) {
   const out = {};
   for (const cat of DRIVELINE_5_ORDER) {
-    const vals = (DRIVELINE_5_CATS[cat] || [])
-      .map(k => varScores[k])
-      .filter(s => s != null && !isNaN(s));
-    out[cat] = vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : null;
+    const keys = DRIVELINE_5_CATS[cat] || [];
+    const weights = DRIVELINE_5_WEIGHTS[cat] || {};
+    let weightedSum = 0, totalWeight = 0;
+    for (const k of keys) {
+      const score = varScores[k];
+      if (score != null && !isNaN(score)) {
+        const w = weights[k] != null ? weights[k] : 1;
+        weightedSum += score * w;
+        totalWeight += w;
+      }
+    }
+    out[cat] = totalWeight > 0 ? weightedSum / totalWeight : null;
   }
   return out;
 }
@@ -1781,6 +2134,12 @@ const COACH_VIDEO_SAMPLES = [
 ];
 const COACH_VIDEO_FPS = 30;  // 기본 fps 가정 (사용자가 알면 입력 가능)
 
+function _showVideoElement() {
+  const v = document.getElementById('coach-video');
+  const drop = document.getElementById('coach-video-drop');
+  if (v) v.classList.remove('hidden');
+  if (drop) drop.classList.add('hidden');
+}
 function loadVideoSample(key) {
   const sample = COACH_VIDEO_SAMPLES.find(s => s.key === key);
   if (!sample) return;
@@ -1788,14 +2147,62 @@ function loadVideoSample(key) {
   if (!v) return;
   v.src = sample.url;
   v.load();
+  _showVideoElement();
 }
 function loadVideoLocal(event) {
-  const file = event.target.files && event.target.files[0];
+  const file = (event.target && event.target.files && event.target.files[0]) || null;
   if (!file) return;
   const v = document.getElementById('coach-video');
   if (!v) return;
   v.src = URL.createObjectURL(file);
   v.load();
+  _showVideoElement();
+}
+function loadVideoFile(file) {
+  if (!file) return;
+  if (!file.type.startsWith('video/')) {
+    alert('비디오 파일만 지원합니다 (.mp4 .mov .webm 등).');
+    return;
+  }
+  const v = document.getElementById('coach-video');
+  if (!v) return;
+  v.src = URL.createObjectURL(file);
+  v.load();
+  _showVideoElement();
+}
+// 드래그앤드롭 + 영상 영역 초기화 (리포트 렌더 후 호출)
+function setupCoachVideoDropZone() {
+  const zone = document.getElementById('coach-video-drop');
+  if (!zone) return;
+  ['dragover', 'dragenter'].forEach(evt => {
+    zone.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      zone.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'dragend'].forEach(evt => {
+    zone.addEventListener(evt, (e) => {
+      e.preventDefault(); e.stopPropagation();
+      zone.classList.remove('dragover');
+    });
+  });
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    zone.classList.remove('dragover');
+    const file = e.dataTransfer && e.dataTransfer.files[0];
+    loadVideoFile(file);
+  });
+}
+function clearCoachVideo() {
+  const v = document.getElementById('coach-video');
+  const drop = document.getElementById('coach-video-drop');
+  if (v) {
+    if (v.src && v.src.startsWith('blob:')) URL.revokeObjectURL(v.src);
+    v.removeAttribute('src');
+    v.load();
+    v.classList.add('hidden');
+  }
+  if (drop) drop.classList.remove('hidden');
 }
 function setVideoSpeed(rate) {
   const v = document.getElementById('coach-video');
@@ -1838,56 +2245,36 @@ function renderCoachSessionHtml(r) {
       <div class="display text-xl mb-2">🎥 코칭 세션 — 메카닉 시각화</div>
       <div class="text-xs text-[var(--text-muted)] mb-4">동영상을 0.1~0.25배속·프레임 단위로 보면서, 옆의 시퀀스/체인 시각화로 데이터를 직관적으로 설명할 수 있습니다.</div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <!-- 동영상 플레이어 -->
-        <div>
-          <video id="coach-video" controls preload="metadata" class="w-full rounded" style="background: #000; max-height: 380px;"></video>
-
-          <!-- 영상 소스 선택 -->
-          <div class="flex flex-wrap gap-2 mt-3 items-center">
-            <label class="mech-mode-btn cursor-pointer">
-              📁 로컬 파일
-              <input type="file" accept="video/*" style="display:none" onchange="loadVideoLocal(event)">
-            </label>
-            ${sampleBtns}
-          </div>
-
-          <!-- 재생 컨트롤 -->
-          <div class="flex flex-wrap gap-2 mt-2 items-center">
-            <span class="mono text-[10px] text-[var(--text-muted)] mr-1">SPEED</span>
-            ${speedBtns}
-          </div>
-          <div class="flex flex-wrap gap-2 mt-2 items-center">
-            <button class="mech-mode-btn" onclick="videoFrameStep(-1)">◀ 1프레임</button>
-            <button class="mech-mode-btn" onclick="videoTogglePlay()">▶/❚❚</button>
-            <button class="mech-mode-btn" onclick="videoFrameStep(+1)">1프레임 ▶</button>
-            <span class="mono text-[10px] text-[var(--text-muted)] ml-2">fps</span>
-            <input type="number" id="coach-video-fps" value="${COACH_VIDEO_FPS}" min="15" max="240" class="input-field" style="width:70px; padding:4px 8px; font-size:11px">
-          </div>
+      <!-- 동영상 플레이어 — 가로 전체, 크게 -->
+      <div class="mb-6">
+        <!-- 드롭존 (영상 미로드 시 노출) -->
+        <div class="file-drop" id="coach-video-drop" onclick="document.getElementById('coach-video-input').click()" style="min-height: 320px; display: flex; flex-direction: column; justify-content: center;">
+          <div class="text-5xl mb-3">🎥</div>
+          <div class="text-base font-medium">선수 동영상을 드래그 앤 드롭하거나 클릭해서 선택</div>
+          <div class="text-xs text-[var(--text-muted)] mt-2">.mp4 .mov .webm — 또는 아래 샘플 선택</div>
+          <input type="file" id="coach-video-input" accept="video/*" style="display:none;" onchange="loadVideoLocal(event)">
         </div>
 
-        <!-- max-layback 참고 이미지 + LaybackMeter 게이지 -->
-        <div>
-          <div class="text-xs text-[var(--text-muted)] mb-2">📐 어깨 코킹 (Max Layback)</div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <img src="https://raw.githubusercontent.com/kkl0511/BBL_Pitching_Report1/main/assets/max-layback.png"
-                   alt="Max Layback reference"
-                   class="w-full rounded border border-[var(--border)]"
-                   onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
-                   style="max-height: 220px; object-fit: contain; background: var(--bg-elevated);">
-              <div style="display:none" class="text-xs text-[var(--text-muted)] py-8 text-center border border-dashed border-[var(--border)] rounded">이미지 로드 실패 (네트워크 확인)</div>
-              <div class="text-[10px] text-[var(--text-muted)] mt-1 text-center">참고 — 정상 MER 170~190°</div>
-            </div>
-            <div>
-              ${renderLaybackMeterSvg(CURRENT_INPUT.mechanics?.max_shoulder_ER_deg)}
-              <div class="text-[10px] text-[var(--text-muted)] mt-1 text-center">현 선수 MER 게이지</div>
-            </div>
-          </div>
-          <div class="mt-3 text-xs text-[var(--text-secondary)] leading-relaxed">
-            정상 MER(최대 어깨 외회전)은 <strong>170~190°</strong>. 현 선수: <strong>${CURRENT_INPUT.mechanics?.max_shoulder_ER_deg != null ? Math.round(CURRENT_INPUT.mechanics.max_shoulder_ER_deg) + '°' : '미입력'}</strong>${r.var_scores?.max_shoulder_ER_deg != null ? ` (백분위 ${Math.round(r.var_scores.max_shoulder_ER_deg)}점)` : ''}.
-            영상 슬로우로 MER 시점에서 팔이 얼마나 뒤로 젖혀지는지 게이지와 함께 비교해보세요.
-          </div>
+        <!-- 영상 (로드 시 노출) — 큰 크기 -->
+        <video id="coach-video" controls preload="metadata" class="w-full rounded hidden" style="background: #000; max-height: 720px;"></video>
+
+        <!-- 영상 소스 선택 -->
+        <div class="flex flex-wrap gap-2 mt-3 items-center">
+          <span class="mono text-[10px] text-[var(--text-muted)] mr-1">SAMPLE</span>
+          ${sampleBtns}
+          <button class="mech-mode-btn" onclick="clearCoachVideo()" style="margin-left:auto">🗑 영상 제거</button>
+        </div>
+
+        <!-- 재생 컨트롤 -->
+        <div class="flex flex-wrap gap-2 mt-2 items-center">
+          <span class="mono text-[10px] text-[var(--text-muted)] mr-1">SPEED</span>
+          ${speedBtns}
+          <span class="mono text-[10px] text-[var(--text-muted)] ml-4 mr-1">FRAME</span>
+          <button class="mech-mode-btn" onclick="videoFrameStep(-1)">◀ 1프레임</button>
+          <button class="mech-mode-btn" onclick="videoTogglePlay()">▶/❚❚ 재생/정지</button>
+          <button class="mech-mode-btn" onclick="videoFrameStep(+1)">1프레임 ▶</button>
+          <span class="mono text-[10px] text-[var(--text-muted)] ml-2">fps</span>
+          <input type="number" id="coach-video-fps" value="${COACH_VIDEO_FPS}" min="15" max="240" class="input-field" style="width:70px; padding:4px 8px; font-size:11px">
         </div>
       </div>
 
@@ -2036,12 +2423,13 @@ function renderKinematicSequenceSvg(r) {
     </div>`;
 }
 
-// ── EnergyFlow: 3D 마네킹 + 에너지 파이프 (BBL 패키지 포팅, 단순화) ──
+// ── EnergyFlow: 3D 마네킹 + 에너지 파이프 + 핵심 변수 라벨 ──
 function renderKineticChainSvg(r) {
   const cs = r.cat_scores || {};
-  // ETI 추정: 메카닉 카테고리 점수에서 도출 (실제 ETI 데이터 없음)
-  // PT (pelvis-trunk): C2 → C3 효율 = 두 점수의 비율을 참고
-  // TA (trunk-arm): C3 → C6 효율
+  const vs = r.var_scores || {};
+  const inputs = CURRENT_INPUT.mechanics || {};
+
+  // ETI 추정: 메카닉 카테고리 점수에서 도출
   const etiPT = (cs.C2_HipDrive != null && cs.C3_TrunkPower != null)
     ? Math.min(2.0, (cs.C3_TrunkPower + 50) / (cs.C2_HipDrive + 50)) : null;
   const etiTA = (cs.C3_TrunkPower != null && cs.C6_ArmCocking != null)
@@ -2049,6 +2437,19 @@ function renderKineticChainSvg(r) {
   const taLeak = etiTA != null && etiTA < 0.85;
   const ptLeak = etiPT != null && etiPT < 0.85;
   const leakPct = taLeak ? Math.round((1 - etiTA) * 100) : 0;
+
+  // ── 핵심 변수 ──
+  // ① 몸통 회전 속도 — 가장 중요한 구속 결정 요인 (Driveline 1.00, 1mph≈40°/s)
+  const trunkRotVel = inputs.max_trunk_twist_vel_dps;
+  const trunkRotScore = vs.max_trunk_twist_vel_dps;
+  // ② Flying Open — X-Factor @ FC가 작으면 몸통이 일찍 열렸다는 뜻
+  const xFactor = inputs.hip_shoulder_sep_at_fc;
+  const flyingOpen = xFactor != null && xFactor < 30;  // <30° 위험
+  // ③ 어깨 무너짐 — MER 부족 또는 ETI_TA leak
+  const merDeg = inputs.max_shoulder_ER_deg;
+  const merScore = vs.max_shoulder_ER_deg;
+  const merLow = merDeg != null && merDeg < 170;
+  const shoulderCollapse = taLeak || merLow;
 
   const uid = 'eg' + Math.random().toString(36).slice(2, 8);
   // 마네킹 keypoints
@@ -2179,7 +2580,7 @@ function renderKineticChainSvg(r) {
         </path>
         ${leakBurst}
 
-        <!-- Annotations -->
+        <!-- Annotations (스테이지 단계) -->
         <g>
           <line x1="${K.lAnkle[0]-6}" y1="${K.lAnkle[1]-14}" x2="150" y2="430" stroke="#22d3ee" stroke-width="1.2" stroke-dasharray="2 3"/>
           <rect x="42" y="412" width="176" height="44" rx="6" fill="#0b1220" stroke="#22d3ee" stroke-opacity="0.55"/>
@@ -2200,6 +2601,37 @@ function renderKineticChainSvg(r) {
           <text x="682" y="144" fill="#e2e8f0" font-size="15" font-family="Inter" font-weight="800" text-anchor="middle">ETI ${etiTA != null ? etiTA.toFixed(2) : '—'}</text>
           <text x="682" y="160" fill="${taLeak ? '#fca5a5' : '#94a3b8'}" font-size="10" font-family="Inter" font-weight="${taLeak ? 700 : 400}" text-anchor="middle">${taLeak ? `⚠ 누수 ${leakPct}% · 어깨 부하↑` : '정상 전달'}</text>
         </g>
+
+        <!-- ★ 핵심 변수 라벨 — 가장 중요한 구속 결정 요인들 ★ -->
+        <!-- ① 몸통 회전 속도 (Trunk Rotation Velocity) — 우상단 trunk 옆 -->
+        ${trunkRotVel != null ? `
+        <g>
+          <line x1="${K.rShoulder[0]+8}" y1="${K.rShoulder[1]+30}" x2="690" y2="240" stroke="${scoreColor(trunkRotScore)}" stroke-width="1.5" stroke-dasharray="2 3"/>
+          <rect x="582" y="210" width="200" height="60" rx="6" fill="#0b1220" stroke="${scoreColor(trunkRotScore)}" stroke-opacity="0.85" stroke-width="2"/>
+          <text x="682" y="226" fill="${scoreColor(trunkRotScore)}" font-size="10" font-family="Inter" font-weight="800" text-anchor="middle" letter-spacing="1">⚡ TRUNK ROT VEL</text>
+          <text x="682" y="246" fill="#e2e8f0" font-size="16" font-family="JetBrains Mono" font-weight="800" text-anchor="middle">${Math.round(trunkRotVel)}<tspan font-size="10" fill="#94a3b8" font-family="Inter">°/s</tspan></text>
+          <text x="682" y="262" fill="#94a3b8" font-size="9" font-family="Inter" text-anchor="middle">가장 강한 구속 결정 요인 · 1mph≈40°/s</text>
+        </g>` : ''}
+
+        <!-- ② Flying Open — X-Factor @ FC가 작으면 몸통이 일찍 열림 -->
+        ${xFactor != null ? `
+        <g>
+          <line x1="${K.pelvisR[0]+10}" y1="${K.pelvisR[1]-10}" x2="700" y2="370" stroke="${flyingOpen ? '#ef4444' : '#4ade80'}" stroke-width="1.5" stroke-dasharray="2 3"/>
+          <rect x="592" y="346" width="190" height="56" rx="6" fill="#0b1220" stroke="${flyingOpen ? '#ef4444' : '#4ade80'}" stroke-opacity="0.85" stroke-width="2"/>
+          <text x="687" y="362" fill="${flyingOpen ? '#ef4444' : '#4ade80'}" font-size="10" font-family="Inter" font-weight="800" text-anchor="middle" letter-spacing="1">${flyingOpen ? '⚠ FLYING OPEN' : '✓ X-FACTOR @ FC'}</text>
+          <text x="687" y="380" fill="#e2e8f0" font-size="14" font-family="JetBrains Mono" font-weight="700" text-anchor="middle">${Math.round(xFactor)}<tspan font-size="10" fill="#94a3b8" font-family="Inter">° (이상 ≥30)</tspan></text>
+          <text x="687" y="394" fill="${flyingOpen ? '#fca5a5' : '#94a3b8'}" font-size="9" font-family="Inter" text-anchor="middle">${flyingOpen ? '몸통이 일찍 열림 · 회전 가속 손실' : '몸통 닫힘 양호'}</text>
+        </g>` : ''}
+
+        <!-- ③ 어깨 무너짐 — MER 또는 leak 검사 -->
+        ${(merDeg != null || taLeak) ? `
+        <g>
+          <line x1="${K.rElbow[0]-4}" y1="${K.rElbow[1]+8}" x2="180" y2="125" stroke="${shoulderCollapse ? '#ef4444' : '#4ade80'}" stroke-width="1.5" stroke-dasharray="2 3"/>
+          <rect x="42" y="100" width="176" height="62" rx="6" fill="#0b1220" stroke="${shoulderCollapse ? '#ef4444' : '#4ade80'}" stroke-opacity="0.85" stroke-width="2"/>
+          <text x="130" y="116" fill="${shoulderCollapse ? '#ef4444' : '#4ade80'}" font-size="10" font-family="Inter" font-weight="800" text-anchor="middle" letter-spacing="1">${shoulderCollapse ? '⚠ 어깨 무너짐' : '✓ 어깨 안정'}</text>
+          <text x="130" y="135" fill="#e2e8f0" font-size="13" font-family="JetBrains Mono" font-weight="700" text-anchor="middle">MER ${merDeg != null ? Math.round(merDeg) + '°' : '—'}</text>
+          <text x="130" y="153" fill="${shoulderCollapse ? '#fca5a5' : '#94a3b8'}" font-size="9" font-family="Inter" text-anchor="middle">${merLow ? '외회전 < 170° · 부족' : taLeak ? '에너지 누수 · 부하↑' : '정상 (170~190° 범위)'}</text>
+        </g>` : ''}
       </svg>
 
       <div class="text-xs text-[var(--text-muted)] mt-2 px-2">
@@ -2382,6 +2814,44 @@ function renderDrivelineCategoryAccordion(dvCat, catScore, varScores) {
 }
 
 // ════════════════════════════════════════════════════════════════════
+// 카테고리별 변수 가중치 (PPTX 9페이지 — 몸통 회전 속도 1.00 기준)
+// 없으면 단순 평균. 메카닉 6각형 모든 카테고리에 적용.
+// ════════════════════════════════════════════════════════════════════
+const CATEGORY_WEIGHTS = {
+  C1_Foundation: {
+    'stride_norm_height':         0.58,  // Stride Length
+    'trunk_rotation_at_fc':       0.35,  // Torso Rotation at FP
+    'hip_shoulder_sep_at_fc':     0.44,  // Hip-Shoulder Sep at FP
+    'trunk_forward_tilt_at_fc':   0.36,  // Torso Forward Tilt at FP
+  },
+  C2_HipDrive: {
+    'max_pelvis_rot_vel_dps':  0.27,  // Pelvis Rotation Velo
+    'hip_ir_vel_max_drive':    0.27,  // (Driveline 미수록 — Pelvis와 비슷한 hip 동작 가중치 추정)
+    'max_cog_velo':            0.29,  // Max CoG Velo
+  },
+  C3_TrunkPower: {
+    'max_trunk_twist_vel_dps':  1.00,  // Torso Rotation Velo (가장 중요!)
+    'trunk_flex_vel_max':       0.36,  // (Stodden 2001 trunk forward tilt 비례)
+    'peak_x_factor':            0.38,  // Peak Torso Counter Rot (PPTX는 Posture 분류이나 trunk power 산출에도 핵심)
+  },
+  C4_LeadLegBlock: {
+    'lead_knee_ext_vel_max':         0.19,  // Peak Lead Knee Ext Velo
+    'lead_knee_ext_change_fc_to_br': 0.58,  // Lead Knee Extension
+    'com_decel_pct':                 0.70,  // CoG Decel
+    'lead_knee_amortization_ms':     0.58,  // (Driveline 미수록 — Lead Knee Ext와 비슷한 SSC 효율 추정)
+  },
+  C5_Sequencing: {
+    pelvis_to_trunk_lag_ms: 3,   // 가장 중요 — proximal-to-distal 시퀀싱의 핵심
+    trunk_to_arm_lag_ms:    1,
+    proper_sequence:        1,
+  },
+  C6_ArmCocking: {
+    'max_shoulder_ER_deg':    0.86,  // Layback (구속 영향력 2위)
+    'shoulder_h_abd_at_fc':   0.51,  // Shoulder Abduction at FP
+  },
+};
+
+// ════════════════════════════════════════════════════════════════════
 // 점수 계산 (v29 로직 포팅)
 // ════════════════════════════════════════════════════════════════════
 function calculateScores(input, age, measuredVelo) {
@@ -2389,11 +2859,11 @@ function calculateScores(input, age, measuredVelo) {
   const allVarScores = {};
   const catScores = {};
   
-  // 1) 변수별 점수 계산
+  // 1) 변수별 점수 계산 (카테고리별 가중치 지원)
   const allCats = [...COHORT.fitness_cats, ...COHORT.mechanics_cats, ...COHORT.control_cats];
   for (const catId of allCats) {
     const vars = COHORT.category_vars[catId] || [];
-    const scores = [];
+    const scoresWithKeys = [];  // [{key, score}]
     for (const v of vars) {
       const [key, name, unit, dec, polarity] = v;
       const pol = polarity || 'higher';
@@ -2404,12 +2874,26 @@ function calculateScores(input, age, measuredVelo) {
         const score = percentileOfCohort(key, val, pol);
         if (score != null) {
           allVarScores[key] = score;
-          scores.push(score);
+          scoresWithKeys.push({ key, score });
         }
       }
     }
-    if (scores.length > 0) {
-      let avg = scores.reduce((a,b) => a+b, 0) / scores.length;
+    if (scoresWithKeys.length > 0) {
+      let avg;
+      const weights = CATEGORY_WEIGHTS[catId];
+      if (weights) {
+        // 가중 평균 (PPTX 9페이지 상대적 중요도)
+        let weightedSum = 0, totalWeight = 0;
+        for (const { key, score } of scoresWithKeys) {
+          const w = weights[key] || 1;
+          weightedSum += score * w;
+          totalWeight += w;
+        }
+        avg = totalWeight > 0 ? weightedSum / totalWeight : 0;
+      } else {
+        // 기본 — 단순 평균
+        avg = scoresWithKeys.reduce((a, x) => a + x.score, 0) / scoresWithKeys.length;
+      }
       // v29 카테고리별 산식 보정 적용
       const offset = (COHORT.category_offsets && COHORT.category_offsets[catId]) || 0;
       avg += offset;
@@ -2417,6 +2901,16 @@ function calculateScores(input, age, measuredVelo) {
       avg = Math.max(0, Math.min(100, avg + adj.score_offset));
       catScores[catId] = Math.round(avg * 10) / 10;
     }
+  }
+
+  // 1.5) Driveline 5각형 전용 변수도 점수 산출 (BBL 6각형 카테고리에 없는 변수들)
+  for (const k of Object.keys(EXTRA_VAR_SCORING)) {
+    if (allVarScores[k] != null) continue;  // 이미 산출됐으면 skip
+    let val = input.fitness[k];
+    if (val == null) val = input.mechanics[k];
+    if (val == null) continue;
+    const score = percentileOfCohort(k, val, 'higher');
+    if (score != null) allVarScores[k] = score;
   }
   
   // 2) 종합 점수
@@ -2492,8 +2986,9 @@ function generateReport() {
   const area = document.getElementById('report-area');
   area.innerHTML = reportHtml;
   area.classList.remove('hidden');
-  // DOM에 캔버스가 박힌 후 레이더 차트 렌더
+  // DOM에 캔버스가 박힌 후 레이더 차트 렌더 + 동영상 드롭존 초기화
   renderRadarCharts();
+  setupCoachVideoDropZone();
   area.scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -2763,9 +3258,10 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
 
   // 다운로드 + 저장 버튼
   const downloadBtn = `
-    <div class="text-center mt-6">
+    <div class="text-center mt-6 space-x-2 space-y-2">
       <button class="btn btn-primary" onclick="saveCurrentReport()">💾 이 리포트 저장 (비교용)</button>
-      <button class="btn btn-secondary" onclick="downloadHtmlReport()">📄 HTML 다운로드</button>
+      <button class="btn btn-primary" onclick="downloadOfflineReport()" style="background: #4ade80; color: #0a0b0d;">📦 오프라인 패키지 다운로드 (선수 전송용)</button>
+      <button class="btn btn-secondary" onclick="downloadHtmlReport()">📄 HTML 다운로드 (가벼움·인터넷 필요)</button>
       <button class="btn btn-secondary" onclick="window.print()">🖨 인쇄/PDF</button>
     </div>`;
 
@@ -2931,11 +3427,11 @@ function renderH1H2Comparison() {
   const r1 = SAVED_REPORTS.find(r => r.id === r1Id);
   const r2 = SAVED_REPORTS.find(r => r.id === r2Id);
   if (!r1 || !r2) return;
-  document.getElementById('h1h2-result').innerHTML = renderComparisonHtml(r1, r2, ['1차', '2차'], 'h1h2');
-  setTimeout(() => renderComparisonRadars('h1h2', r1, r2, ['1차', '2차']), 30);
+  document.getElementById('h1h2-result').innerHTML = renderComparisonHtml([r1, r2], ['1차', '2차'], 'h1h2');
+  setTimeout(() => renderComparisonRadars('h1h2', [r1, r2], ['1차', '2차']), 30);
 }
 
-// ── 선수간 비교 뷰 ──
+// ── 선수간 비교 뷰 (최대 4명) ──
 function renderVsView() {
   const container = document.getElementById('vs-content');
   if (SAVED_REPORTS.length < 2) {
@@ -2945,80 +3441,101 @@ function renderVsView() {
   const opts = SAVED_REPORTS.map(r =>
     `<option value="${r.id}">${r.name}${r.date ? ' · ' + r.date : ''}</option>`
   ).join('');
+  const empty = '<option value="">— 선택 안 함 —</option>';
   container.innerHTML = `
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
       <div>
-        <label class="text-xs text-[var(--text-muted)] block mb-1">선수 A</label>
+        <label class="text-xs text-[var(--text-muted)] block mb-1" style="color:#60a5fa">선수 A</label>
         <select id="vs-a" class="input-field" onchange="renderVsComparison()">${opts}</select>
       </div>
       <div>
-        <label class="text-xs text-[var(--text-muted)] block mb-1">선수 B</label>
+        <label class="text-xs text-[var(--text-muted)] block mb-1" style="color:#ff6b35">선수 B</label>
         <select id="vs-b" class="input-field" onchange="renderVsComparison()">${opts}</select>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1" style="color:#4ade80">선수 C (선택)</label>
+        <select id="vs-c" class="input-field" onchange="renderVsComparison()">${empty}${opts}</select>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1" style="color:#c084fc">선수 D (선택)</label>
+        <select id="vs-d" class="input-field" onchange="renderVsComparison()">${empty}${opts}</select>
       </div>
     </div>
     <div id="vs-result"></div>
     ${_savedReportsListHtml()}
   `;
-  // 기본: 첫 번째 / 두 번째
-  if (SAVED_REPORTS.length >= 2) {
-    document.getElementById('vs-a').value = SAVED_REPORTS[0].id;
-    document.getElementById('vs-b').value = SAVED_REPORTS[1].id;
-  }
+  // 기본: 처음 N개
+  if (SAVED_REPORTS.length >= 1) document.getElementById('vs-a').value = SAVED_REPORTS[0].id;
+  if (SAVED_REPORTS.length >= 2) document.getElementById('vs-b').value = SAVED_REPORTS[1].id;
+  if (SAVED_REPORTS.length >= 3) document.getElementById('vs-c').value = SAVED_REPORTS[2].id;
+  if (SAVED_REPORTS.length >= 4) document.getElementById('vs-d').value = SAVED_REPORTS[3].id;
   renderVsComparison();
 }
+
 function renderVsComparison() {
-  const aId = document.getElementById('vs-a')?.value;
-  const bId = document.getElementById('vs-b')?.value;
-  const a = SAVED_REPORTS.find(r => r.id === aId);
-  const b = SAVED_REPORTS.find(r => r.id === bId);
-  if (!a || !b) return;
-  document.getElementById('vs-result').innerHTML = renderComparisonHtml(a, b, [a.name, b.name], 'vs');
-  setTimeout(() => renderComparisonRadars('vs', a, b, [a.name, b.name]), 30);
+  const ids = ['vs-a', 'vs-b', 'vs-c', 'vs-d']
+    .map(id => document.getElementById(id)?.value)
+    .filter(v => v);
+  const reports = ids.map(id => SAVED_REPORTS.find(r => r.id === id)).filter(r => r);
+  if (reports.length < 2) return;
+  const labels = reports.map(r => r.name);
+  document.getElementById('vs-result').innerHTML = renderComparisonHtml(reports, labels, 'vs');
+  setTimeout(() => renderComparisonRadars('vs', reports, labels), 30);
 }
 
-// ── 공통 비교 렌더 ──
-function renderComparisonHtml(rA, rB, labels, prefix) {
-  const sA = rA.scores, sB = rB.scores;
-  const fmt = (v) => v != null ? Number(v).toFixed(1) : '—';
-  const delta = (a, b) => {
-    if (a == null || b == null) return null;
-    return Math.round((b - a) * 10) / 10;
-  };
-  const deltaCell = (d) => {
-    if (d == null) return '<span class="delta-neu">—</span>';
-    if (Math.abs(d) < 0.5) return `<span class="delta-neu mono">±0</span>`;
-    const cls = d > 0 ? 'delta-pos' : 'delta-neg';
-    const sign = d > 0 ? '+' : '';
-    return `<span class="${cls} mono">${sign}${d.toFixed(1)}</span>`;
-  };
+// ── 공통 비교 렌더 (N명, 2~4명) ──
+const _CMP_COLORS = ['#60a5fa', '#ff6b35', '#4ade80', '#c084fc'];
 
-  // 헤더 카드 두 개 + Δ
+function renderComparisonHtml(reports, labels, prefix) {
+  const N = reports.length;
+  const fmt = (v) => v != null ? Number(v).toFixed(1) : '—';
+
+  // 헤더 N개 카드
+  const headerCols = N <= 2 ? 'md:grid-cols-2' : (N === 3 ? 'md:grid-cols-3' : 'md:grid-cols-4');
   const header = `
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      ${[[rA, labels[0]], [rB, labels[1]]].map(([r, lab], i) => `
-        <div class="card p-4" style="border: 2px solid ${i===0 ? 'var(--fitness)' : 'var(--accent)'};">
-          <div class="mono text-[10px] text-[var(--text-muted)]">${lab}</div>
-          <div class="display text-xl mt-1">${r.name}</div>
-          <div class="text-xs text-[var(--text-muted)] mt-1">${r.age || '—'} · ${r.date || '날짜 없음'}</div>
-          <div class="grid grid-cols-4 gap-2 mt-3">
-            <div><div class="text-[10px] text-[var(--text-muted)]">측정</div><div class="mono text-sm font-bold">${r.measuredVelo != null ? r.measuredVelo.toFixed(1) : '—'}</div></div>
-            <div><div class="text-[10px] text-[var(--text-muted)]">체력</div><div class="mono text-sm font-bold" style="color:${scoreColor(r.scores.Fitness_Score)}">${r.scores.Fitness_Score ?? '—'}</div></div>
-            <div><div class="text-[10px] text-[var(--text-muted)]">메카닉</div><div class="mono text-sm font-bold" style="color:${scoreColor(r.scores.Mechanics_Score)}">${r.scores.Mechanics_Score ?? '—'}</div></div>
-            <div><div class="text-[10px] text-[var(--text-muted)]">제구</div><div class="mono text-sm font-bold" style="color:${scoreColor(r.scores.Control_Score)}">${r.scores.Control_Score ?? '—'}</div></div>
+    <div class="grid grid-cols-1 ${headerCols} gap-3 mb-4">
+      ${reports.map((r, i) => `
+        <div class="card p-3" style="border: 2px solid ${_CMP_COLORS[i]};">
+          <div class="mono text-[10px] text-[var(--text-muted)]">${labels[i]}</div>
+          <div class="display text-base mt-1" style="color: ${_CMP_COLORS[i]}">${r.name}</div>
+          <div class="text-[10px] text-[var(--text-muted)] mt-1">${r.age || '—'} · ${r.date || '날짜 없음'}</div>
+          <div class="grid grid-cols-4 gap-1 mt-2 text-center">
+            <div><div class="text-[9px] text-[var(--text-muted)]">측정</div><div class="mono text-xs font-bold">${r.measuredVelo != null ? r.measuredVelo.toFixed(1) : '—'}</div></div>
+            <div><div class="text-[9px] text-[var(--text-muted)]">체력</div><div class="mono text-xs font-bold" style="color:${scoreColor(r.scores.Fitness_Score)}">${r.scores.Fitness_Score ?? '—'}</div></div>
+            <div><div class="text-[9px] text-[var(--text-muted)]">메카닉</div><div class="mono text-xs font-bold" style="color:${scoreColor(r.scores.Mechanics_Score)}">${r.scores.Mechanics_Score ?? '—'}</div></div>
+            <div><div class="text-[9px] text-[var(--text-muted)]">제구</div><div class="mono text-xs font-bold" style="color:${scoreColor(r.scores.Control_Score)}">${r.scores.Control_Score ?? '—'}</div></div>
           </div>
         </div>`).join('')}
-    </div>
-    <!-- 종합 Δ 한 줄 -->
-    <div class="card p-3 mb-6 mono text-xs flex flex-wrap gap-x-6 gap-y-1 justify-center">
-      <span>측정구속 Δ: ${deltaCell(delta(rA.measuredVelo, rB.measuredVelo))} km/h</span>
-      <span>체력 Δ: ${deltaCell(delta(sA.Fitness_Score, sB.Fitness_Score))}</span>
-      <span>메카닉 Δ: ${deltaCell(delta(sA.Mechanics_Score, sB.Mechanics_Score))}</span>
-      <span>제구 Δ: ${deltaCell(delta(sA.Control_Score, sB.Control_Score))}</span>
-      <span>잠재 구속 Δ: ${deltaCell(delta(sA.ceiling, sB.ceiling))} km/h</span>
-    </div>
-  `;
+    </div>`;
 
-  // 3개 영역 레이더 (overlay)
+  // 종합 메트릭 한 줄 — N=2면 Δ, N>=3이면 max-min range + leader
+  const summaryRow = (() => {
+    const metrics = [
+      { name: '측정구속', vals: reports.map(r => r.measuredVelo), unit: 'km/h' },
+      { name: '체력',     vals: reports.map(r => r.scores.Fitness_Score) },
+      { name: '메카닉',   vals: reports.map(r => r.scores.Mechanics_Score) },
+      { name: '제구',     vals: reports.map(r => r.scores.Control_Score) },
+      { name: '잠재 구속', vals: reports.map(r => r.scores.ceiling), unit: 'km/h' },
+    ];
+    const cells = metrics.map(m => {
+      const valid = m.vals.filter(v => v != null);
+      if (valid.length < 2) return `<span>${m.name}: —</span>`;
+      if (N === 2) {
+        const d = (valid[1] - valid[0]);
+        const cls = Math.abs(d) < 0.5 ? 'delta-neu' : (d > 0 ? 'delta-pos' : 'delta-neg');
+        const sign = d > 0 ? '+' : '';
+        return `<span>${m.name} Δ: <span class="${cls} mono">${sign}${d.toFixed(1)}</span> ${m.unit||''}</span>`;
+      }
+      // N >= 3 — Range + leader
+      const minV = Math.min(...valid), maxV = Math.max(...valid);
+      const leaderIdx = m.vals.indexOf(maxV);
+      const leaderName = leaderIdx >= 0 ? labels[leaderIdx] : '';
+      return `<span>${m.name}: <span class="mono delta-pos">${maxV.toFixed(1)}</span><span class="text-[var(--text-muted)]"> (${leaderName})</span> · 차 <span class="mono">${(maxV-minV).toFixed(1)}</span> ${m.unit||''}</span>`;
+    });
+    return `<div class="card p-3 mb-6 mono text-xs flex flex-wrap gap-x-5 gap-y-1 justify-center">${cells.join('')}</div>`;
+  })();
+
+  // 3개 영역 레이더 (N개 dataset overlay)
   const radarSection = `
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       ${['fitness', 'mechanics', 'control'].map(area => {
@@ -3026,78 +3543,83 @@ function renderComparisonHtml(rA, rB, labels, prefix) {
         const colorMap = { fitness: 'var(--fitness)', mechanics: 'var(--accent)', control: 'var(--control)' };
         return `<div class="card p-4">
           <div class="display text-base mb-3" style="color:${colorMap[area]}">${labelMap[area]}</div>
-          <div class="relative" style="height:220px;"><canvas id="${prefix}-radar-${area}"></canvas></div>
+          <div class="relative" style="height:280px;"><canvas id="${prefix}-radar-${area}"></canvas></div>
         </div>`;
       }).join('')}
     </div>`;
 
-  // 카테고리별 비교 표
+  // 카테고리별 비교 표 — N개 칼럼 + Range
   const allAreas = [
     { name: '체력', cats: COHORT.fitness_cats },
     { name: '메카닉', cats: COHORT.mechanics_cats },
     { name: '제구', cats: COHORT.control_cats },
   ];
+  const truncateLabel = (s) => s.length > 10 ? s.slice(0, 10) + '…' : s;
   const tableHtml = `
     <div class="card p-4 mb-6">
       <div class="display text-base mb-3">📊 카테고리별 점수 비교</div>
       <table class="cmp-table">
         <thead><tr>
           <th>영역</th><th>카테고리</th>
-          <th class="text-right">${labels[0]}</th>
-          <th class="text-right">${labels[1]}</th>
-          <th class="text-right">Δ (B−A)</th>
+          ${reports.map((_, i) => `<th class="text-right" style="color:${_CMP_COLORS[i]}">${truncateLabel(labels[i])}</th>`).join('')}
+          ${N >= 3 ? '<th class="text-right">Range</th>' : '<th class="text-right">Δ (B−A)</th>'}
         </tr></thead>
         <tbody>
           ${allAreas.flatMap(area => area.cats.map(catId => {
             const meta = CATEGORY_DETAILS[catId] || {};
-            const a = sA.cat_scores?.[catId];
-            const b = sB.cat_scores?.[catId];
-            const d = delta(a, b);
+            const vals = reports.map(r => r.scores.cat_scores?.[catId]);
+            const validVals = vals.filter(v => v != null);
+            let rangeOrDelta = '—';
+            if (N === 2 && vals[0] != null && vals[1] != null) {
+              const d = vals[1] - vals[0];
+              const cls = Math.abs(d) < 0.5 ? 'delta-neu' : (d > 0 ? 'delta-pos' : 'delta-neg');
+              const sign = d > 0 ? '+' : '';
+              rangeOrDelta = `<span class="${cls} mono">${sign}${d.toFixed(1)}</span>`;
+            } else if (validVals.length >= 2) {
+              rangeOrDelta = `<span class="mono">${(Math.max(...validVals) - Math.min(...validVals)).toFixed(1)}</span>`;
+            }
+            const valCells = vals.map(v => `<td class="cmp-num" style="color:${scoreColor(v)}">${fmt(v)}</td>`).join('');
             return `<tr>
               <td class="text-[var(--text-muted)] text-xs">${area.name}</td>
               <td>${meta.name || catId}</td>
-              <td class="cmp-num" style="color:${scoreColor(a)}">${fmt(a)}</td>
-              <td class="cmp-num" style="color:${scoreColor(b)}">${fmt(b)}</td>
-              <td class="cmp-num">${deltaCell(d)}</td>
+              ${valCells}
+              <td class="cmp-num">${rangeOrDelta}</td>
             </tr>`;
           })).join('')}
         </tbody>
       </table>
     </div>`;
 
-  return header + radarSection + tableHtml;
+  return header + summaryRow + radarSection + tableHtml;
 }
 
-// 비교용 레이더 — 한 차트에 두 dataset (선수 A vs 선수 B)
-function renderComparisonRadars(prefix, rA, rB, labels) {
+// 비교용 레이더 — 한 차트에 N개 dataset overlay (최대 4명)
+function renderComparisonRadars(prefix, reports, labels) {
   if (typeof Chart === 'undefined') return;
   const sets = [
-    { area: 'fitness',   cats: COHORT.fitness_cats,   color: '#60a5fa' },
-    { area: 'mechanics', cats: COHORT.mechanics_cats, color: '#ff6b35' },
-    { area: 'control',   cats: COHORT.control_cats,   color: '#c084fc' },
+    { area: 'fitness',   cats: COHORT.fitness_cats },
+    { area: 'mechanics', cats: COHORT.mechanics_cats },
+    { area: 'control',   cats: COHORT.control_cats },
   ];
   for (const s of sets) {
     const canvas = document.getElementById(`${prefix}-radar-${s.area}`);
     if (!canvas) continue;
     const labelsTxt = s.cats.map(c => CATEGORY_DETAILS[c]?.name || c);
-    const aVals = s.cats.map(c => rA.scores.cat_scores?.[c] != null ? Math.round(rA.scores.cat_scores[c]) : 0);
-    const bVals = s.cats.map(c => rB.scores.cat_scores?.[c] != null ? Math.round(rB.scores.cat_scores[c]) : 0);
+    const datasets = reports.map((r, i) => ({
+      label: labels[i],
+      data: s.cats.map(c => r.scores.cat_scores?.[c] != null ? Math.round(r.scores.cat_scores[c]) : 0),
+      backgroundColor: _CMP_COLORS[i] + '20',
+      borderColor: _CMP_COLORS[i],
+      borderWidth: 2,
+      pointRadius: 3,
+      pointBackgroundColor: _CMP_COLORS[i],
+    }));
     if (_RADAR_INSTANCES[`${prefix}-${s.area}`]) {
       try { _RADAR_INSTANCES[`${prefix}-${s.area}`].destroy(); } catch(e) {}
     }
     _RADAR_INSTANCES[`${prefix}-${s.area}`] = new Chart(canvas, {
       type: 'radar',
-      data: {
-        labels: labelsTxt,
-        datasets: [
-          { label: labels[0], data: aVals,
-            backgroundColor: s.color + '22', borderColor: s.color, borderWidth: 2,
-            pointRadius: 3, pointBackgroundColor: s.color },
-          { label: labels[1], data: bVals,
-            backgroundColor: '#ffffff15', borderColor: '#e8e9ec', borderWidth: 2,
-            borderDash: [4, 3], pointRadius: 3, pointBackgroundColor: '#e8e9ec' },
-        ],
-      },
+      data: { labels: labelsTxt, datasets },
       options: {
         responsive: true, maintainAspectRatio: false,
         scales: { r: { min: 0, max: 100,
@@ -3105,9 +3627,183 @@ function renderComparisonRadars(prefix, rA, rB, labels) {
           grid: { color: 'rgba(95,99,107,0.2)' },
           angleLines: { color: 'rgba(95,99,107,0.3)' },
           pointLabels: { color: '#b3b5b9', font: { size: 11 } } } },
-        plugins: { legend: { display: true, position: 'bottom', labels: { color: '#b3b5b9', font: { size: 11 } } } }
+        plugins: { legend: { display: true, position: 'bottom', labels: { color: '#b3b5b9', font: { size: 10 }, boxWidth: 12, padding: 8 } } }
       }
     });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 오프라인 패키지 다운로드 — 모든 자료(영상·이미지·라이브러리)를 base64로 인라인
+// 인터넷 없이 브라우저에서 그대로 작동 (메카닉 토글·아코디언·차트 모두)
+// ════════════════════════════════════════════════════════════════════
+function _urlToDataUrl(url) {
+  return fetch(url).then(r => {
+    if (!r.ok) throw new Error('fetch 실패: ' + url + ' (' + r.status + ')');
+    return r.blob();
+  }).then(blob => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  }));
+}
+
+async function downloadOfflineReport() {
+  if (!CURRENT_REPORT_RESULT) {
+    alert('먼저 리포트를 생성해주세요.');
+    return;
+  }
+
+  // 진행 안내 박스
+  const progress = document.createElement('div');
+  progress.id = '_offline_progress';
+  progress.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#141518; padding:24px 32px; border:2px solid var(--accent); border-radius:8px; z-index:99999; color:#e8e9ec; font-size:14px; box-shadow:0 20px 60px rgba(0,0,0,0.6); min-width:340px; text-align:center;';
+  progress.innerHTML = '📦 오프라인 패키지 만드는 중...';
+  document.body.appendChild(progress);
+
+  try {
+    // 1) Chart.js 라이브러리
+    progress.innerHTML = '📦 (1/4) Chart.js 라이브러리 다운로드 중...';
+    const chartJsSrc = await fetch('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js').then(r => r.text());
+
+    // 2) max-layback.png
+    progress.innerHTML = '📦 (2/4) 시각화 이미지 인코딩 중...';
+    const maxLaybackUrl = 'https://raw.githubusercontent.com/kkl0511/BBL_Pitching_Report1/main/assets/max-layback.png';
+    let maxLaybackB64 = null;
+    try { maxLaybackB64 = await _urlToDataUrl(maxLaybackUrl); }
+    catch (e) { console.warn('max-layback 인라인 실패:', e); }
+
+    // 3) 현재 로드된 영상 (파일 또는 URL) → base64
+    progress.innerHTML = '📦 (3/4) 영상 인코딩 중... (영상 크기에 따라 10~60초 소요)';
+    const videoEl = document.getElementById('coach-video');
+    let videoOriginalSrc = null;
+    let videoB64 = null;
+    if (videoEl && videoEl.src && !videoEl.src.startsWith('about:') && videoEl.src !== window.location.href) {
+      videoOriginalSrc = videoEl.src;
+      try { videoB64 = await _urlToDataUrl(videoOriginalSrc); }
+      catch (e) {
+        console.warn('영상 인라인 실패:', e);
+        progress.innerHTML += '<br><small style="color:#fbbf24">⚠️ 영상 인라인 실패 — 영상 없이 진행</small>';
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+
+    // 4) HTML 패키지 조립
+    progress.innerHTML = '📦 (4/4) HTML 패키지 조립 중...';
+
+    // 모든 inline <style> 텍스트 + Tailwind 컴파일된 styleSheet 모두 수집
+    let allStyles = '';
+    Array.from(document.querySelectorAll('style')).forEach(s => { allStyles += s.textContent + '\n'; });
+    // Tailwind CDN이 동적으로 추가하는 styleSheet (style 태그가 아니라면)
+    Array.from(document.styleSheets).forEach(sheet => {
+      try {
+        for (const rule of sheet.cssRules) allStyles += rule.cssText + '\n';
+      } catch (e) { /* CORS skip */ }
+    });
+
+    // 리포트 영역 HTML
+    let reportHtml = document.getElementById('report-area').innerHTML;
+
+    // 외부 URL → base64 치환
+    if (maxLaybackB64) reportHtml = reportHtml.split(maxLaybackUrl).join(maxLaybackB64);
+    if (videoB64 && videoOriginalSrc) reportHtml = reportHtml.split(videoOriginalSrc).join(videoB64);
+
+    // 다운로드 시점의 메카닉 모드 데이터 캐시
+    const radarDataFinal = (window.__BBL_RADAR_DATA__ || []).map(d => {
+      if (d && d.isMechanics && MECH_VIEW_MODE === '5') {
+        return { ...d, labels: d.drivelineLabels, values: d.drivelineValues };
+      }
+      return d;
+    });
+
+    // 인라인 함수들 (오프라인에서 메카닉 토글·아코디언·차트 작동 위함)
+    // COHORT는 무거우니 필요 부분만 슬림화
+    const slimCohort = {
+      mechanics_cats: COHORT.mechanics_cats,
+      fitness_cats:   COHORT.fitness_cats,
+      control_cats:   COHORT.control_cats,
+      category_meta:  COHORT.category_meta,
+      category_vars:  COHORT.category_vars,
+      var_distributions: Object.fromEntries(Object.keys(COHORT.var_distributions).map(k => [k, true])),
+    };
+
+    const inlineFns = [
+      scoreColor, scoreToWord,
+      drivelineFiveCatScores,
+      renderCategoryAccordion,
+      renderDrivelineCategoryAccordion,
+      renderMechCardInner,
+      setMechMode,
+      setVideoSpeed, videoFrameStep, videoTogglePlay, loadVideoLocal, loadVideoSample,
+      renderRadarCharts,
+    ].map(fn => fn.toString()).join('\n\n');
+
+    // JSON 안에 닫는 script 태그가 있으면 파싱 깨지므로 < 를 모두 < 로 escape
+    const safeJson = (obj) => JSON.stringify(obj).replace(/</g, '\\u003c');
+
+    const inlineDataAndInit = `
+const COHORT = ${safeJson(slimCohort)};
+const CATEGORY_DETAILS = ${safeJson(CATEGORY_DETAILS)};
+const DRIVELINE_5_ORDER = ${safeJson(DRIVELINE_5_ORDER)};
+const DRIVELINE_5_LABELS_KO = ${safeJson(DRIVELINE_5_LABELS_KO)};
+const DRIVELINE_5_CATS = ${safeJson(DRIVELINE_5_CATS)};
+const DRIVELINE_5_DETAILS = ${safeJson(DRIVELINE_5_DETAILS)};
+const CURRENT_INPUT = ${safeJson(CURRENT_INPUT)};
+const CURRENT_REPORT_RESULT = ${safeJson(CURRENT_REPORT_RESULT)};
+let MECH_VIEW_MODE = '${MECH_VIEW_MODE}';
+const COACH_VIDEO_FPS = 30;
+const _RADAR_INSTANCES = {};
+window.__BBL_RADAR_DATA__ = ${safeJson(radarDataFinal)};
+`;
+
+    const playerName = document.getElementById('player-name').value || '신규 선수';
+    const playerDate = document.getElementById('player-date').value || '';
+    const playerVelo = document.getElementById('player-velo').value || '';
+
+    // 안전한 inline (closing script 처리)
+    const safeChartJs = chartJsSrc.replace(/<\/script>/gi, '<\\/script>');
+
+    const fullHtml = '<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'
+      + '<title>BBL Report — ' + playerName + '</title>'
+      + '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+      + '<meta name="robots" content="noindex, nofollow">'
+      + '<style>' + allStyles + '</style>'
+      + '<script>' + safeChartJs + '<\/script>'
+      + '</head>'
+      + '<body class="min-h-screen" style="background:#0a0b0d; color:#e8e9ec; font-family: \'Inter\', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;">'
+      + '<div class="max-w-7xl mx-auto px-6 py-8">'
+      + '<header class="border-b border-[#2a2c31] mb-6 pb-4">'
+      +   '<div class="display text-2xl">📋 BBL 피칭 리포트 — ' + playerName + '</div>'
+      +   '<div class="text-xs text-[var(--text-muted)] mt-1 mono">오프라인 패키지 · ' + playerDate + (playerVelo ? ' · 측정 ' + playerVelo + ' km/h' : '') + ' · 생성 ' + new Date().toLocaleString('ko-KR') + '</div>'
+      +   '<div class="text-xs text-[var(--text-muted)] mt-1">인터넷 없이 작동 — 영상·시각화·메카닉 토글·아코디언 모두 사용 가능</div>'
+      + '</header>'
+      + reportHtml
+      + '</div>'
+      + '<script>' + inlineDataAndInit + inlineFns
+      + '\nwindow.addEventListener("DOMContentLoaded", function(){ setTimeout(renderRadarCharts, 100); });'
+      + '<\/script>'
+      + '</body></html>';
+
+    document.body.removeChild(progress);
+
+    const blob = new Blob([fullHtml], {type: 'text/html;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = playerName.replace(/[^\w가-힣]/g, '_') + '_offline.html';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    const sizeMb = (blob.size / 1024 / 1024).toFixed(1);
+    alert('✅ 오프라인 패키지 다운로드 완료!\n\n파일 크기: ' + sizeMb + ' MB\n파일명: ' + a.download
+      + '\n\nUSB·이메일·메신저로 선수에게 보내면 인터넷 없이 브라우저에서 그대로 볼 수 있습니다.\n(영상·시각화·메카닉 토글·아코디언·레이더 차트 모두 작동)');
+
+  } catch (err) {
+    if (document.body.contains(progress)) document.body.removeChild(progress);
+    console.error('오프라인 패키지 생성 오류:', err);
+    alert('❌ 오프라인 패키지 생성 실패\n\n' + (err.message || err)
+      + '\n\n원인: 네트워크 연결 또는 CORS 정책 문제일 수 있습니다.\n브라우저 개발자 콘솔(F12)에서 자세한 내용 확인.');
   }
 }
 
