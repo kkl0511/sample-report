@@ -2977,15 +2977,26 @@ function calculateScores(input, age, measuredVelo) {
   const maxGain  = AGE_MAX_GAIN[age]      || 10;
   const eliteCap = AGE_ELITE_CEILING[age] || 155;
 
-  // 단일 시나리오 ceiling 계산
-  function _computeCeiling(measured, fitGap, mechGap) {
+  // 학습 곡선 — 현재 점수가 낮을수록 발달 효율 ↓ (가파른 페널티 sigma=1.5)
+  // 30점 → 0.16 (매우 어려움), 50점 → 0.35, 75점 → 0.65, 100점 → 1.0
+  // 0.15 minimum (미발달 선수도 약간의 잠재력은 보장)
+  const _devMult = (currentScore) => {
+    const s = Math.max(0, Math.min(100, currentScore || 0)) / 100;
+    return Math.max(0.15, Math.pow(s, 1.5));
+  };
+
+  // 단일 시나리오 ceiling 계산 — fit/mech 현재 점수도 인자로
+  function _computeCeiling(measured, fitGap, mechGap, fitCurrent, mechCurrent) {
     if (measured == null) return { theoretical: null, ceiling: null };
-    const personal = measured + fr.slope * fitGap + mr.slope * mechGap;
+    // 학습 곡선 페널티: 현재 점수가 낮으면 발달폭이 작아짐
+    const fitGain  = fr.slope * fitGap  * _devMult(fitCurrent);
+    const mechGain = mr.slope * mechGap * _devMult(mechCurrent);
+    const personal = measured + fitGain + mechGain;
     const absolute = mr.slope * 100 + mr.intercept + adj.velo_offset;
     let theoretical = (personal * 2 + absolute) / 3;
     let c = Math.min(theoretical, measured + maxGain);
     c = Math.min(c, eliteCap);
-    c = Math.max(c, measured);  // 최소 측정값 (유지)
+    c = Math.max(c, measured);
     return { theoretical: Math.round(theoretical * 10) / 10, ceiling: Math.round(c * 10) / 10 };
   }
 
@@ -2995,12 +3006,12 @@ function calculateScores(input, age, measuredVelo) {
   if (measuredVelo != null && fitRaw != null && mechRaw != null) {
     const fitGap  = Math.max(0, 100 - fitRaw);
     const mechGap = Math.max(0, 100 - mechRaw);
-    // 시나리오 1: 체력만 100점 — 메카닉은 현재
-    const cF = _computeCeiling(measuredVelo, fitGap, 0);
-    // 시나리오 2: 메카닉만 100점 — 체력은 현재
-    const cM = _computeCeiling(measuredVelo, 0, mechGap);
-    // 시나리오 3: 체력 + 메카닉 둘 다 100점
-    const cFM = _computeCeiling(measuredVelo, fitGap, mechGap);
+    // F100: 체력만 100점 — 메카닉 발달 없음
+    const cF  = _computeCeiling(measuredVelo, fitGap, 0,       fitRaw, mechRaw);
+    // M100: 메카닉만 100점 — 체력 발달 없음
+    const cM  = _computeCeiling(measuredVelo, 0,      mechGap, fitRaw, mechRaw);
+    // FM100: 둘 다 100점 발달
+    const cFM = _computeCeiling(measuredVelo, fitGap, mechGap, fitRaw, mechRaw);
     ceiling_F100 = cF.ceiling;
     ceiling_M100 = cM.ceiling;
     ceiling_FM100 = cFM.ceiling;
@@ -3008,13 +3019,12 @@ function calculateScores(input, age, measuredVelo) {
     theoreticalCeiling = cFM.theoretical;
   } else if (measuredVelo != null && mechRaw != null) {
     const mechGap = Math.max(0, 100 - mechRaw);
-    const cM = _computeCeiling(measuredVelo, 0, mechGap);
+    const cM = _computeCeiling(measuredVelo, 0, mechGap, 0, mechRaw);
     ceiling_M100 = cM.ceiling;
-    ceiling_FM100 = cM.ceiling;  // F 모르니 M100 == FM100
+    ceiling_FM100 = cM.ceiling;
     ceiling = cM.ceiling;
     theoreticalCeiling = cM.theoretical;
   } else if (mechRaw != null) {
-    // 측정 미입력 — 절대 회귀
     theoreticalCeiling = mr.slope * 100 + mr.intercept + adj.velo_offset;
     ceiling = Math.min(theoreticalCeiling, eliteCap);
     if (ceiling != null) ceiling = Math.round(ceiling * 10) / 10;
@@ -3279,37 +3289,91 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
       </div>`;
   }).join('');
   
-  // 종합 평가 텍스트
+  // ── 종합 평가 텍스트 — 점수 분포 + 잠재구속 시나리오 + 우선순위 ──
+  // 점수 분포 카운트
+  const allCatScores = allCats.filter(c => c.score != null);
+  const strongCount = allCatScores.filter(c => c.score >= 70).length;
+  const midCount    = allCatScores.filter(c => c.score >= 50 && c.score < 70).length;
+  const weakCount   = allCatScores.filter(c => c.score < 50).length;
+
+  // 잠재구속 시나리오 분석 — F100 vs M100
+  let scenarioAnalysis = '';
+  if (r.ceiling_F100 != null && r.ceiling_M100 != null && measuredVelo != null) {
+    const fGain = r.ceiling_F100 - measuredVelo;
+    const mGain = r.ceiling_M100 - measuredVelo;
+    const totalGain = (r.ceiling_FM100 != null ? r.ceiling_FM100 : r.ceiling) - measuredVelo;
+    let priority;
+    if (mGain > fGain * 1.3) {
+      priority = `<strong style="color: var(--accent)">메카닉 발달이 가장 효과적</strong> (메카닉만 100점 → +${mGain.toFixed(1)} km/h vs 체력만 → +${fGain.toFixed(1)} km/h)`;
+    } else if (fGain > mGain * 1.3) {
+      priority = `<strong style="color: var(--fitness)">체력 발달이 가장 효과적</strong> (체력만 100점 → +${fGain.toFixed(1)} km/h vs 메카닉만 → +${mGain.toFixed(1)} km/h)`;
+    } else {
+      priority = `<strong>체력·메카닉 균형 발달 권장</strong> (체력 +${fGain.toFixed(1)}, 메카닉 +${mGain.toFixed(1)} km/h 비슷)`;
+    }
+    scenarioAnalysis = `<p class="text-sm leading-relaxed mb-3">
+      💡 <strong>잠재 구속 분석</strong> — 둘 다 100점 발달 시 <strong>${(r.ceiling_FM100 || r.ceiling).toFixed(1)} km/h</strong> 도달 (현재 +${totalGain.toFixed(1)} km/h). ${priority}.
+    </p>`;
+  }
+
+  // 다음 단계 우선순위 — 메카닉/제구 통합 가장 낮은 2~3개
+  const topPriorities = [...COHORT.mechanics_cats, ...COHORT.control_cats]
+    .map(c => ({ id: c, score: r.cat_scores[c] }))
+    .filter(c => c.score != null)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 3);
+  const priorityHtml = topPriorities.length > 0 ? `
+    <div class="mt-4">
+      <div class="text-sm font-bold mb-2">🎯 다음 단계 우선순위 (가장 낮은 영역부터)</div>
+      ${topPriorities.map((c, i) => {
+        const meta = COHORT.category_meta[c.id] || {};
+        const cd = CATEGORY_DETAILS[c.id] || {};
+        const coaching = cd.coaching || meta.coaching || meta.short_desc || '';
+        return `<div class="text-sm leading-relaxed mb-2 pl-3 border-l-2" style="border-color: ${scoreColor(c.score)}">
+          <strong>${i+1}. ${meta.name}</strong> <span class="mono text-xs text-[var(--text-muted)]">${Math.round(c.score)}점</span>${coaching ? ` — ${coaching}` : ''}
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  // 점수 분포 한 줄
+  const distLine = `<p class="text-sm leading-relaxed mb-3">
+    📊 <strong>카테고리 점수 분포</strong>:
+    <span class="text-[var(--good)]">우수 (70+) ${strongCount}개</span>,
+    <span class="text-[var(--text-secondary)]">평균 (50~69) ${midCount}개</span>,
+    <span class="text-[var(--bad)]">보강 필요 (~50) ${weakCount}개</span>
+  </p>`;
+
   const summary = `
     <div class="card p-6 mt-6" style="background: linear-gradient(135deg, rgba(255,107,53,0.03) 0%, rgba(96,165,250,0.03) 100%); border: 1px solid rgba(255,107,53,0.15);">
       <div class="display text-xl mb-4">📋 종합 평가 (선수·코치용 해설)</div>
-      
+
       <p class="text-sm leading-relaxed mb-3">
-        <strong>${name}</strong> 선수는 <strong>${r.age}</strong> 기준으로 평가되었습니다.
-        ${measuredVelo != null ? `현재 측정 구속은 <strong>${measuredVelo.toFixed(1)} km/h</strong>이며, ` : ''}
+        <strong>${name}</strong> 선수는 <strong>${r.age}</strong> 기준 평가입니다.
+        ${measuredVelo != null ? `현재 측정 구속 <strong>${measuredVelo.toFixed(1)} km/h</strong>이며, ` : ''}
         체력 종합 <strong>${r.Fitness_Score ?? '—'}점</strong> · 메카닉 종합 <strong>${r.Mechanics_Score ?? '—'}점</strong> · 제구 종합 <strong>${r.Control_Score ?? '—'}점</strong>입니다.
       </p>
-      
+
+      ${distLine}
       ${utilLine}
-      
+      ${scenarioAnalysis}
+
       ${r.ceiling != null && measuredVelo == null ? `<p class="text-sm leading-relaxed mb-3">
         메카닉 점수를 100점까지 끌어올리면 <strong>${r.ceiling.toFixed(1)} km/h</strong>까지 도달 가능합니다 <span class="text-xs text-[var(--text-muted)]">(코호트 절대 회귀 기준 — 측정 구속 입력 시 더 정확)</span>.
       </p>` : ''}
-      
+
       ${strengths.length ? `
       <div class="mt-4">
-        <div class="text-sm font-bold mb-2">✅ 이 선수의 강점</div>
+        <div class="text-sm font-bold mb-2">✅ 이 선수의 강점 (70점 이상)</div>
         <ul class="list-none pl-0 space-y-1">
           ${strengths.map(s => {
             const meta = COHORT.category_meta[s.id] || {};
             return `<li class="text-sm"><span class="text-[var(--good)]">●</span> <strong>${meta.name}</strong> (${s.area} ${Math.round(s.score)}점) — ${meta.short_desc || ''}</li>`;
           }).join('')}
         </ul>
-      </div>` : ''}
-      
+      </div>` : `<div class="mt-4 text-sm text-[var(--text-muted)] italic">⚠ 70점 이상 강점 카테고리 없음 — 전반적 발달이 우선 필요</div>`}
+
       ${weaknesses.length ? `
       <div class="mt-4">
-        <div class="text-sm font-bold mb-2">⚠️ 보강이 필요한 영역</div>
+        <div class="text-sm font-bold mb-2">⚠️ 보강이 필요한 영역 (40점 미만)</div>
         <ul class="list-none pl-0 space-y-1">
           ${weaknesses.map(s => {
             const meta = COHORT.category_meta[s.id] || {};
@@ -3317,15 +3381,8 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
           }).join('')}
         </ul>
       </div>` : ''}
-      
-      ${lowestMech ? `
-      <div class="mt-4">
-        <div class="text-sm font-bold mb-2">🎯 다음 단계 권장</div>
-        <div class="text-sm leading-relaxed">
-          가장 낮은 메카닉 영역은 <strong>${COHORT.category_meta[lowestMech.id]?.name}</strong> (${Math.round(lowestMech.score)}점)입니다.
-          ${COHORT.category_meta[lowestMech.id]?.coaching || ''}
-        </div>
-      </div>` : ''}
+
+      ${priorityHtml}
     </div>`;
   
   // 변수별 상세는 각 카테고리 아코디언 안으로 통합됨 (v29와 동일) — 별도 영역 제거
@@ -4095,6 +4152,13 @@ async function downloadOfflineReport() {
     if (maxLaybackB64) reportHtml = reportHtml.split(maxLaybackUrl).join(maxLaybackB64);
     if (videoB64 && videoOriginalSrc) reportHtml = reportHtml.split(videoOriginalSrc).join(videoB64);
 
+    // 오프라인 패키지에는 저장·다운로드·인쇄 버튼 의미 없으니 제거
+    // 하단 다운로드 버튼 div 통째로 제거 (saveCurrentReport, downloadOfflineReport, downloadHtmlReport, window.print 모두 포함)
+    reportHtml = reportHtml.replace(
+      /<div class="text-center mt-6 space-x-2 space-y-2">[\s\S]*?<\/div>\s*$/,
+      ''
+    );
+
     // 다운로드 시점의 메카닉 모드 데이터 캐시
     const radarDataFinal = (window.__BBL_RADAR_DATA__ || []).map(d => {
       if (d && d.isMechanics && MECH_VIEW_MODE === '5') {
@@ -4138,7 +4202,8 @@ const DRIVELINE_5_DETAILS = ${safeJson(DRIVELINE_5_DETAILS)};
 const CURRENT_INPUT = ${safeJson(CURRENT_INPUT)};
 const CURRENT_REPORT_RESULT = ${safeJson(CURRENT_REPORT_RESULT)};
 let MECH_VIEW_MODE = '${MECH_VIEW_MODE}';
-const COACH_VIDEO_FPS = 30;
+const COACH_VIDEO_FPS = 240;
+const COACH_VIDEO_DEFAULT_SPEED = 0.1;
 const _RADAR_INSTANCES = {};
 window.__BBL_RADAR_DATA__ = ${safeJson(radarDataFinal)};
 `;
@@ -4167,7 +4232,24 @@ window.__BBL_RADAR_DATA__ = ${safeJson(radarDataFinal)};
       + reportHtml
       + '</div>'
       + '<script>' + inlineDataAndInit + inlineFns
-      + '\nwindow.addEventListener("DOMContentLoaded", function(){ setTimeout(renderRadarCharts, 100); });'
+      + `
+window.addEventListener("DOMContentLoaded", function(){
+  setTimeout(renderRadarCharts, 100);
+  // 영상 디폴트: 0.1배속, fps 240 (Uplift 표준)
+  const v = document.getElementById('coach-video');
+  const fpsInput = document.getElementById('coach-video-fps');
+  if (fpsInput) fpsInput.value = COACH_VIDEO_FPS;
+  if (v && v.src) {
+    const apply = function() {
+      v.playbackRate = COACH_VIDEO_DEFAULT_SPEED;
+      document.querySelectorAll('.video-speed-btn').forEach(function(b){
+        b.classList.toggle('active', parseFloat(b.dataset.rate) === COACH_VIDEO_DEFAULT_SPEED);
+      });
+    };
+    if (v.readyState >= 1) apply();
+    else v.addEventListener('loadedmetadata', apply, { once: true });
+  }
+});`
       + '<\/script>'
       + '</body></html>';
 
