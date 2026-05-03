@@ -133,6 +133,23 @@
 
 ## 변경 이력
 
+### 2026-05-03 v30.15 — Phase 2: handedness × mode 4-cell 점수제
+- **자동 모드 분류**: MaxV 기반 — 우완 ≥140 km/h / 좌완 ≥135 km/h → Elite (Mode B), 미달 → Sub-elite (Mode A)
+- **4-cell trunk_rot@FC target** (216 trial 데이터 기반):
+  - R Sub-elite: optimal -67° σ33 (gap to elite, wide tolerance)
+  - R Elite: optimal -95° σ23 (settled refinement, tight)
+  - L Sub-elite: optimal -67° σ30 (eq space, gap)
+  - L Elite: **optimal -60° σ22** (좌완 elite는 우완보다 덜 닫힘 — 운동학적 천장 차이)
+- **4-cell hip_shoulder_sep@FC target**: Sub-elite +21° σ13 / Elite +25° σ10 (양쪽 동일)
+- **armSide 저장**: CURRENT_INPUT._armSide + saved.armSide stamp로 점수제 분기에 활용
+- **UI 모드 뱃지**: 헤더에 좌투/우투 + Mode A/B + 임계값 안내
+- **저장된 선수 호환**: armSide 누락 시 우완 fallback (이전 저장본 자동 호환)
+
+### 2026-05-03 v30.14.1 — 좌투 trunk_forward_tilt 부호 보정
+- 좌투 trunk_global_flexion이 우투 부호 반대(-173° vs +173°) 발견 → `Math.abs()` 후 BBL 변환 (180−x)
+- extractScalarsFromUplift / loadFromUploadedTrials / trunk_forward_tilt_at_br_trial 3곳 동일 패치
+- 검증: 오승현 H2 trunk_forward_tilt_at_fc 353.9°(결측 보정 50점) → 6.1° (76점, 우수)
+
 ### 2026-05-03 v30.14 — 좌완 좌표계 정합성 (circular normalize + 우완 등가 매핑)
 - **좌완 좌표계 진단**: 우완 6명 59 trial(`-67.1°±33`) + 좌완 8명 157 trial(`+173.8°±26.6`) 검증
 - **circular normalize 도입**: ±360° wrap-around 처리 (parkjibin H1 trial 7 -248° 같은 경계 케이스 정상 처리)

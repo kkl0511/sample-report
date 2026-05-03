@@ -649,7 +649,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v30.14.1';
+const ALGORITHM_VERSION = 'v30.15';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -668,6 +668,45 @@ const LEFT_TRUNK_REF  = 174;  // 좌완 trunk_rot@FC circular mean (n=157)
 const LEFT_PELVIS_REF = 152;  // 좌완 pelvis_rot@FC circular mean (n=157)
 const LEFT_TO_RIGHT_TRUNK_OFFSET  = 241;  // 좌완 normalized → 우완 등가 변환 (174 → -67)
 const LEFT_TO_RIGHT_PELVIS_OFFSET = 200;  // 좌완 normalized → 우완 등가 변환 (152 → -48)
+
+// ★ v30.15 Phase 2 — 4-cell 점수제 (handedness × dev/elite mode) (2026-05-03)
+//   Mode A (sub-elite, gap to elite target): MaxV 미달 선수, target은 elite settled mean
+//   Mode B (elite, refinement): MaxV 충족 선수, 좁은 sigma로 within-elite 차별화
+//   데이터 근거 (216 trial):
+//     R sub-elite (n=29 H1): -67±33 / R elite (n=30 H2): -95±23
+//     L sub-elite (n=80 H1): -67±30 / L elite 135+ (n=60 H2): -60±22
+//   좌완 elite는 우완보다 덜 닫힘(target -60° vs -95°) — 운동학적 천장 차이
+const ELITE_THRESHOLD_KMH = { right: 140, left: 135 };
+const PLAYER_MODE_TARGETS = {
+  // 변수별 4-cell { hand: { mode: { optimal, sigma } } }
+  trunk_rotation_at_fc: {
+    right: { sub_elite: { optimal: -67, sigma: 33 }, elite: { optimal: -95, sigma: 23 } },
+    left:  { sub_elite: { optimal: -67, sigma: 30 }, elite: { optimal: -60, sigma: 22 } },
+  },
+  hip_shoulder_sep_at_fc: {
+    // 양쪽 동일 — 부호 보정 후 통합 표준
+    right: { sub_elite: { optimal: 21, sigma: 13 }, elite: { optimal: 25, sigma: 10 } },
+    left:  { sub_elite: { optimal: 21, sigma: 13 }, elite: { optimal: 25, sigma: 10 } },
+  },
+};
+
+// 현재 분석 컨텍스트 (calculateScores 진입 시 set, percentileOfCohort에서 read)
+let CURRENT_ARM_SIDE = null;  // 'right' | 'left' | null
+let CURRENT_MODE     = null;  // 'sub_elite' | 'elite' | null
+
+function getPlayerMode(armSide, maxV) {
+  if (!maxV || !armSide) return 'sub_elite';
+  const threshold = ELITE_THRESHOLD_KMH[armSide] || 140;
+  return maxV >= threshold ? 'elite' : 'sub_elite';
+}
+
+// 변수별 mode-aware target lookup
+function getModeTarget(varKey, armSide, mode) {
+  const byHand = PLAYER_MODE_TARGETS[varKey];
+  if (!byHand) return null;
+  const byMode = byHand[armSide] || byHand['right'];
+  return byMode[mode] || byMode['sub_elite'];
+}
 
 // ════════════════════════════════════════════════════════════════════
 // 유틸리티
@@ -873,7 +912,9 @@ function percentileOfCohort(varKey, value, polarity) {
 
   // ★ LITERATURE_OVERRIDE (2026-05-03) — 외부 기준 우선 변수는 코호트 무시하고 Gaussian 점수
   if (LITERATURE_OVERRIDE.has(varKey) && EXTRA_VAR_SCORING[varKey]) {
-    const x = EXTRA_VAR_SCORING[varKey];
+    // ★ v30.15: 4-cell mode-aware target 우선 적용 (handedness × dev/elite)
+    const modeTarget = (CURRENT_ARM_SIDE && CURRENT_MODE) ? getModeTarget(varKey, CURRENT_ARM_SIDE, CURRENT_MODE) : null;
+    const x = modeTarget || EXTRA_VAR_SCORING[varKey];
     let v = x.useAbs ? Math.abs(value) : value;
     if (x.optimal != null) {
       return Math.round(100 * Math.exp(-((v - x.optimal) ** 2) / (2 * x.sigma * x.sigma)));
@@ -2045,6 +2086,8 @@ function handleMultipleUpliftFiles(files) {
 
     // Step 1 자동 채움 (첫 trial 메타)
     const firstMeta = scalarsList[0].meta;
+    // ★ v30.15 Phase 2: armSide를 CURRENT_INPUT에 저장 (점수제 4-cell 분기에 필요)
+    CURRENT_INPUT._armSide = firstMeta.armSide || 'right';
     if (firstMeta.athleteName) {
       const el = document.getElementById('player-name');
       if (!el.value || el.value === '신규 선수') el.value = firstMeta.athleteName;
@@ -3924,6 +3967,10 @@ function calculateScores(input, age, measuredVelo) {
   const adj = COHORT.age_group_adjustment[age] || {velo_offset:0, score_offset:0};
   const allVarScores = {};
   const catScores = {};
+
+  // ★ v30.15 Phase 2: 분석 컨텍스트 설정 (armSide × mode)
+  CURRENT_ARM_SIDE = input._armSide || 'right';
+  CURRENT_MODE     = getPlayerMode(CURRENT_ARM_SIDE, measuredVelo);
   
   // 1) 변수별 점수 계산 (카테고리별 가중치 지원)
   const allCats = [...COHORT.fitness_cats, ...COHORT.mechanics_cats, ...COHORT.control_cats];
@@ -4242,6 +4289,18 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
   }
   
   // 헤더 — 5칸 직관 (측정 구속 / 체력 PV / 메카닉 MV / 잠재 / 활용도)
+  // ★ v30.15 Phase 2: handedness × mode 뱃지
+  const armSide = CURRENT_INPUT._armSide || 'right';
+  const mode = getPlayerMode(armSide, measuredVelo);
+  const handLabel = armSide === 'left' ? '좌투' : '우투';
+  const modeLabel = mode === 'elite' ? `Mode B · Elite 정착` : `Mode A · Sub-elite 발전`;
+  const modeColor = mode === 'elite' ? '#a78bfa' : '#60a5fa';
+  const modeDesc = mode === 'elite'
+    ? `${armSide === 'left' ? '135' : '140'}+ km/h 도달 — 미세조정 단계 (좁은 sigma)`
+    : `${armSide === 'left' ? '135' : '140'} km/h 미만 — elite target까지 gap 측정 (넓은 sigma)`;
+  const modeBadge = `<div class="mt-2 inline-flex items-center gap-2 px-2 py-1 rounded text-[10px] mono" style="background:${modeColor}22; color:${modeColor}; border:1px solid ${modeColor}55;" title="${modeDesc}">
+      <span>📊 ${handLabel}</span><span>·</span><span>${modeLabel}</span>
+    </div>`;
   const header = `
     <div class="card p-6 mb-6" style="border: 2px solid var(--accent);">
       <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -4249,6 +4308,7 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
           <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Player ID · ${r.age}</div>
           <div class="display text-2xl mt-1">${name.toUpperCase()}</div>
           <div class="text-xs text-[var(--text-muted)] mt-1">${date} · ${totalFit + totalMech}개 변수 입력</div>
+          ${modeBadge}
         </div>
         ${measuredVelo != null ? `
         <div>
@@ -4683,6 +4743,8 @@ function autoSaveReport(silent = false) {
     id: existingIdx >= 0 ? SAVED_REPORTS[existingIdx].id
                          : 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
     name, age, date, measuredVelo: velo,
+    armSide: CURRENT_INPUT._armSide || 'right',  // ★ v30.15 Phase 2 stamp
+    mode: getPlayerMode(CURRENT_INPUT._armSide || 'right', velo),
     inputs: JSON.parse(JSON.stringify(CURRENT_INPUT)),
     scores: result,
     savedAt: new Date().toISOString(),
@@ -4744,6 +4806,8 @@ function loadSavedPlayer(id) {
   // 입력 데이터 복원
   CURRENT_INPUT.fitness  = JSON.parse(JSON.stringify((saved.inputs && saved.inputs.fitness) || {}));
   CURRENT_INPUT.mechanics = JSON.parse(JSON.stringify((saved.inputs && saved.inputs.mechanics) || {}));
+  // ★ v30.15 Phase 2: armSide 복원 (saved.armSide 우선, fallback 우완)
+  CURRENT_INPUT._armSide = saved.armSide || (saved.inputs && saved.inputs._armSide) || 'right';
 
   // Step 2 status 복원
   const fitCount = Object.keys(CURRENT_INPUT.fitness).length;
