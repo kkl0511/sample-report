@@ -654,7 +654,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v31.4';
+const ALGORITHM_VERSION = 'v31.5';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -4484,8 +4484,17 @@ function calculateScores(input, age, measuredVelo) {
   }
 
   // 1.5) Driveline 5각형 전용 변수도 점수 산출 (BBL 6각형 카테고리에 없는 변수들)
+  // ★ v31.5: 카테고리에 없는 변수는 UI 노출 차단 (사용자 결정으로 제거된 15개 변수 자동 제외)
+  const _allCatVars = new Set();
+  const _allCatsAllForCheck = [...(COHORT.fitness_cats||[]), ...(COHORT.mechanics_cats||[]), ...(COHORT.control_cats||[])];
+  for (const cat of _allCatsAllForCheck) {
+    for (const v of (COHORT.category_vars[cat] || [])) {
+      _allCatVars.add(v[0]);
+    }
+  }
   for (const k of Object.keys(EXTRA_VAR_SCORING)) {
     if (allVarScores[k] != null) continue;  // 이미 산출됐으면 skip
+    if (!_allCatVars.has(k)) continue;       // ★ v31.5: 카테고리에 없는 변수는 점수 산출 차단
     let val = input.fitness[k];
     if (val == null) val = input.mechanics[k];
     if (val == null) continue;
@@ -4949,24 +4958,22 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
         1: '하체 드라이브', 2: '앞다리 블록', 3: '분리 형성',
         4: '트렁크 가속', 5: '상지 코킹·전달', 6: '릴리스 가속'
       };
-      // ★ v31.1 결함별 코호트 변수 매핑 (한국 고1 단기 향상 가이드)
+      // ★ v31.5 결함별 코호트 변수 매핑 (한국 고1 단기 향상 가이드)
+      //   카테고리에서 제거된 변수는 매핑 제거 — 그 결함들은 코호트 비교 표시 안 됨
       const FAULT_COHORT_VAR = {
         'WeakDrive': 'max_cog_velo',
-        'SlowDriveHip': 'drive_hip_ext_vel_max',
-        'ShortStride': 'stride_norm_height',
         'LeadKneeCollapse': 'lead_knee_ext_change_fc_to_br',
-        'SoftBlock': 'com_decel_pct',
-        'LateBlock': 'lead_knee_amortization_ms',
         'FlyingOpen': 'trunk_rotation_at_fc',
-        'InsufficientCounterRot': 'peak_torso_counter_rot',
         'OpenFrontSide': 'shoulder_h_abd_at_fc',
         'LateTrunkRotation': 'pelvis_to_trunk_lag_ms',
         'PelvisTrunkDisconnect': 'pelvis_to_trunk_lag_ms',
         'InsufficientLayback': 'max_shoulder_ER_deg',
-        'TrunkArmDisconnect': 'arm_trunk_speedup',
         'ElbowOverload': 'elbow_ext_vel_max',
         'ElbowWatchList': 'elbow_ext_vel_max',
-        'TrunkFallingForward': 'trunk_forward_tilt_at_br',
+        // 제거: SlowDriveHip(drive_hip_ext_vel_max), ShortStride(stride_norm_height),
+        //       SoftBlock(com_decel_pct), LateBlock(lead_knee_amortization_ms),
+        //       InsufficientCounterRot(peak_torso_counter_rot), TrunkArmDisconnect(arm_trunk_speedup),
+        //       TrunkFallingForward(trunk_forward_tilt_at_br) — 카테고리에서 제거된 변수
       };
       const cohortInputs = CURRENT_INPUT.mechanics || {};
 

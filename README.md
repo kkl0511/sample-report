@@ -1,74 +1,78 @@
-# BBL v31.4 — 카테고리 변수 정리 + MLB 평균 대비 점수 명시
-**Build**: 2026-05-03 / **Patch**: v31.3 → v31.4 / **Type**: 변수 정리
+# BBL v31.5 — UI 클린업: 제거된 변수 모든 노출 차단
+**Build**: 2026-05-03 / **Patch**: v31.4 → v31.5
 
 ---
 
-## 변경 요약 (사용자 도메인 결정)
+## 변경 요약
 
-### 카테고리에서 제거된 변수 15개
+v31.4에서 카테고리에서 제거한 15개 변수가 강점/약점 등 다른 UI에 노출되지 않도록 **점수 산출 자체를 차단**.
 
-**체력** (1개):
-- SJ RSI-modified [m/s] (CMJ RSI와 정보 중복)
+### 1) calculateScores 추가 변수 산출에 카테고리 체크
 
-**메카닉** (14개):
-| 카테고리 | 제거 변수 |
+**Before**: `EXTRA_VAR_SCORING`의 모든 변수 점수 산출 → var_scores에 등록 → 카테고리에 없어도 점수 보유
+**After**: 카테고리에 없는 변수는 점수 산출 자체 스킵 → var_scores에 등록 안 됨 → 모든 UI에서 자동 제외
+
+```javascript
+// v31.5 추가
+const _allCatVars = new Set(/* 모든 카테고리의 변수 키 */);
+for (const k of Object.keys(EXTRA_VAR_SCORING)) {
+  if (!_allCatVars.has(k)) continue;  // ★ 카테고리에 없는 변수 차단
+  ...
+}
+```
+
+### 2) FAULT_COHORT_VAR 정리
+
+**Before**: 16개 결함 모두 코호트 변수 매핑 (제거된 변수 7개 포함)
+**After**: 카테고리에 남은 9개 결함만 코호트 비교 활성화
+
+| 제거된 매핑 (카테고리 변수 빠진 결함) |
+|---|
+| SlowDriveHip (drive_hip_ext_vel_max) |
+| ShortStride (stride_norm_height) |
+| SoftBlock (com_decel_pct) |
+| LateBlock (lead_knee_amortization_ms) |
+| InsufficientCounterRot (peak_torso_counter_rot) |
+| TrunkArmDisconnect (arm_trunk_speedup) |
+| TrunkFallingForward (trunk_forward_tilt_at_br) |
+
+→ 위 결함이 발동되어도 "한국 고교 코호트 비교" 카드 표시 안 됨 (자연스럽게 처리).
+
+### 3) 강점/약점 영역별 카드 — 자동 정리 확인
+
+기존 `varStrengths/varWeaknesses` 산출 로직이 이미 `for (const cat of allCatsAll)` 통해 **카테고리 변수만 순회** → 카테고리에서 제거된 15개 변수는 자동 제외 ✓
+
+---
+
+## UI 위치별 자동 제외 검증
+
+| UI 위치 | 처리 |
 |---|---|
-| C1 (하체 드라이브) | stride_norm_height, stride_time_ms, drive_hip_ext_vel_max |
-| C2 (앞다리 블록) | lead_knee_ext_vel_max, com_decel_pct, lead_knee_amortization_ms, lead_hip_flex_at_fc, lead_hip_ext_vel_max |
-| C3 (분리 형성) | peak_torso_counter_rot |
-| C4 (트렁크 가속) | torso_side_bend_at_mer, trunk_flex_vel_max |
-| C5 (상지 코킹·전달) | arm_trunk_speedup |
-| C6 (릴리스 가속) | trunk_flex_vel_max(중복), peak_arm_av, torso_rotation_at_br |
+| 종합 평가 → 강점 영역별 카드 | ✓ 카테고리 변수만 순회 → 자동 제외 |
+| 종합 평가 → 약점 영역별 카드 | ✓ 동일 |
+| 카테고리 아코디언 (체력·메카닉·제구) | ✓ category_vars 기반 |
+| 5단계 결함 카드 → 코호트 비교 | ✓ FAULT_COHORT_VAR 정리됨 |
+| 결함 진단 (KINETIC_FAULTS) | △ 변수 입력 있으면 결함 발동 (UI 표시) |
 
-### 카테고리별 변수 수 변화
-
-| 카테고리 | Before | After |
-|---|---|---|
-| F1_Strength | 2 | 2 |
-| F2_Power | 4 | 4 |
-| F3_Reactivity | 3 | 2 |
-| F4_Body | 3 | 3 |
-| **체력 합계** | **12** | **11** |
-| C1_LowerBodyDrive | 5 | 2 |
-| C2_FrontLegBlock | 6 | 1 |
-| C3_SeparationFormation | 6 | 5 |
-| C4_TrunkAcceleration | 5 | 3 |
-| C5_UpperBodyTransfer | 4 | 3 |
-| C6_ReleaseAcceleration | 6 | 3 |
-| **메카닉 합계** | **32** | **17** |
-
-### 점수 라벨 명확화
-
-**Before**: "MLB·문헌 표준 대비 발달도"
-**After**: **"MLB 평균 대비 점수"**
-
-각 위치별 변경:
-- 헤더 메시지: "체력·메카닉 점수: MLB 평균 대비"
-- 카테고리 차트 라벨: "MLB 평균 대비 점수"
-- 카테고리 차트 안내: "100점 = MLB 평균 표준값. 80점+ = 한국 고1 elite. 50점 = 발달 평균."
-- 종합 평가 percentile 행: "위 점수(MLB 평균 대비)는 장기 목표 지표..."
-- 5단계 헤더: "장기 목표는 카테고리 차트의 MLB 평균 대비 점수"
-
----
-
-## 변경 파일
-
-- `cohort_v29.js`:
-  - `category_vars`에서 15개 변수 제거
-  - 다른 stats 블록 (var_distributions 등)은 그대로 유지 — 점수 산출에 영향 없음
-- `BBL_신규선수_리포트.html`:
-  - `ALGORITHM_VERSION` v31.3 → v31.4
-  - 헤더 + 카테고리 차트 + 종합 평가 라벨에 "MLB 평균 대비" 명시
-- `kinetic_chain.gif`: 변경 없음
+→ 결함 진단은 카테고리와 별도 도메인이므로 그대로 유지 (사용자가 입력 안 하면 어차피 발동 안 됨).
 
 ---
 
 ## 정예준 케이스 예상 변화
 
-**Before (v31.3)**: 메카닉 32개 변수 평균 (변수 다수가 결측)
-**After (v31.4)**: 메카닉 17개 변수 평균 (핵심 변수만)
+**Before (v31.4)**: 제거된 변수도 var_scores에 점수 등록 → "강점" 카드에 노출 가능성
+**After (v31.5)**: 카테고리 변수만 점수 산출 → 강점/약점 카드에 17개 메카닉 + 11개 체력 + 11개 제구 변수만 표시
 
-→ 메카닉 카테고리의 핵심 변수만 평가되어 결측 영향 감소 + 신뢰도 향상.
+---
+
+## 변경 사항 (코드)
+
+- `BBL_신규선수_리포트.html`
+  - `ALGORITHM_VERSION` v31.4 → v31.5
+  - `calculateScores` 1.5절: 카테고리 외 변수 점수 산출 차단
+  - `FAULT_COHORT_VAR`: 7개 매핑 항목 제거 (카테고리 빠진 결함)
+- `cohort_v29.js`: 변경 없음
+- `kinetic_chain.gif`: 변경 없음
 
 ---
 
@@ -76,22 +80,14 @@
 
 GitHub Pages에 다음 3개 파일 덮어쓰기:
 1. `index.html`
-2. `cohort_v29.js` (★ category_vars 변경됨)
+2. `cohort_v29.js` (변경 없음 — 기존 유지)
 3. `kinetic_chain.gif` (변경 없음)
 
-→ Cmd+Shift+R → v31.4 확인
+→ Cmd+Shift+R → v31.5 확인
 
 ---
 
-## 검증 권장 (배포 후)
-
-- 카테고리 차트 라벨: "MLB 평균 대비 점수" 표시
-- 메카닉 변수 17개로 축소된 후 점수 변화
-- 결측 진단 카드 자동 갱신 (보류 카테고리 변화)
-
----
-
-## v31.0 → v31.4 누적
+## v31.0 → v31.5 누적
 
 | 버전 | 핵심 |
 |---|---|
@@ -99,8 +95,9 @@ GitHub Pages에 다음 3개 파일 덮어쓰기:
 | v31.1 | 점수(MLB) + 코칭(코호트) 분리 |
 | v31.2 | 결측 50% 초과 카테고리 점수 보류 |
 | v31.3 | CMJ Impulse 제거 |
-| **v31.4** | **메카닉 14개 + 체력 1개 정리 + 점수 라벨 명시** |
+| v31.4 | 메카닉 14개 + 체력 1개 정리 |
+| **v31.5** | **카테고리 외 변수 UI 노출 차단 (강점/약점 등)** |
 
 ---
 
-**END OF v31.4 PATCH NOTES**
+**END OF v31.5 PATCH NOTES**
