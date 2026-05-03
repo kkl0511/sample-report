@@ -649,7 +649,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v30.18';
+const ALGORITHM_VERSION = 'v30.18.1';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -1828,11 +1828,12 @@ function applyMultiTrialUplift(scalarsList) {
   };
 
   // ════════════════════════════════════════════════════════════════════
-  // ★ QC 필터 (2026-05-03) — Uplift vs raw 이벤트 검출 차이가 큰 trial 제외
-  //   임계값: 30ms (KH/FC/MER/BR 4개 이벤트 중 하나라도 초과하면 제외)
-  //   이유: 두 방법이 크게 다르면 어느 쪽이 진짜 이벤트인지 불확실 → trial 신뢰 ↓
+  // ★ QC 필터 (v30.18 완화) — Uplift vs raw 이벤트 검출 차이가 큰 trial 제외
+  //   임계값: 300ms (기존 30ms는 너무 엄격, raw 검출 알고리즘 한계 고려)
+  //   정책: Uplift는 사전계산이라 신뢰 우선 — raw는 Uplift 누락 시 fallback만
+  //   30ms ~ 300ms 범위는 경고로만 표시 (trial 사용에는 영향 없음)
   // ════════════════════════════════════════════════════════════════════
-  const QC_THRESHOLD_MS = 30;
+  const QC_THRESHOLD_MS = 300;
   const _qcExcluded = [];        // 제외된 trial 정보 (UI 표시용)
   const _scalarsAll = scalarsList;
   scalarsList = scalarsList.filter((s, i) => {
