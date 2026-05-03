@@ -1,85 +1,74 @@
-# BBL v30.28 — Task #74 키네틱 체인 5단계 GIF 시각화 통합
-**Build**: 2026-05-03 / **Patch**: v30.27 → v30.28 / **Type**: visualization
+# BBL v30.31 — 리포트 5단계 스토리 재구성 (선수 관점)
+**Build**: 2026-05-03 / **Patch**: v30.30 → v30.31 / **Type**: UX 재설계
 
 ---
 
 ## 변경 요약
 
-### 🎬 NEW — 키네틱 체인 5단계 시각화
+선수가 자연스럽게 따라갈 수 있는 5단계 흐름으로 리포트 재구성. 사용자(국민대 스포츠과학과 교수) 제안.
 
-**위치**: 결함 진단 카드 바로 위 (선수가 결함을 보기 전 키네틱 체인 흐름을 먼저 이해)
+### 새 흐름
 
-**자료**: 사용자 제공 `MLB_Velocity_Kinetic_Chain_COMPRESSED_v5.gif`
-- 1200×676, 8.5MB, 206 프레임 (~14.4초 루프)
-- P1 Set/Lift → P2 Load → P3 Drive → P4 FC(Front Foot Contact) → P5 Release/Follow Through
+| 단계 | 내용 | 구현 |
+|---|---|---|
+| **1단계 · 내 점수** | 가장 궁금한 점수부터. 체력·메카닉·제구 종합 + 카테고리 분포 | brand color 카드로 강조 |
+| **2단계 · 키네틱 체인이란?** | "다리→골반→몸통→팔" 채찍 운동 개념 + GIF + P1~P5 한글 라벨 | 한글 설명 강화 |
+| **3단계 · 당신의 에너지 흐름** | 6단계별 ✓/⚠ 진단 요약 ("어디서 새고 있나") | 신규 컴포넌트 |
+| **4단계 · 에너지 리크의 원인** | 결함 카드 (cause·coaching·drills) 스토리 톤 | 기존 카드 재배열 |
+| **5단계 · 어떻게 개선할까** | 우선순위 1~3 트레이닝·코칭 통합 액션 플랜 | 신규 컴포넌트 |
 
-**구현**:
-```html
-<div class="card p-4 mb-6">
-  <div class="display text-base">⚡ 키네틱 체인 5단계 — 에너지 흐름</div>
-  <img src="kinetic_chain.gif" loading="lazy" decoding="async" ... />
-  <div class="text-xs">다리 → 골반 → 몸통 → 팔로 이어지는 운동량 전달이 핵심...</div>
-</div>
-```
+### Step 라벨 정리
 
-- `loading="lazy"` 첫 화면 로드 영향 최소화
-- `decoding="async"` 메인 스레드 블로킹 방지
-- 파일명을 `kinetic_chain.gif`로 단순화
-
-### 🎯 통합 흐름 (선수가 보는 순서)
-
-```
-구속 종합 점수
-  ↓
-모드 코칭
-  ↓
-⚡ 키네틱 체인 GIF (NEW) ← 시각적 컨텍스트 제공
-  ↓
-🔬 결함 진단 카드 ← "내가 이 체인 어디가 약한지" 즉시 이해
-  ↓
-카테고리별 점수 + 코칭
-```
+페이지 입력 단계와 충돌 방지:
+- 입력 = "Step 1~5" (영문, 변경 없음)
+- 리포트 = "1단계 ~ 5단계" (한글, NEW)
 
 ---
 
 ## 변경 사항 (코드)
 
 - `BBL_신규선수_리포트.html`
-  - `ALGORITHM_VERSION`: 'v30.27' → 'v30.28'
-  - line ~4712 직전: `kineticChainGifHtml` 신규 변수 정의
-  - line ~5161: `${kineticChainGifHtml}` 렌더 위치 추가
-- `kinetic_chain.gif` 신규 파일 (8.5MB)
+  - `ALGORITHM_VERSION` v30.30 → v30.31
+  - `kineticChainGifHtml` 한글 단계 설명 + 5개 박스 라벨 추가
+  - `energyFlowHtml` 신규 (6단계별 진단 요약)
+  - `faultsHtml` 헤더 "🔬 4단계 · 에너지 리크의 원인" 으로 변경
+  - `trainingPriorityHtml` 신규 (우선순위 1~3 통합)
+  - `summary` 안 점수 영역을 "📊 1단계 · 내 점수" 카드로 강조
+- `cohort_v29.js`: 변경 없음 (v30.30 stats 유지)
+- `kinetic_chain.gif`: 변경 없음
 
 ---
 
-## 배포 절차 ⚠ GIF 파일 동시 업로드 필요
+## 배포 절차
 
-```bash
-# GitHub Pages에 다음 3개 파일 모두 업로드:
-1. index.html
-2. cohort_v29.js  (변경 없음 — 기존 유지 가능)
-3. kinetic_chain.gif  (★ 신규 — 반드시 업로드 안하면 깨진 이미지)
-```
+GitHub Pages에 다음 3개 파일 덮어쓰기 업로드:
+1. `index.html`
+2. `cohort_v29.js`
+3. `kinetic_chain.gif`
 
----
-
-## 향후 작업 (사용자 의향)
-
-사용자 메시지: *"마네킹을 그리더라도 이 시각화 자료를 이용해 그리면 될 것 같아"*
-
-→ Task #74의 SVG 마네킹 시각화는 향후 옵션으로 두고, 우선 이 GIF로 운영. SVG 변환이 필요한 시점에 이 GIF를 reference로 활용 가능.
+→ Cmd+Shift+R → 좌측 상단 **v30.31** 확인
 
 ---
 
-## v30.25 → v30.28 누적 변경
+## 검증 권장 (배포 후)
+
+- 결함이 있는 선수 (예: 안현석 H1) → 1~5단계 흐름 자연스러운지 확인
+- 결함 없는 선수 (예: 김온세 H2) → 3단계 "정상" 메시지 + 4·5단계 생략 확인
+- 영문 GIF + 한글 라벨 정렬 확인
+
+---
+
+## v30.25 → v30.31 누적 변경
 
 | 버전 | 유형 | 변경 |
 |---|---|---|
 | v30.26 | bug fix | FlyingOpen 좌완 좌표계 분기 |
-| v30.26 | label | InsufficientCounterRot 영문 보조 추가 |
-| v30.27 | threshold | OpenFrontSide 임계 30° → 40° |
-| v30.28 | viz | 키네틱 체인 5단계 GIF 통합 (Task #74) |
+| v30.27 | threshold | OpenFrontSide 30° → 40° |
+| v30.28 | viz | 키네틱 체인 5단계 GIF 통합 |
+| v30.29 | new fault | ElbowWatchList sub-clinical 모니터링 |
+| v30.30 | cohort + threshold | cohort_v30 stats + 6개 결함 임계 fine-tune |
+| **v30.31** | **UX 재설계** | **리포트 5단계 스토리 (선수 관점)** |
 
 ---
 
-**END OF v30.28 PATCH NOTES**
+**END OF v30.31 PATCH NOTES**

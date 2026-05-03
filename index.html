@@ -649,7 +649,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v30.28';
+const ALGORITHM_VERSION = 'v30.31';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -693,7 +693,7 @@ const KINETIC_FAULTS = [
   {
     id: 'SlowDriveHip', stage: 1, severity: 'medium',
     label: '뒷다리 hip 느림 (Slow Drive Hip)',
-    detect: m => m.drive_hip_ext_vel_max != null && m.drive_hip_ext_vel_max < 400,
+    detect: m => m.drive_hip_ext_vel_max != null && m.drive_hip_ext_vel_max < 455.05,
     cause: 'drive 다리 hip extension power 부족 또는 hinge 패턴 약함',
     coaching: 'Hip hinge 강조, drive 다리 신전 폭발력',
     drills: ['Hip airplane 3×6', 'Single-leg RDL 3×8', 'Romanian deadlift'],
@@ -710,7 +710,7 @@ const KINETIC_FAULTS = [
   {
     id: 'LeadKneeCollapse', stage: 2, severity: 'high',
     label: '앞무릎 무너짐 ⚠ (Lead Knee Collapse)',
-    detect: m => m.lead_knee_ext_change_fc_to_br != null && m.lead_knee_ext_change_fc_to_br < -10,
+    detect: m => m.lead_knee_ext_change_fc_to_br != null && m.lead_knee_ext_change_fc_to_br < -22.2,
     cause: 'block 다리 quad/glute eccentric 약함 → 에너지 손실',
     coaching: '앞다리 stiff block 만들기, 무릎 펴진 자세 유지',
     drills: ['Eccentric step-down 5초 3×6', 'Single-leg RDL', 'Glute bridge ISO 30s'],
@@ -718,7 +718,7 @@ const KINETIC_FAULTS = [
   {
     id: 'SoftBlock', stage: 2, severity: 'high',
     label: '블록 부드러움 (Soft Block)',
-    detect: m => m.com_decel_pct != null && m.com_decel_pct < 40,
+    detect: m => m.com_decel_pct != null && m.com_decel_pct < 13.91,
     cause: 'block 다리 ecc 약함 → COG 감속 부족 → 회전 전환 비효율',
     coaching: 'COG 감속 강조, "stop and rotate" 개념',
     drills: ['Heavy single-leg ecc box jump', 'Drop landing 3×5'],
@@ -726,7 +726,7 @@ const KINETIC_FAULTS = [
   {
     id: 'LateBlock', stage: 2, severity: 'medium',
     label: '블록 늦음 (Late Block)',
-    detect: m => m.lead_knee_amortization_ms != null && m.lead_knee_amortization_ms > 90,
+    detect: m => m.lead_knee_amortization_ms != null && m.lead_knee_amortization_ms > 105.86,
     cause: 'SSC efficiency 낮음 — 충격 흡수 후 신전이 늦음',
     coaching: '빠른 reactive block, contact 즉시 stiffen',
     drills: ['Plyo 단일 다리 점프', 'Contrast training'],
@@ -796,7 +796,7 @@ const KINETIC_FAULTS = [
   {
     id: 'TrunkArmDisconnect', stage: 5, severity: 'high',
     label: '몸통→팔 전달 약함 ⚠ (Trunk→Arm Disconnect)',
-    detect: m => m.arm_trunk_speedup != null && m.arm_trunk_speedup < 1.5,
+    detect: m => m.arm_trunk_speedup != null && m.arm_trunk_speedup < 1.39,
     cause: 'trunk 회전 에너지가 팔로 전달 안 됨 → 팔꿈치 의존 위험',
     coaching: 'connected throw drill, trunk-arm 시퀀스',
     drills: ['Long toss with intent', 'Plyo ball throw 3×5', 'Connected step-throw'],
@@ -806,15 +806,28 @@ const KINETIC_FAULTS = [
     id: 'ElbowOverload', stage: 6, severity: 'critical',
     label: '팔꿈치 과부하 🚨 (Elbow Overload)',
     detect: m => m.elbow_ext_vel_max != null && m.elbow_ext_vel_max > 2400 &&
-                m.arm_trunk_speedup != null && m.arm_trunk_speedup < 1.5,
+                m.arm_trunk_speedup != null && m.arm_trunk_speedup < 1.39,
     cause: '전완에서 에너지 대량 생성 (몸통 전달 부족) → UCL/팔꿈치 부상 위험',
     coaching: '⚠ 즉시 볼륨 감소 + 트렁크 활성화 강화',
     drills: ['Volume reduce 30%', 'Trunk activation drill', 'Connected throw 위주'],
   },
+  // ★ v30.29 신규: Elbow Watch list — sub-clinical 부상 위험 모니터링
+  //   ElbowOverload(critical) 임계 직전 케이스 (예: 김온세 H2 ev=2380°/s)를 medium severity로 사전 경고
+  //   ElbowOverload와 동시 발동 방지: speedup<1.5는 critical 우선, 1.5~1.8은 watch
+  {
+    id: 'ElbowWatchList', stage: 6, severity: 'medium',
+    label: '팔꿈치 모니터링 ⚠ (Elbow Watch List)',
+    detect: m => m.elbow_ext_vel_max != null && m.elbow_ext_vel_max > 2300 &&
+                m.elbow_ext_vel_max <= 2400 &&  // Overload 임계 미만
+                m.arm_trunk_speedup != null && m.arm_trunk_speedup >= 1.5 && m.arm_trunk_speedup < 1.8,
+    cause: '팔꿈치 신전 속도 elite 상한 근접 + 몸통 전달 효율 저하 시작',
+    coaching: '아직 부상 위험 임계는 아니지만 추적 권장 — 볼륨 모니터링 + 몸통 활성화 점진 강화',
+    drills: ['PitchSmart 볼륨 가이드라인 준수', 'Connected throw 비율 증가', '회복 일수 충분 확보'],
+  },
   {
     id: 'TrunkFallingForward', stage: 6, severity: 'medium',
     label: '몸통 앞으로 무너짐 (Trunk Falling Forward)',
-    detect: m => m.trunk_forward_tilt_at_br != null && Math.abs(m.trunk_forward_tilt_at_br) > 50,
+    detect: m => m.trunk_forward_tilt_at_br != null && Math.abs(m.trunk_forward_tilt_at_br) > 43.62,
     cause: '코어 약함, lead leg block 부족',
     coaching: 'tall spine cue, 코어 강화',
     drills: ['Plank-throw 3×6', 'Anti-flexion abs', 'Lead leg block ISO'],
@@ -4709,20 +4722,74 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
     </div>`;
   }
 
-  // ★ v30.28 Task #74: 키네틱 체인 5단계 시각화 (GIF — 결함 진단 직전 컨텍스트)
+  // ★ v30.31 Step 2: 키네틱 체인 개념 설명 (한글화 + GIF + 단계 라벨)
   const kineticChainGifHtml = `
     <div class="card p-4 mb-6" style="border: 1px solid var(--border); background: linear-gradient(180deg, rgba(96,165,250,0.04), transparent);">
-      <div class="flex items-center justify-between mb-2">
-        <div class="display text-base">⚡ 키네틱 체인 5단계 — 에너지 흐름</div>
-        <div class="text-xs text-[var(--text-muted)]">P1 Set/Lift → P2 Load → P3 Drive → P4 FC → P5 Release</div>
+      <div class="display text-base mb-2">⚡ 2단계 · 키네틱 체인이란?</div>
+      <div class="text-sm leading-relaxed mb-3" style="color: var(--text-secondary);">
+        투구는 <strong>다리에서 시작된 힘이 골반 → 몸통 → 팔</strong>로 채찍처럼 전달되는 운동입니다.
+        각 단계의 타이밍과 강도가 정확해야 빠른 공이 나오고 부상도 예방됩니다.
       </div>
-      <img src="kinetic_chain.gif" alt="Kinetic Chain in Pitch Mechanics — 5단계 에너지 흐름 시각화"
+      <img src="kinetic_chain.gif" alt="키네틱 체인 — 5단계 에너지 흐름"
            loading="lazy" decoding="async"
            style="width:100%; max-width:1000px; display:block; margin:0 auto; border-radius:6px;" />
-      <div class="text-xs text-[var(--text-muted)] mt-2 leading-relaxed">
-        ※ 다리 → 골반 → 몸통 → 팔로 이어지는 운동량 전달이 핵심. 아래 결함 진단 카드는 이 흐름에서 어느 단계가 약한지 자동 감지한 결과입니다.
+      <div class="grid grid-cols-5 gap-2 mt-3 text-center text-xs">
+        <div style="padding:6px; background:rgba(96,165,250,0.1); border-radius:4px;"><strong>P1</strong><br/><span class="text-[11px]">셋 · 들기</span></div>
+        <div style="padding:6px; background:rgba(96,165,250,0.15); border-radius:4px;"><strong>P2</strong><br/><span class="text-[11px]">부하 (Load)</span></div>
+        <div style="padding:6px; background:rgba(96,165,250,0.2); border-radius:4px;"><strong>P3</strong><br/><span class="text-[11px]">추진 (Drive)</span></div>
+        <div style="padding:6px; background:rgba(96,165,250,0.25); border-radius:4px;"><strong>P4</strong><br/><span class="text-[11px]">착지 (FC)</span></div>
+        <div style="padding:6px; background:rgba(96,165,250,0.3); border-radius:4px;"><strong>P5</strong><br/><span class="text-[11px]">릴리즈</span></div>
       </div>
     </div>`;
+
+  // ★ v30.31 Step 3: 본인 에너지 플로우 진단 (단계별 ✓/⚠ 요약)
+  let energyFlowHtml = '';
+  try {
+    const faults_step3 = detectKineticFaults(CURRENT_INPUT.mechanics || {}, measuredVelo, _armSide_p4);
+    const STAGE_NAMES_S3 = {
+      1: '하체 드라이브', 2: '앞다리 블록', 3: '분리 형성',
+      4: '트렁크 가속', 5: '상지 코킹·전달', 6: '릴리스 가속'
+    };
+    // 단계별 최고 심각도 집계
+    const stageMax = {1:'ok', 2:'ok', 3:'ok', 4:'ok', 5:'ok', 6:'ok'};
+    const stageFaults = {1:[], 2:[], 3:[], 4:[], 5:[], 6:[]};
+    const sevPriority = {critical: 4, high: 3, medium: 2, low: 1, ok: 0};
+    faults_step3.forEach(f => {
+      stageFaults[f.stage].push(f);
+      if (sevPriority[f.severity] > sevPriority[stageMax[f.stage]]) {
+        stageMax[f.stage] = f.severity;
+      }
+    });
+    const sevColorS3 = { critical:'#dc2626', high:'#f97316', medium:'#eab308', low:'#60a5fa', ok:'#4ade80' };
+    const sevIcon    = { critical:'🚨', high:'⚠⚠', medium:'⚠', low:'ℹ', ok:'✓' };
+    const sevText    = { critical:'에너지 누출 큼', high:'에너지 누출', medium:'주의', low:'경미', ok:'정상' };
+    const stageRows = [1,2,3,4,5,6].map(s => {
+      const sev = stageMax[s];
+      const c = sevColorS3[sev];
+      const fs = stageFaults[s];
+      const desc = fs.length > 0 ? fs.map(f => f.label.replace(/[⚠🚨].*?\(/, '(')).join(', ') : '결함 없음';
+      return `<div class="flex items-center gap-2 py-1.5" style="border-bottom:1px dashed var(--border);">
+        <span style="width:20px; text-align:center; font-size:14px;">${sevIcon[sev]}</span>
+        <span class="mono text-xs" style="width:30px; color:var(--text-muted);">단계 ${s}</span>
+        <strong class="text-sm" style="width:120px; color:${c};">${STAGE_NAMES_S3[s]}</strong>
+        <span class="text-xs" style="color:${c}; font-weight:600; margin-right:8px;">${sevText[sev]}</span>
+        <span class="text-xs" style="color:var(--text-secondary);">${desc}</span>
+      </div>`;
+    }).join('');
+    const totalLeak = faults_step3.length;
+    const criticalLeak = faults_step3.filter(f => f.severity === 'critical').length;
+    const highLeak = faults_step3.filter(f => f.severity === 'high').length;
+    const summaryColor = criticalLeak > 0 ? '#dc2626' : highLeak > 0 ? '#f97316' : totalLeak > 0 ? '#eab308' : '#4ade80';
+    const summaryMsg = totalLeak === 0
+      ? '✅ 6단계 모두 정상 — 에너지가 깨끗하게 전달되고 있습니다'
+      : `⚠ ${totalLeak}개 단계에서 에너지 누출 감지 — 아래에서 원인 확인`;
+    energyFlowHtml = `
+    <div class="card p-4 mb-6" style="border: 2px solid ${summaryColor}; background: ${summaryColor}08;">
+      <div class="display text-base mb-3" style="color: ${summaryColor};">⚡ 3단계 · 당신의 에너지 흐름</div>
+      <div class="text-sm mb-3" style="color: ${summaryColor}; font-weight:600;">${summaryMsg}</div>
+      <div>${stageRows}</div>
+    </div>`;
+  } catch (e) { console.warn('Energy flow render error:', e); }
 
   // ★ v30.24 Step C: 키네틱 체인 결함 자동 진단 카드
   let faultsHtml = '';
@@ -4761,9 +4828,12 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
       const highCount = faults.filter(f => f.severity === 'high').length;
       const headerColor = criticalCount > 0 ? '#dc2626' : highCount > 0 ? '#f97316' : '#eab308';
       faultsHtml = `<div class="card p-4 mb-6" style="border: 2px solid ${headerColor}; background: ${headerColor}08;">
-        <div class="display text-base mb-3" style="color:${headerColor};">
-          🔬 키네틱 체인 결함 진단 — ${faults.length}개 패턴 감지
-          ${criticalCount > 0 ? `<span class="text-sm ml-2" style="color:#dc2626;">(부상 위험 ${criticalCount}개 ⚠)</span>` : ''}
+        <div class="display text-base mb-2" style="color:${headerColor};">
+          🔬 4단계 · 에너지 리크의 원인
+        </div>
+        <div class="text-sm mb-3" style="color: var(--text-secondary);">
+          위에서 감지된 ${faults.length}개 단계의 에너지 누출 원인을 변인별로 분석합니다.
+          ${criticalCount > 0 ? `<span style="color:#dc2626; font-weight:600;">부상 위험 ${criticalCount}개 즉시 조치 필요.</span>` : ''}
         </div>
         ${faultRows}
         <div class="text-[11px] mt-2" style="color:var(--text-muted);">
@@ -4771,13 +4841,54 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
         </div>
       </div>`;
     } else if (measuredVelo != null) {
-      faultsHtml = `<div class="card p-3 mb-6" style="border: 2px solid #4ade80; background: #4ade8008;">
-        <div class="text-sm" style="color:#4ade80; font-weight:600;">
-          ✅ 키네틱 체인 결함 감지 안 됨 — 6단계 모두 정상 범위
-        </div>
-      </div>`;
+      faultsHtml = '';  // Step 3에서 이미 정상 메시지 표시 — 중복 제거
     }
   } catch (e) { console.warn('Fault detection error:', e); }
+
+  // ★ v30.31 Step 5: 트레이닝·코칭 방향 (우선순위 1~3 통합)
+  let trainingPriorityHtml = '';
+  try {
+    const faults_s5 = detectKineticFaults(CURRENT_INPUT.mechanics || {}, measuredVelo, _armSide_p4);
+    if (faults_s5.length > 0) {
+      const sevOrderS5 = { critical: 0, high: 1, medium: 2, low: 3 };
+      faults_s5.sort((a,b) => sevOrderS5[a.severity] - sevOrderS5[b.severity]);
+      const top3 = faults_s5.slice(0, 3);
+      const sevColorS5 = { critical:'#dc2626', high:'#f97316', medium:'#eab308', low:'#60a5fa' };
+      const STAGE_NAMES_S5 = {
+        1: '하체 드라이브', 2: '앞다리 블록', 3: '분리 형성',
+        4: '트렁크 가속', 5: '상지 코킹·전달', 6: '릴리스 가속'
+      };
+      const priorityRows = top3.map((f, i) => {
+        const c = sevColorS5[f.severity] || '#888';
+        return `<div class="card p-3 mb-2" style="border-left: 4px solid ${c}; background: ${c}05;">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-xs px-2 py-0.5 rounded mono" style="background:${c}22; color:${c}; font-weight:700;">우선순위 ${i+1}</span>
+            <span class="text-xs text-[var(--text-muted)] mono">단계 ${f.stage} · ${STAGE_NAMES_S5[f.stage]}</span>
+            <strong class="text-sm" style="color:${c}">${f.label}</strong>
+          </div>
+          <div class="text-xs mb-1" style="color: var(--text-secondary);">
+            <strong>코칭 방향:</strong> ${f.coaching}
+          </div>
+          ${f.drills && f.drills.length ? `<div class="text-xs" style="color:var(--text-secondary);">
+            <strong style="color:#4ade80;">💪 추천 드릴:</strong>
+            <div class="ml-4 mt-1">${f.drills.map((d, di) => `${di+1}) ${d}`).join('<br/>')}</div>
+          </div>` : ''}
+        </div>`;
+      }).join('');
+      trainingPriorityHtml = `
+        <div class="card p-4 mb-6" style="border: 2px solid #4ade80; background: rgba(74,222,128,0.05);">
+          <div class="display text-base mb-2" style="color: #4ade80;">💪 5단계 · 어떻게 개선할까</div>
+          <div class="text-sm mb-3" style="color: var(--text-secondary);">
+            발견된 ${faults_s5.length}개 결함 중 <strong>우선순위 ${Math.min(3, top3.length)}개</strong>를 집중 트레이닝 권장합니다.
+            아래 드릴은 코칭 진단에 따라 자동 추천됐습니다.
+          </div>
+          ${priorityRows}
+          <div class="text-[11px] mt-2" style="color:var(--text-muted);">
+            ※ 카테고리별 세부 점수 + 추가 운동은 아래 메카닉·체력·제구 섹션에서 확인.
+          </div>
+        </div>`;
+    }
+  } catch (e) { console.warn('Training priority render error:', e); }
 
   // ★ Phase 4: 모드별 핵심 코칭 콜아웃 (utilLine보다 위)
   let modeCoachingHtml = '';
@@ -5165,16 +5276,25 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
     <div class="card p-6 mt-6" style="background: linear-gradient(135deg, rgba(255,107,53,0.03) 0%, rgba(96,165,250,0.03) 100%); border: 1px solid rgba(255,107,53,0.15);">
       <div class="display text-xl mb-4">📋 종합 평가 (선수·코치용 해설)</div>
 
-      <p class="text-sm leading-relaxed mb-3">
-        <strong>${name}</strong> 선수는 <strong>${r.age}</strong> 기준 평가입니다.
-        ${measuredVelo != null ? `현재 측정 구속 <strong>${measuredVelo.toFixed(1)} km/h</strong>이며, ` : ''}
-        체력 종합 <strong>${r.Fitness_Score ?? '—'}점</strong> · 메카닉 종합 <strong>${r.Mechanics_Score ?? '—'}점</strong> · 제구 종합 <strong>${r.Control_Score ?? '—'}점</strong>입니다.
-      </p>
+      <div class="card p-3 mb-4" style="border: 2px solid var(--brand); background: rgba(255,107,53,0.06);">
+        <div class="display text-base mb-2" style="color: var(--brand);">📊 1단계 · 내 점수</div>
+        <p class="text-sm leading-relaxed mb-1">
+          <strong>${name}</strong> 선수 (<strong>${r.age}</strong> 기준)
+          ${measuredVelo != null ? `· 현재 측정 구속 <strong>${measuredVelo.toFixed(1)} km/h</strong>` : ''}
+        </p>
+        <p class="text-sm leading-relaxed">
+          체력 <strong style="color:var(--brand);">${r.Fitness_Score ?? '—'}점</strong>
+          · 메카닉 <strong style="color:var(--brand);">${r.Mechanics_Score ?? '—'}점</strong>
+          · 제구 <strong style="color:var(--brand);">${r.Control_Score ?? '—'}점</strong>
+        </p>
+        ${distLine}
+      </div>
 
-      ${distLine}
       ${modeCoachingHtml}
       ${kineticChainGifHtml}
+      ${energyFlowHtml}
       ${faultsHtml}
+      ${trainingPriorityHtml}
       ${utilLine}
       ${scenarioAnalysis}
 
