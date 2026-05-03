@@ -655,7 +655,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v31.32';
+const ALGORITHM_VERSION = 'v31.43';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -2124,6 +2124,9 @@ function handleMultipleUpliftFiles(files) {
             'SJ Peak Power [W]', 'SJ Peak Power / BM [W/kg]', 'SJ RSI-modified [m/s]',
             'EUR',
             'IMTP Peak Vertical Force [N]', 'IMTP Peak Vertical Force / BM [N/kg]',
+            // ★ v31.40 유연성 ROM (홍주환 PDF 형식)
+            'Shoulder ER', 'Shoulder IR',
+            'Hip ER L', 'Hip ER R', 'Hip IR L', 'Hip IR R',
           ];
           let filledCount = 0;
           for (const k of FITNESS_KEYS_FROM_MASTER) {
@@ -4093,33 +4096,31 @@ const CATEGORY_WEIGHTS = {
     'max_cog_velo':            0.70,  // ★ 추진 결과
   },
   C2_FrontLegBlock: {        // 단계 2 — 앞다리 블로킹 (FC→early MER)
-    'lead_knee_ext_change_fc_to_br': 0.80,  // ★ block 결과
-    'lead_knee_ext_vel_max':         0.40,
+    // ★ v31.33 사용자 도메인 인사이트 (2026-05-04):
+    //   무릎 각도 유지(무너짐 여부)가 핵심. 신전 속도는 부차적 — 각도 유지하면서 elite 던지는 투수 흔함
+    'lead_knee_ext_change_fc_to_br': 1.00,  // ★★ 무너짐 여부 = 가장 중요
     'com_decel_pct':                 1.00,  // ★ 추진력 stop = 회전 전환
-    'lead_knee_amortization_ms':     0.50,
-    'lead_hip_flex_at_fc':           0.50,
-    'lead_hip_ext_vel_max':          0.60,  // ★ block 후 신전
+    'lead_knee_ext_vel_max':         0.20,  // ↓ 신전 속도 자체는 부차적 (각도 유지 우선)
+    'lead_knee_amortization_ms':     0.40,
+    'lead_hip_flex_at_fc':           0.40,
+    'lead_hip_ext_vel_max':          0.40,
   },
-  C3_SeparationFormation: {  // 단계 3 — 분리 형성 (at FC)
-    'trunk_rotation_at_fc':       0.70,
-    'hip_shoulder_sep_at_fc':     1.00,  // ★ X-factor at FC
-    'peak_x_factor':              1.00,  // ★ peak X-factor
-    'peak_torso_counter_rot':     0.80,  // ★ counter-rotation
-    'trunk_forward_tilt_at_fc':   0.50,
-    'shoulder_h_abd_at_fc':       0.40,
+  C3_SeparationFormation: {  // 단계 3 — 몸통 에너지 로딩 (v31.36 5변수)
+    'peak_x_factor':              1.00,  // ★ 골반-몸통 꼬임 (optimal 50°)
+    'trunk_rotation_at_fc':       0.80,  // FC 시 몸통 열림 (Flying Open)
+    'trunk_forward_tilt_at_fc':   0.50,  // FC 시 몸통 앞 기울기
+    'max_pelvis_rot_vel_dps':     0.80,  // ★ 골반 회전 속도 (optimal 550°/s, Aguinaldo)
+    'pelvis_to_trunk_lag_ms':     0.80,  // ★ 골반→몸통 lag (optimal 45ms)
   },
-  C4_TrunkAcceleration: {    // 단계 4 — 트렁크 가속 (FC→MER)
-    'max_pelvis_rot_vel_dps':   0.40,
-    'max_trunk_twist_vel_dps':  0.60,  // ★ 트렁크 가속 핵심
-    'pelvis_to_trunk_lag_ms':   0.80,  // ★ 사용자 통찰: lag 매우 중요
-    'torso_side_bend_at_mer':   0.60,
-    'trunk_flex_vel_max':       0.40,
+  C4_TrunkAcceleration: {    // 단계 4 — 몸통 에너지 발현 (v31.37 2변수)
+    'max_trunk_twist_vel_dps':  1.00,  // ★ 몸통 회전 속도 (optimal 950°/s, Werner 2008)
+    'trunk_flex_vel_max':       0.80,  // ★ 몸통 굴곡 속도 FC→BR (optimal 850°/s, Stodden 2001)
   },
-  C5_UpperBodyTransfer: {    // 단계 5 — 상지 코킹·전달 (at MER)
-    'max_shoulder_ER_deg':    1.00,  // ★ Driveline layback (구속 영향력 2위)
-    // 'elbow_flexion_at_fp' 제거 (v31.25)
-    'arm_trunk_speedup':      1.00,  // ★ 사용자 통찰: 전달 효율 핵심
-    'trunk_to_arm_lag_ms':    0.80,  // ★ 사용자 통찰: lag 매우 중요
+  C5_UpperBodyTransfer: {    // 단계 5 — 팔 에너지 (v31.38 4변수)
+    'max_shoulder_ER_deg':    1.00,  // ★ 레이백 (Driveline elite 175~200°)
+    'arm_trunk_speedup':      1.00,  // ★ 몸통→팔 전달율 (elite 1.88)
+    'trunk_to_arm_lag_ms':    0.80,  // ★ 몸통→팔 lag (40~50ms)
+    'shoulder_ir_vel_max':    0.80,  // ★ 어깨 IR 속도 (Driveline elite 4500+)
   },
   C6_ReleaseAcceleration: {  // 단계 6 — 릴리스 가속 (MER→BR)
     'peak_arm_av':             0.80,  // ★ 팔 회전 peak
@@ -4221,14 +4222,56 @@ function calculateScores(input, age, measuredVelo) {
     if (score != null) allVarScores[k] = score;
   }
   
-  // 2) 종합 점수
-  const fitCatScores = COHORT.fitness_cats.map(c => catScores[c]).filter(s => s != null);
+  // 2) 종합 점수 — ★ v31.39 영역별 카테고리 가중치 도입 (사용자 도메인 인사이트)
+  //   F4_Body는 잠재 변인 아님 (신장은 더 클 수 없고, 체중만 늘려도 구속 안 늘음) → 0.3
+  //   F2_Power(체중당)이 구속과 가장 직접 연관 → 2.0 (최대)
+  //   F1·F3는 표준 1.0
+  const FITNESS_CAT_WEIGHTS  = { F1_Strength: 1.0, F2_Power: 2.0, F3_Reactivity: 1.0, F4_Body: 0.3, F5_Flexibility: 0.8 };
+  // ★ v31.42 메카닉 카테고리 가중치 — 학술 근거 단일 회귀 r 기반 (Werner 2008, Wood-Smith 2019, Driveline)
+  //   C4 몸통 회전 속도 r≈0.61 (단일 최강) / C5 레이백·전달 r≈0.50 / C3 로딩 r≈0.40
+  //   C2 앞다리 버팀·C1 하체 추진은 토대(foundation) — 직접 r 낮음
+  const MECHANICS_CAT_WEIGHTS = {
+    C1_LowerBodyDrive:       0.8,
+    C2_FrontLegBlock:        1.0,
+    C3_SeparationFormation:  1.0,
+    C4_TrunkAcceleration:    1.5,
+    C5_UpperBodyTransfer:    1.5,
+  };
+  // ★ v31.43 제구 카테고리 가중치 — Whiteley 2018, Driveline Pitch Design
+  //   P1 릴리스 점(3D SD) = 제구 가장 직접적 단일 지표 / P4 타이밍 = proper sequence + MER→BR SD
+  const CONTROL_CAT_WEIGHTS   = {
+    P1_ReleaseConsistency: 1.5,  // ★ 제구 단일 최강 지표
+    P2_ArmSlot:            1.0,
+    P3_ReleaseHeight:      1.0,
+    P4_TimingConsistency:  1.2,  // ★ 운동사슬 안정성
+    P5_StrideConsistency:  1.0,
+    P6_TrunkConsistency:   1.0,
+  };
+
+  const _weightedMean = (cats, weights) => {
+    let sum = 0, totalW = 0;
+    for (const c of cats) {
+      const s = catScores[c];
+      if (s == null) continue;
+      const w = (weights && weights[c] != null) ? weights[c] : 1.0;
+      sum += s * w;
+      totalW += w;
+    }
+    return totalW > 0 ? sum / totalW : null;
+  };
+
+  const _fitMean  = _weightedMean(COHORT.fitness_cats,   FITNESS_CAT_WEIGHTS);
+  const _mechMean = _weightedMean(COHORT.mechanics_cats, MECHANICS_CAT_WEIGHTS);
+  const _ctrlMean = _weightedMean(COHORT.control_cats,   CONTROL_CAT_WEIGHTS);
+
+  const Fitness_Score   = _fitMean  != null ? Math.round(_fitMean  * 10) / 10 : null;
+  const Mechanics_Score = _mechMean != null ? Math.round(_mechMean * 10) / 10 : null;
+  const Control_Score   = _ctrlMean != null ? Math.round(_ctrlMean * 10) / 10 : null;
+
+  // legacy 변수 유지 (다른 코드에서 사용)
+  const fitCatScores  = COHORT.fitness_cats.map(c => catScores[c]).filter(s => s != null);
   const mechCatScores = COHORT.mechanics_cats.map(c => catScores[c]).filter(s => s != null);
   const ctrlCatScores = COHORT.control_cats.map(c => catScores[c]).filter(s => s != null);
-
-  const Fitness_Score = fitCatScores.length ? Math.round(fitCatScores.reduce((a,b)=>a+b,0)/fitCatScores.length * 10) / 10 : null;
-  const Mechanics_Score = mechCatScores.length ? Math.round(mechCatScores.reduce((a,b)=>a+b,0)/mechCatScores.length * 10) / 10 : null;
-  const Control_Score = ctrlCatScores.length ? Math.round(ctrlCatScores.reduce((a,b)=>a+b,0)/ctrlCatScores.length * 10) / 10 : null;
 
   // ★ v30.36 결측치 신뢰도 — 영역별 입력 변수 비율 계산
   //   사용자 통찰: 결측치 많은 카테고리의 점수는 신뢰성 낮음 → 시각적 경고 + 신뢰도 표시

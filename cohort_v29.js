@@ -75,6 +75,50 @@ window.COHORT = {
         "higher"
       ]
     ],
+    "F5_Flexibility": [
+      [
+        "Shoulder ER",
+        "어깨 외회전 ROM",
+        "°",
+        0,
+        "higher"
+      ],
+      [
+        "Shoulder IR",
+        "어깨 내회전 ROM",
+        "°",
+        0,
+        "higher"
+      ],
+      [
+        "Hip ER L",
+        "왼쪽 고관절 외회전 ROM",
+        "°",
+        0,
+        "higher"
+      ],
+      [
+        "Hip ER R",
+        "오른쪽 고관절 외회전 ROM",
+        "°",
+        0,
+        "higher"
+      ],
+      [
+        "Hip IR L",
+        "왼쪽 고관절 내회전 ROM",
+        "°",
+        0,
+        "higher"
+      ],
+      [
+        "Hip IR R",
+        "오른쪽 고관절 내회전 ROM",
+        "°",
+        0,
+        "higher"
+      ]
+    ],
     "C1_LowerBodyDrive": [
       [
         "hip_ir_vel_max_drive",
@@ -94,49 +138,33 @@ window.COHORT = {
     "C2_FrontLegBlock": [
       [
         "lead_knee_ext_change_fc_to_br",
-        "앞무릎 신전량 (FC→BR)",
+        "앞무릎 유지력 (FC→BR 무너짐 여부)",
         "°",
         0,
         "higher"
       ]],
     "C3_SeparationFormation": [
       [
+        "peak_x_factor",
+        "골반-몸통 최대 꼬임 (KH→FC)",
+        "°",
+        1,
+        "higher"
+      ],
+      [
         "trunk_rotation_at_fc",
-        "몸통 회전 @ FC (닫힘 정도)",
+        "FC 시 몸통 열림 각도 (Flying Open)",
         "°",
         1,
         "absolute"
-      ],
-      [
-        "hip_shoulder_sep_at_fc",
-        "X-Factor @ FC",
-        "°",
-        1,
-        "higher"
-      ],
-      [
-        "peak_x_factor",
-        "X-Factor 최대 (KH→FC)",
-        "°",
-        1,
-        "higher"
       ],
       [
         "trunk_forward_tilt_at_fc",
-        "몸통 앞 기울기 @ FC",
+        "FC 시 몸통 앞 기울기",
         "°",
         1,
         "absolute"
       ],
-      [
-        "shoulder_h_abd_at_fc",
-        "어깨 수평외전 @ FC",
-        "°",
-        0,
-        "absolute"
-      ]
-    ],
-    "C4_TrunkAcceleration": [
       [
         "max_pelvis_rot_vel_dps",
         "골반 회전 속도 max",
@@ -145,6 +173,15 @@ window.COHORT = {
         "higher"
       ],
       [
+        "pelvis_to_trunk_lag_ms",
+        "골반→몸통 시간차 (lag)",
+        "ms",
+        0,
+        "absolute"
+      ]
+    ],
+    "C4_TrunkAcceleration": [
+      [
         "max_trunk_twist_vel_dps",
         "몸통 회전 속도 max",
         "°/s",
@@ -152,26 +189,41 @@ window.COHORT = {
         "higher"
       ],
       [
-        "pelvis_to_trunk_lag_ms",
-        "골반→몸통 시간차",
-        "ms",
+        "trunk_flex_vel_max",
+        "몸통 굴곡 속도 max (FC→BR)",
+        "°/s",
         0,
-        "absolute"
-      ]],
+        "higher"
+      ]
+    ],
     "C5_UpperBodyTransfer": [
       [
         "max_shoulder_ER_deg",
-        "어깨 외회전 max (레이백)",
+        "레이백 (어깨 외회전 max)",
         "°",
         0,
         "higher"
       ],
       [
+        "arm_trunk_speedup",
+        "몸통→팔 에너지 전달율",
+        "ratio",
+        2,
+        "higher"
+      ],
+      [
         "trunk_to_arm_lag_ms",
-        "몸통→팔 시간차",
+        "몸통→팔 시간차 (lag)",
         "ms",
         0,
         "absolute"
+      ],
+      [
+        "shoulder_ir_vel_max",
+        "어깨 내회전 최대 속도",
+        "°/s",
+        0,
+        "higher"
       ]
     ],
     "P1_ReleaseConsistency": [
@@ -8553,7 +8605,8 @@ window.COHORT = {
     "F1_Strength",
     "F2_Power",
     "F3_Reactivity",
-    "F4_Body"
+    "F4_Body",
+    "F5_Flexibility"
   ],
   "mechanics_cats": [
     "C1_LowerBodyDrive",

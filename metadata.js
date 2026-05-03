@@ -263,6 +263,10 @@ const CATEGORY_TRAINING_RECS = {
     exercises: ['단백질 1.6~2.0 g/kg', 'Compound 리프트 3회/주', '수면 8h+'],
     target: 'BMI 22~24 (lean mass 위주)',
   },
+  'F5_Flexibility': {
+    exercises: ['Sleeper Stretch 3×30s', 'ER PNF stretch 3×8', 'Hip 90/90 stretch 3×30s', 'Hip Airplane 3×6', 'Cross-body stretch'],
+    target: '어깨 ER 145°+ · IR 60°+ · Hip ER 45°+ · Hip IR 40°+ (MLB pitcher 표준)',
+  },
   // ── 메카닉 6단계 (v30.25 코칭 친화 라벨) ──
   'C1_LowerBodyDrive': {
     exercises: ['Lateral Bound 3×5', 'Single-leg power clean', 'Hip airplane 3×6', 'Sled push'],
@@ -270,19 +274,19 @@ const CATEGORY_TRAINING_RECS = {
   },
   'C2_FrontLegBlock': {
     exercises: ['Eccentric Step-down 5초 3×6', 'Drop landing 3×5', 'Single-leg ISO 30s', 'Glute Bridge'],
-    target: '앞무릎 신전 0° 유지, COG 감속 50%+',
+    target: '앞무릎 무너짐 없음 (FC→BR Δ ≥ 0°), COG 감속 50%+',
   },
   'C3_SeparationFormation': {
     exercises: ['거울 앞 FC closed-hold 3×30s', 'Hip-shoulder dissociation 3×8', '메디신볼 회전 던지기 3×6'],
-    target: 'X-Factor @FC 22°+, peak X-Factor 35°+',
+    target: '꼬임 50°+ · 몸통 닫힘(-67° 부근) · 앞 기울기 -10°~+5° · 골반 속도 550°/s+ · lag 40~50ms (MLB 표준)',
   },
   'C4_TrunkAcceleration': {
-    exercises: ['Rotational Med Ball Throw 3×6', 'Cable Wood Chop 3×8', 'Slow-Fast Tempo Throw'],
-    target: '골반→몸통 lag 40~60ms, 몸통 회전속도 1000+ °/s',
+    exercises: ['Rotational Med Ball Throw 3×6', 'Med Ball Slam 3×6', 'Cable Wood Chop 3×8', 'Anti-rotation Press'],
+    target: '몸통 회전 속도 950°/s+ · 몸통 굴곡 속도 850°/s+ (MLB 표준)',
   },
   'C5_UpperBodyTransfer': {
-    exercises: ['Connected Throw drill 3×5', 'Sleeper Stretch 3×30s', 'ER PNF stretch', 'Long toss with intent'],
-    target: '레이백 175°+, 팔/몸통 전달 효율 1.8+',
+    exercises: ['Connected Throw drill 3×5', 'Sleeper Stretch 3×30s', 'ER PNF stretch', 'Long toss with intent', 'IR power throw'],
+    target: '레이백 185°+ · 전달율 1.88+ · lag 40~50ms · 어깨 IR 4500°/s+ (MLB 표준)',
   },
   'C6_ReleaseAcceleration': {
     exercises: ['Volume monitoring (PitchSmart)', 'Trunk activation drill', 'Plyo ball throw 3×5', '⚠ 부상 시 즉시 휴식'],
@@ -430,19 +434,26 @@ const EXTRA_VAR_SCORING = {
   'drive_hip_ext_vel_max':        { optimal: 600, sigma: 200 },                // °/s — drive leg hip 신전 peak
   'lead_hip_flex_at_fc':          { optimal: 80, sigma: 20 },                  // ° — lead hip 굴곡 (정상 자세)
   'lead_hip_ext_vel_max':         { optimal: 700, sigma: 200 },                // °/s — lead leg hip 신전 peak (FC→BR)
-  // ★ v31.21 체력 변수 — 체중당 측정값만 사용 (절대값은 체격 카테고리에서 체중으로 평가됨)
-  //   참고: Driveline R&D, Lehman 2013, Karpov 2016, MLB Combine 2022
-  //   optimal = MLB elite 평균, sigma는 한국 고1 elite도 70~80점 받도록 설정
-  'IMTP Peak Vertical Force / BM [N/kg]': { optimal: 45, sigma: 12 },         // N/kg — MLB elite 40~55
-  'CMJ Peak Power / BM [W/kg]':           { optimal: 60, sigma: 13 },         // W/kg — MLB elite 55~70
-  'SJ Peak Power / BM [W/kg]':            { optimal: 55, sigma: 13 },         // W/kg
+  // ★ v31.41 VALD Normative Data Report (Baseball v2, 2024) 50th 기반 정교화
+  //   기존 sigma가 너무 커서 변별력 약했음. VALD 25~75 percentile로 sigma 산출
+  //   참고: VALD Baseball 50th = optimal, (75th-25th)/2 ≈ sigma
+  'IMTP Peak Vertical Force / BM [N/kg]': { optimal: 36, sigma: 6 },          // N/kg — VALD 50th 36.3, 25~75: 32.5~41.1
+  'CMJ Peak Power / BM [W/kg]':           { optimal: 60, sigma: 6 },          // W/kg — VALD 50th 60, 25~75: 56~65
+  'SJ Peak Power / BM [W/kg]':            { optimal: 59, sigma: 6 },          // W/kg — VALD 50th 59, 25~75: 54~64
   // ★ v31.3 CMJ Concentric Impulse 제거 — Peak Power와 정보 중복 (사용자 도메인 결정)
-  'CMJ RSI-modified [m/s]':               { optimal: 0.55, sigma: 0.15 },     // m/s — Driveline elite 0.5~0.7
-  'SJ RSI-modified [m/s]':                { optimal: 0.45, sigma: 0.13 },     // m/s
-  'EUR':                                  { optimal: 1.20, sigma: 0.15 },     // ratio — 1.1~1.3 적정
+  'CMJ RSI-modified [m/s]':               { optimal: 0.65, sigma: 0.10 },     // m/s — VALD 50th 0.65, 25~75: 0.56~0.74
+  'SJ RSI-modified [m/s]':                { optimal: 0.96, sigma: 0.13 },     // m/s — VALD 50th 0.96, 25~75: 0.79~1.15
+  'EUR':                                  { optimal: 1.20, sigma: 0.15 },     // ratio — 1.1~1.3 적정 (VALD 직접 데이터 없음, 유지)
   'Height[M]':                            { optimal: 1.85, sigma: 0.10 },     // m — MLB pitcher 평균 1.88
   'Weight[KG]':                           { optimal: 90, sigma: 12 },         // kg — MLB pitcher 평균 95
   'BMI':                                  { optimal: 25, sigma: 3.5 },        // — MLB pitcher 평균 26
+  // ★ v31.40 유연성 ROM (Wilk 2014, Reinold 2014, Driveline)
+  'Shoulder ER':                          { optimal: 145, sigma: 15 },        // ° — pitcher passive ER 130~165 (throwing arm)
+  'Shoulder IR':                          { optimal: 60,  sigma: 15 },        // ° — 60~80° 정상
+  'Hip ER L':                             { optimal: 45,  sigma: 10 },        // ° — drive/lead 양쪽 동일 평가
+  'Hip ER R':                             { optimal: 45,  sigma: 10 },        // °
+  'Hip IR L':                             { optimal: 40,  sigma: 10 },        // °
+  'Hip IR R':                             { optimal: 40,  sigma: 10 },        // °
 };
 
 // ════════════════════════════════════════════════════════════════════
@@ -506,6 +517,9 @@ const LITERATURE_OVERRIDE = new Set([
   'Height[M]',
   'Weight[KG]',
   'BMI',
+  // ★ v31.40 유연성 ROM
+  'Shoulder ER', 'Shoulder IR',
+  'Hip ER L', 'Hip ER R', 'Hip IR L', 'Hip IR R',
 ]);
 
 // ════════════════════════════════════════════════════════════════════
@@ -575,13 +589,14 @@ const CATEGORY_DETAILS = {
   "F2_Power": {"name":"체중당 파워","short_desc":"체중 정규화 폭발력 (W/kg)","meaning":"CMJ·SJ로 측정되는 체중당 폭발 출력. 구속과 가장 직접적 연관 체력 요소. 절대값이 아닌 단위 체중당 수치이므로 효율적 파워 발현이 평가됨.","method":"CMJ Peak Power/BM, SJ Peak Power/BM (W/kg) 백분위 평균","interpretation":[["75-100","체중당 파워 우수 — 투구 폭발력 기반 충분"],["50-75","평균 — 플라이오메트릭 강화"],["25-50","파워 부족 — SSC 활용 훈련"],["0-25","매우 부족 — 점프 트레이닝 우선"]],"coaching":"점프 스쿼트, 박스 점프, 메디신볼 던지기, 올림픽 리프트","reference":"Lehman et al. (2013), Driveline KineticArm"},
   "F3_Reactivity": {"name":"반응성 (SSC)","short_desc":"신축단축주기 효율","meaning":"근육이 빠르게 늘어났다가 즉시 수축하는 SSC(Stretch-Shortening Cycle) 효율. 투구의 앞다리 블로킹·몸통 회전과 직결.","method":"CMJ/SJ RSI-modified와 EUR (CMJ/SJ 비율)의 백분위 평균","interpretation":[["75-100","SSC 활용 우수 — 효율적 에너지 전달"],["50-75","평균적 SSC, 반응성 향상 여지"],["25-50","SSC 효율 낮음 — concentric만 의존"],["0-25","SSC 매우 낮음 — 단순 근력→반응적 전환 훈련"]],"coaching":"드롭 점프, 데모스 짧은 접지 시간 점프, 플라이오메트릭","reference":"McMahon (2017), Komi (2003)"},
   "F4_Body": {"name":"체격","short_desc":"신체 구성","meaning":"구속과 관련된 신체 크기. 신장은 릴리스 높이·레버 길이, 체중은 운동량과 관련.","method":"신장·체중·BMI의 백분위 평균","interpretation":[["—","신체 크기는 직접 향상 어려움 — 다른 카테고리에 더 집중"],["","체중 증가는 근육량·체지방 비율 함께 고려"]],"coaching":"영양 섭취, 근육량 증가 (체지방 < 15%)","reference":"Werner et al. (2008)"},
+  "F5_Flexibility": {"name":"유연성","short_desc":"어깨·고관절 ROM (Range of Motion)","meaning":"투구 시 가동범위 한계가 메카닉 표현을 제약. 어깨 외회전 ROM은 레이백 깊이의 기반, 어깨 내회전은 follow-through, 고관절 ROM은 골반 회전·X-Factor 형성의 기반. ROM이 부족하면 회전 가속 단계에서 압박 증가 + 부상 위험.","method":"Shoulder ER (Gaussian optimal 145°, sigma 15°) + Shoulder IR (optimal 60°, sigma 15°) + Hip ER L/R (optimal 45°, sigma 10°) + Hip IR L/R (optimal 40°, sigma 10°). MLB pitcher 평균·문헌 표준 (Wilk 2014, Reinold 2014).","interpretation":[["75-100","ROM 우수 — 모든 부위 elite 가동범위"],["50-75","평균 — 한두 부위 ROM 향상 여지"],["25-50","ROM 부족 — 주요 부위 모빌리티 트레이닝 필요"],["0-25","ROM 매우 부족 — 부상 위험 + 즉시 모빌리티 강화"]],"coaching":"어깨 sleeper stretch, ER PNF, hip 90/90 stretch, hip airplane. ROM 회복 후 안정성 강화로 연결","reference":"Wilk et al. (2014), Reinold et al. (2014), Driveline R&D"},
   "F5_LowerBody": {"name":"체중당 파워","short_desc":"체중 정규화 출력 (W/kg·N/kg)","meaning":"체중당 출력 파워. 작은 체격이라도 효율적으로 파워를 낼 수 있는지 평가.","method":"CMJ·SJ Peak Power/BM, IMTP/BM의 백분위 평균","interpretation":[["75-100","체중당 파워 우수 — 효율적 운동 능력"],["50-75","평균 — 하체 강화 또는 체중 조절"],["25-50","체중 대비 파워 부족"],["0-25","심각한 부족 — 체구성 개선 + 파워 훈련"]],"coaching":"스피드 스쿼트, 점프 트레이닝, 체지방 관리","reference":"Driveline체중 정규화 표준"},
   "F6_VelocityIndex": {"name":"복합 폭발력","short_desc":"임펄스·반응성·근력 통합","meaning":"학술 연구에서 구속과 가장 강하게 연관되는 체력 변수 셋. 종합 진단용.","method":"CMJ Concentric Impulse, CMJ RSI-mod, IMTP 절대치의 백분위 평균","interpretation":[["75-100","구속 잠재력 매우 높음"],["50-75","평균적 구속 잠재력"],["25-50","구속 향상 위해 핵심 변수 강화 필요"]],"coaching":"Concentric impulse 향상 훈련, Reactive 점프","reference":"Sakurai (2024), Driveline KineticArm"},
   "C1_LowerBodyDrive": {"name":"하체 추진","short_desc":"뒷다리로 강하게 밀어 추진력 만들기 (KH→FC)","meaning":"키네틱 체인의 첫 단계. 뒷다리(드라이브)에서 만든 추진력이 전체 운동 사슬의 시작점이 됨. 추진력이 약하면 X-Factor 형성, 트렁크 회전, 팔 가속 모두 약해짐.","method":"스트라이드 길이·시간, 뒷다리 hip 신전속도, 뒷다리 hip 회전속도, COG 전진속도의 백분위 평균","interpretation":[["75-100","하체 추진 우수 — 뒷다리 폭발력 좋음, 추진 단단"],["50-75","평균 추진 — 뒷다리 폭발력 향상 여지"],["25-50","추진 부족 — 뒷다리 power 보강 필요"],["0-25","추진 심각 — 단일 다리 power 우선 강화"]],"coaching":"뒷다리를 단단히 밀어내고 골반을 능동적으로 보내라 — '한 발로 폭발적으로 밀어 보내기' cue","reference":"Driveline drive leg, Matsuo (2001)"},
-  "C2_FrontLegBlock": {"name":"앞다리 버팀 (Block)","short_desc":"앞다리로 받아 멈추며 회전 에너지로 전환 (FC→가속 시작)","meaning":"앞다리(블록)가 추진력을 멈춰 회전 에너지로 전환하는 핵심 단계. 무너지면 에너지 손실 + Flying Open 위험. 단단한 block이 X-Factor 형성·트렁크 가속의 발판.","method":"앞무릎 신전량·신전속도, 몸 감속도(블록 강도), SSC 시간, 앞 hip 굴곡·신전속도의 백분위 평균","interpretation":[["75-100","Block 우수 — 단단한 앞다리 + 빠른 신전"],["50-75","평균 Block — 안정성 향상 여지"],["25-50","Block 부족 — 무릎 무너짐 가능성 ⚠"],["0-25","Block 심각 — 즉시 ecc 강화 필요"]],"coaching":"FC 순간 앞다리를 펴서 단단히 받쳐 멈춰라 — 무너지면 에너지가 다 빠져나간다","reference":"Driveline lead leg, Wood-Smith (2019)"},
-  "C3_SeparationFormation": {"name":"X-Factor 형성","short_desc":"FC 시 골반은 열고 몸통은 닫혀 분리 토크 저장","meaning":"FC 순간 골반-몸통 분리(X-Factor)가 만들어져야 회전 에너지가 저장됨. Flying Open(몸통이 일찍 열림) = X-Factor 못 만듦 = 트렁크 가속 약함. 키네틱 체인의 'load' 단계.","method":"FC 시점 몸통 회전(닫힘), X-Factor, peak X-Factor, 카운터 로테이션, 몸통 앞 기울기, 어깨 수평외전의 백분위 평균","interpretation":[["75-100","X-Factor 형성 우수 — 분리 토크 충분"],["50-75","평균 분리 — 닫힘 자세 향상 여지"],["25-50","분리 부족 — Flying Open 경향 점검"],["0-25","분리 심각 — 와인드업·시퀀스 재학습 우선"]],"coaching":"'hip first' — 골반은 먼저 열고 몸통은 끝까지 닫혀 있어라. FC 직전 거울 hold drill","reference":"Stodden (2001), Aguinaldo (2007), Driveline"},
-  "C4_TrunkAcceleration": {"name":"몸통 회전 채찍","short_desc":"저장된 X-Factor를 풀며 몸통 폭발 회전 (FC→MER)","meaning":"X-Factor에 저장된 토크가 몸통 회전으로 폭발 — 골반→몸통 시간차(lag)가 핵심. lag이 너무 짧거나 길면 에너지 전달 실패. 사용자 통찰: 회전속도뿐 아니라 lag 자체가 매우 중요.","method":"골반·몸통 회전속도, 골반→몸통 lag(40~60ms 최적), 측면 기울기, 몸통 굴곡속도의 백분위 평균","interpretation":[["75-100","몸통 가속 우수 — 채찍 회전 + 시간차 적정"],["50-75","평균 — lag 최적화 여지"],["25-50","몸통 가속 부족 — 코어·회전 강화"],["0-25","가속 심각 — 시퀀스 재학습 우선"]],"coaching":"골반 회전 직후 몸통을 채찍처럼 폭발 회전. 메디신볼 회전 던지기, 분절 드릴","reference":"Aguinaldo (2007), Driveline KineticArm"},
-  "C5_UpperBodyTransfer": {"name":"레이백 + 팔 전달","short_desc":"몸통 에너지를 어깨 외회전(레이백)으로 흡수 후 팔로 전달","meaning":"MER 시점 어깨 외회전(레이백)으로 몸통 에너지를 받고 팔로 정확히 전달. 사용자 통찰 핵심: 몸통→팔 전달 효율(arm/trunk speedup)과 lag이 키네틱 체인 효율의 결정자. 전달 약하면 팔꿈치 부담 ↑.","method":"어깨 외회전 max(레이백), 팔꿈치 굴곡, 팔/몸통 전달 효율, 몸통→팔 lag의 백분위 평균","interpretation":[["75-100","전달 우수 — 레이백 + 효율 모두 양호"],["50-75","평균 — 전달 효율 또는 레이백 향상"],["25-50","전달 부족 — 팔꿈치 의존 위험 ⚠"],["0-25","전달 심각 — 부상 위험 + 트렁크 활성화 우선"]],"coaching":"몸통 에너지를 어깨로 받고 팔로 넘겨라. Connected throw drill, 메디신볼 던지기","reference":"Werner (2008), Driveline OnBaseU"},
+  "C2_FrontLegBlock": {"name":"앞다리 버팀 (Block)","short_desc":"FC→BR 무릎 무너짐 여부 — 각도 유지가 핵심","meaning":"앞다리(블록)가 추진력을 받아 회전 에너지로 전환하는 핵심 단계. 핵심은 'FC 시점 무릎 각도가 BR까지 유지되는가' — 더 펴거나 굽힘이 아닌 '무너지지 않음'이 평가 기준. 무릎 각도 유지하면서 좋은 메카닉으로 빠른 공 던지는 투수가 elite에 흔함.","method":"앞무릎 무너짐 여부(FC→BR Δ각도, 음수=무너짐만 감점, 0 이상은 만점), 몸 감속도(블록 강도), SSC 시간, 앞 hip 굴곡·신전속도의 백분위 평균","interpretation":[["75-100","Block 우수 — 무릎 각도 유지·블록 단단"],["50-75","평균 Block — 약한 무너짐 경향"],["25-50","Block 부족 — 무릎 무너짐 가능성 ⚠"],["0-25","Block 심각 — 명백한 무너짐, 즉시 ecc 강화"]],"coaching":"FC 순간 앞다리 각도를 BR까지 유지하라 — 더 펴려 하기보다 무너지지 않게 단단히 버텨라","reference":"Driveline lead leg, Wood-Smith (2019)"},
+  "C3_SeparationFormation": {"name":"몸통 에너지 로딩","short_desc":"꼬임·닫힘·기울기·골반속도·lag으로 트렁크 에너지 저장·전달","meaning":"FC 시점에 몸통이 회전 가속을 위한 에너지를 충분히 '저장'하고 골반→몸통 전달 타이밍이 적정한가. 다섯 가지 동시 평가: ① 골반-몸통 최대 꼬임 크게 형성, ② FC 시점 몸통이 일찍 열리지 않음(Flying Open 방지), ③ FC 시점 몸통 앞 기울기 적정, ④ 골반 회전 속도 elite 수준, ⑤ 골반→몸통 시간차(lag) 적정(40~50ms). 다섯 요소 통합 평가로 로딩 단계 전반 진단.","method":"peak_x_factor (Gaussian optimal 50°, sigma 15°) + trunk_rotation_at_fc (optimal -67°, sigma 30°, 정규화) + trunk_forward_tilt_at_fc (optimal -5°, sigma 15°) + max_pelvis_rot_vel_dps (optimal 550°/s, sigma 130) + pelvis_to_trunk_lag_ms (optimal 45ms, sigma 25) — 모두 MLB/문헌 표준 직접 평가","interpretation":[["75-100","로딩·전달 우수 — 5요소 모두 양호"],["50-75","평균 — 한두 요소 향상 여지"],["25-50","로딩 부족 — Flying Open·꼬임·lag 점검"],["0-25","로딩 심각 부족 — 와인드업·분리 시퀀스 재학습"]],"coaching":"'hip first' — 골반은 먼저 빠르게 회전하고 몸통은 적정 시간차(40~50ms) 후 따라와라. FC 직전 거울 hold drill로 꼬임·닫힘 감각 학습","reference":"Stodden (2001), Aguinaldo (2007), Driveline R&D"},
+  "C4_TrunkAcceleration": {"name":"몸통 에너지 발현","short_desc":"몸통 회전·굴곡 속도로 에너지 발현 (FC→MER→BR)","meaning":"C3에서 로딩된 에너지가 몸통의 폭발적 회전·굴곡으로 발현되는 단계. 두 가지 핵심 출력: ① 몸통 축회전 속도(twist) — 골반-몸통 분리에서 풀려나는 회전 토크, ② 몸통 굴곡 속도(flex, FC→BR) — 앞으로 굽혀지며 팔에 직선 가속 부여. 두 속도가 동시에 elite 수준이어야 빠른 구속.","method":"max_trunk_twist_vel_dps (Gaussian optimal 950°/s, sigma 200 — Werner 2008, Wood-Smith 2019) + trunk_flex_vel_max (Gaussian optimal 850°/s, sigma 200 — Stodden 2001) — 모두 MLB/문헌 표준 직접 평가","interpretation":[["75-100","발현 우수 — 회전·굴곡 속도 모두 elite 수준"],["50-75","평균 — 한 속도 향상 여지"],["25-50","발현 부족 — 코어 폭발력·회전 가속 강화"],["0-25","발현 심각 — 시퀀스 재학습 + 코어 강화 우선"]],"coaching":"몸통을 채찍처럼 폭발 회전 + FC→BR 동안 앞으로 빠르게 굽혀라. 메디신볼 회전 던지기, 슬램 throw, anti-rotation 코어","reference":"Werner (2008), Wood-Smith (2019), Stodden (2001), Driveline"},
+  "C5_UpperBodyTransfer": {"name":"팔 에너지","short_desc":"레이백·전달율·lag·어깨 IR 속도 통합 평가","meaning":"몸통에서 팔로 에너지가 어떻게 전달·증폭되어 공으로 가속되는가. 네 가지 통합 평가: ① 레이백(어깨 외회전 max) — 몸통 에너지 흡수 ROM, ② 몸통→팔 전달 효율(arm_trunk_speedup) — 팔이 몸통보다 얼마나 빨리 회전하는지의 비율, ③ 몸통→팔 시간차(lag) — 전달 타이밍, ④ 어깨 내회전 최대 속도 — 최종 공 가속 단계의 폭발력. 네 요소 모두 양호해야 효율적이고 부상 없는 팔 에너지 발현.","method":"max_shoulder_ER_deg (Gaussian optimal 185°, sigma 12 — Driveline elite) + arm_trunk_speedup (Gaussian optimal 1.88, sigma 0.2 — 20명 elite) + trunk_to_arm_lag_ms (LAG optimal 45ms, sigma 25) + shoulder_ir_vel_max (Linear 1500~4500°/s, Driveline elite 4500+)","interpretation":[["75-100","팔 에너지 우수 — 4요소 모두 elite 수준"],["50-75","평균 — 한두 요소 향상 여지"],["25-50","전달 부족 — 팔꿈치 의존 위험 ⚠"],["0-25","전달 심각 — 부상 위험 + 트렁크 활성화 우선"]],"coaching":"몸통 에너지를 어깨로 받고 팔로 넘겨라. Connected throw drill, 메디신볼 던지기, 어깨 ER ROM·IR 속도 강화","reference":"Werner (2008), Wood-Smith (2019), Driveline OnBaseU"},
   "C6_ReleaseAcceleration": {"name":"팔 가속·릴리스","short_desc":"팔을 폭발적으로 가속해 공에 에너지 전달 (MER→BR)","meaning":"마지막 단계 — 팔 회전속도와 팔꿈치 신전속도로 공에 가속. ★사용자 통찰: 몸통 약하면 전완에서 추가 에너지 생성 = 팔꿈치 과부하(UCL 부상 위험). 부상 진단의 핵심.","method":"팔 회전속도 peak, 팔꿈치 신전속도 max, 몸통 굴곡속도, arm slot, 릴리스 높이의 백분위 평균","interpretation":[["75-100","릴리스 가속 우수 — 정상 범위"],["50-75","평균 — 부상 위험 모니터링"],["25-50","주의 — 팔 출력만으로 의존 가능"],["0-25","위험 ⚠ 팔꿈치 과부하 진단 필요"]],"coaching":"몸통 에너지로 팔을 가속하라 — 팔만 휘두르면 팔꿈치 부상. 볼륨 관리 + 트렁크 강화","reference":"Whiteley (2018), Werner (2008), MLB Pitch Smart"},
   "P1_ReleaseConsistency": {"name":"릴리스 점 일관성 (3D)","short_desc":"손목 X·Y·Z 결합 SD","meaning":"여러 trial에서 릴리스 시점 손목의 3차원 위치가 얼마나 일관된지. 제구의 가장 직접적 지표.","method":"Trial-to-trial 손목 X·Y·Z SD를 결합한 3D SD (cm). 작을수록 좋음.","interpretation":[["75-100","릴리스 매우 일관 — 제구 우수"],["50-75","평균적 일관성"],["25-50","릴리스 변동 — 제구 불안정"],["0-25","릴리스 매우 변동 — 폼 안정화 우선"]],"coaching":"반복 폼 연습, 거울·비디오 피드백, 셋업 일관성","reference":"Whiteley (2018), Driveline Pitch Design"},
   "P2_ArmSlot": {"name":"팔 슬롯 안정성","short_desc":"팔 각도 일관성","meaning":"Trial마다 팔 슬롯(어깨-팔꿈치 각도)이 얼마나 일관된지. 다른 슬롯에서 던지면 구질이 달라짐.","method":"팔 슬롯 각도의 trial-to-trial SD (degrees)","interpretation":[["75-100","슬롯 매우 일관"],["50-75","평균"],["25-50","슬롯 변동"],["0-25","슬롯 매우 변동 — 일관 폼 우선"]],"coaching":"같은 슬롯 반복 연습, Tilt drill","reference":"Whiteley (2018)"},
