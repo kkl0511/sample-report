@@ -649,7 +649,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v30.17';
+const ALGORITHM_VERSION = 'v30.18';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -2126,15 +2126,24 @@ function handleMultipleUpliftFiles(files) {
           if (veloEl && (!veloEl.value || veloEl.value === '') && masterRow['Max Velocity'] != null) {
             veloEl.value = parseFloat(masterRow['Max Velocity']).toFixed(1);
           }
-          // 키/몸무게 → CURRENT_INPUT.fitness (체력 CSV 없어도 헤더 표시 가능)
+          // ★ v30.18: master_fitness의 모든 fitness 변수 자동 채움 (체력 CSV 없어도 점수 산출 가능)
           if (!CURRENT_INPUT.fitness) CURRENT_INPUT.fitness = {};
-          if (masterRow['Height[M]'] != null && CURRENT_INPUT.fitness['Height[M]'] == null) {
-            CURRENT_INPUT.fitness['Height[M]'] = parseFloat(masterRow['Height[M]']);
+          const FITNESS_KEYS_FROM_MASTER = [
+            'Height[M]', 'Weight[KG]', 'BMI',
+            'CMJ Peak Power [W]', 'CMJ Peak Power / BM [W/kg]',
+            'CMJ Concentric Impulse [N s]', 'CMJ RSI-modified [m/s]',
+            'SJ Peak Power [W]', 'SJ Peak Power / BM [W/kg]', 'SJ RSI-modified [m/s]',
+            'EUR',
+            'IMTP Peak Vertical Force [N]', 'IMTP Peak Vertical Force / BM [N/kg]',
+          ];
+          let filledCount = 0;
+          for (const k of FITNESS_KEYS_FROM_MASTER) {
+            if (masterRow[k] != null && CURRENT_INPUT.fitness[k] == null) {
+              const v = parseFloat(masterRow[k]);
+              if (!isNaN(v)) { CURRENT_INPUT.fitness[k] = v; filledCount++; }
+            }
           }
-          if (masterRow['Weight[KG]'] != null && CURRENT_INPUT.fitness['Weight[KG]'] == null) {
-            CURRENT_INPUT.fitness['Weight[KG]'] = parseFloat(masterRow['Weight[KG]']);
-          }
-          console.log(`📊 master_fitness 자동 매칭: ${firstMeta.athleteName} → 손잡이 ${CURRENT_INPUT._armSide}, MaxV ${masterRow['Max Velocity']}, ${masterRow['Height[M]']}m / ${masterRow['Weight[KG]']}kg`);
+          console.log(`📊 master_fitness 자동 매칭: ${firstMeta.athleteName} → 손잡이 ${CURRENT_INPUT._armSide}, MaxV ${masterRow['Max Velocity']}, fitness ${filledCount}개 채움`);
         }
       }
     } catch (e) {
@@ -4489,10 +4498,13 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
     const xFactorGood      = xFactorScore != null && xFactorScore >= 70;
     
     // 체력 vs 메카닉 점수 차이로 발달 유형 추가 분류
+    // ★ v30.18: 체력 변수가 너무 적으면 (측정 누락) 비교 보류 — 0점 = 약점이 아닌 데이터 누락
+    const fitVarCount = Object.keys(CURRENT_INPUT.fitness || {}).length;
     const fitScore = r.Fitness_Score;
     const mechScore = r.Mechanics_Score;
-    const isPowerDriven = fitScore != null && mechScore != null && (fitScore - mechScore >= 15);
-    const isMechDriven  = fitScore != null && mechScore != null && (mechScore - fitScore >= 15);
+    const fitDataReliable = fitVarCount >= 5 && fitScore != null && fitScore >= 5;  // 최소 5개 변수 + 0점 아님
+    const isPowerDriven = fitDataReliable && mechScore != null && (fitScore - mechScore >= 15);
+    const isMechDriven  = fitDataReliable && mechScore != null && (mechScore - fitScore >= 15);
     
     if (seqExcellent && (trunkVelModerate || trunkVelLow)) {
       typeLabel = '효율 타입 (Efficiency Type)';
