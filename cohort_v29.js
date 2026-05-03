@@ -13,26 +13,26 @@ window.COHORT = {
   "category_vars": {
     "F1_Strength": [
       [
-        "IMTP Peak Vertical Force / BM [N/kg]",
-        "IMTP/체중",
-        "N/kg",
-        1,
+        "IMTP Peak Vertical Force [N]",
+        "IMTP 절대 수직력",
+        "N",
+        0,
         "higher"
       ]
     ],
     "F2_Power": [
       [
-        "CMJ Peak Power / BM [W/kg]",
-        "CMJ 단위파워",
-        "W/kg",
-        1,
+        "CMJ Peak Power [W]",
+        "CMJ 절대 파워",
+        "W",
+        0,
         "higher"
       ],
       [
-        "SJ Peak Power / BM [W/kg]",
-        "SJ 단위파워",
-        "W/kg",
-        1,
+        "SJ Peak Power [W]",
+        "SJ 절대 파워",
+        "W",
+        0,
         "higher"
       ]
     ],
@@ -75,50 +75,7 @@ window.COHORT = {
         "higher"
       ]
     ],
-    "F5_Flexibility": [
-      [
-        "Shoulder ER",
-        "어깨 외회전 ROM",
-        "°",
-        0,
-        "higher"
-      ],
-      [
-        "Shoulder IR",
-        "어깨 내회전 ROM",
-        "°",
-        0,
-        "higher"
-      ],
-      [
-        "Hip ER L",
-        "왼쪽 고관절 외회전 ROM",
-        "°",
-        0,
-        "higher"
-      ],
-      [
-        "Hip ER R",
-        "오른쪽 고관절 외회전 ROM",
-        "°",
-        0,
-        "higher"
-      ],
-      [
-        "Hip IR L",
-        "왼쪽 고관절 내회전 ROM",
-        "°",
-        0,
-        "higher"
-      ],
-      [
-        "Hip IR R",
-        "오른쪽 고관절 내회전 ROM",
-        "°",
-        0,
-        "higher"
-      ]
-    ],
+    // F5_Flexibility 제거 (v31.44 사용자 요청)
     "C1_LowerBodyDrive": [
       [
         "hip_ir_vel_max_drive",
@@ -8605,8 +8562,7 @@ window.COHORT = {
     "F1_Strength",
     "F2_Power",
     "F3_Reactivity",
-    "F4_Body",
-    "F5_Flexibility"
+    "F4_Body"
   ],
   "mechanics_cats": [
     "C1_LowerBodyDrive",

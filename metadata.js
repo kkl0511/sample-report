@@ -263,10 +263,7 @@ const CATEGORY_TRAINING_RECS = {
     exercises: ['단백질 1.6~2.0 g/kg', 'Compound 리프트 3회/주', '수면 8h+'],
     target: 'BMI 22~24 (lean mass 위주)',
   },
-  'F5_Flexibility': {
-    exercises: ['Sleeper Stretch 3×30s', 'ER PNF stretch 3×8', 'Hip 90/90 stretch 3×30s', 'Hip Airplane 3×6', 'Cross-body stretch'],
-    target: '어깨 ER 145°+ · IR 60°+ · Hip ER 45°+ · Hip IR 40°+ (MLB pitcher 표준)',
-  },
+  // F5_Flexibility 제거 (v31.44)
   // ── 메카닉 6단계 (v30.25 코칭 친화 라벨) ──
   'C1_LowerBodyDrive': {
     exercises: ['Lateral Bound 3×5', 'Single-leg power clean', 'Hip airplane 3×6', 'Sled push'],
@@ -447,13 +444,7 @@ const EXTRA_VAR_SCORING = {
   'Height[M]':                            { optimal: 1.85, sigma: 0.10 },     // m — MLB pitcher 평균 1.88
   'Weight[KG]':                           { optimal: 90, sigma: 12 },         // kg — MLB pitcher 평균 95
   'BMI':                                  { optimal: 25, sigma: 3.5 },        // — MLB pitcher 평균 26
-  // ★ v31.40 유연성 ROM (Wilk 2014, Reinold 2014, Driveline)
-  'Shoulder ER':                          { optimal: 145, sigma: 15 },        // ° — pitcher passive ER 130~165 (throwing arm)
-  'Shoulder IR':                          { optimal: 60,  sigma: 15 },        // ° — 60~80° 정상
-  'Hip ER L':                             { optimal: 45,  sigma: 10 },        // ° — drive/lead 양쪽 동일 평가
-  'Hip ER R':                             { optimal: 45,  sigma: 10 },        // °
-  'Hip IR L':                             { optimal: 40,  sigma: 10 },        // °
-  'Hip IR R':                             { optimal: 40,  sigma: 10 },        // °
+  // F5_Flexibility ROM 변수 제거 (v31.44)
 };
 
 // ════════════════════════════════════════════════════════════════════
@@ -506,20 +497,14 @@ const LITERATURE_OVERRIDE = new Set([
   'shoulder_ir_vel_max',             // Driveline elite 4500+
   'peak_arm_av',                     // Pitching mechanics standard
   'stride_norm_height',              // Driveline standard 0.85-1.0
-  // ── 체력 변수 (MLB R&D 기반 표준 — v31.21 체중당만 유지) ──
-  'IMTP Peak Vertical Force / BM [N/kg]',
-  'CMJ Peak Power / BM [W/kg]',
-  'SJ Peak Power / BM [W/kg]',
-  // 'CMJ Concentric Impulse [N s]', ← v31.3 제거 (Peak Power 정보 중복)
+  // ── 체력 변수 (v31.44: 체중당 + ROM 제거 — 코호트 n=234 percentile 사용) ──
+  // 절대값은 코호트 percentile로 한국 고교 또래 대비 평가 (LITERATURE에 안 넣음)
   'CMJ RSI-modified [m/s]',
   'SJ RSI-modified [m/s]',
   'EUR',
   'Height[M]',
   'Weight[KG]',
   'BMI',
-  // ★ v31.40 유연성 ROM
-  'Shoulder ER', 'Shoulder IR',
-  'Hip ER L', 'Hip ER R', 'Hip IR L', 'Hip IR R',
 ]);
 
 // ════════════════════════════════════════════════════════════════════
@@ -585,11 +570,11 @@ const PLAUSIBLE_RANGES = {
 // 의미·산출·점수 해석·코칭·학술 근거 + (C 카테고리는) 변수별 설명
 // ════════════════════════════════════════════════════════════════════
 const CATEGORY_DETAILS = {
-  "F1_Strength": {"name":"체중당 근력","short_desc":"체중 정규화 최대 근력 (N/kg)","meaning":"체중당 발휘 가능한 최대 수직력. 절대값이 아닌 단위 체중당 수치이므로 체격이 작아도 효율적 근력 발현이 가능한지 평가. (절대 근력은 체격 카테고리에서 이미 평가됨)","method":"IMTP Peak Vertical Force / BM (N/kg) 백분위","interpretation":[["75-100","체중당 근력 우수 — 폭발적 동작 기반 충분"],["50-75","평균 — 강화 여지 있음"],["25-50","체중당 근력 부족 — 보조 운동 우선"],["0-25","매우 부족 — 우선 보강 필요"]],"coaching":"데드리프트, 스쿼트, IMTP 트레이닝, 체구성 관리","reference":"Sakurai (2024), Driveline Strength Standards"},
-  "F2_Power": {"name":"체중당 파워","short_desc":"체중 정규화 폭발력 (W/kg)","meaning":"CMJ·SJ로 측정되는 체중당 폭발 출력. 구속과 가장 직접적 연관 체력 요소. 절대값이 아닌 단위 체중당 수치이므로 효율적 파워 발현이 평가됨.","method":"CMJ Peak Power/BM, SJ Peak Power/BM (W/kg) 백분위 평균","interpretation":[["75-100","체중당 파워 우수 — 투구 폭발력 기반 충분"],["50-75","평균 — 플라이오메트릭 강화"],["25-50","파워 부족 — SSC 활용 훈련"],["0-25","매우 부족 — 점프 트레이닝 우선"]],"coaching":"점프 스쿼트, 박스 점프, 메디신볼 던지기, 올림픽 리프트","reference":"Lehman et al. (2013), Driveline KineticArm"},
+  "F1_Strength": {"name":"근력","short_desc":"최대 수직력 (IMTP, N)","meaning":"폭발적 동작의 기반이 되는 최대 근력. IMTP로 측정. (★ v31.44: 체중당 측정 결측이 잦아 절대값으로 환원 — 한국 고교 또래 코호트 percentile 평가)","method":"IMTP Peak Vertical Force [N] 코호트 백분위 (n=234)","interpretation":[["75-100","근력 우수 — 폭발적 동작 기반 충분"],["50-75","평균 — 강화 여지 있음"],["25-50","근력 부족 — 보조 운동 우선"],["0-25","매우 부족 — 우선 보강 필요"]],"coaching":"데드리프트, 스쿼트, IMTP 트레이닝","reference":"Sakurai (2024), Driveline Strength Standards"},
+  "F2_Power": {"name":"파워","short_desc":"CMJ·SJ 절대 파워 (W)","meaning":"CMJ·SJ로 측정되는 폭발 출력. 구속과 가장 직접적 연관 체력 요소. (★ v31.44: 체중당 측정 결측이 잦아 절대값으로 환원 — 한국 고교 또래 코호트 percentile 평가)","method":"CMJ Peak Power [W], SJ Peak Power [W] 코호트 백분위 평균 (n=234)","interpretation":[["75-100","파워 우수 — 투구 폭발력 기반 충분"],["50-75","평균 — 플라이오메트릭 강화"],["25-50","파워 부족 — SSC 활용 훈련"],["0-25","매우 부족 — 점프 트레이닝 우선"]],"coaching":"점프 스쿼트, 박스 점프, 메디신볼 던지기, 올림픽 리프트","reference":"Lehman et al. (2013), Driveline KineticArm"},
   "F3_Reactivity": {"name":"반응성 (SSC)","short_desc":"신축단축주기 효율","meaning":"근육이 빠르게 늘어났다가 즉시 수축하는 SSC(Stretch-Shortening Cycle) 효율. 투구의 앞다리 블로킹·몸통 회전과 직결.","method":"CMJ/SJ RSI-modified와 EUR (CMJ/SJ 비율)의 백분위 평균","interpretation":[["75-100","SSC 활용 우수 — 효율적 에너지 전달"],["50-75","평균적 SSC, 반응성 향상 여지"],["25-50","SSC 효율 낮음 — concentric만 의존"],["0-25","SSC 매우 낮음 — 단순 근력→반응적 전환 훈련"]],"coaching":"드롭 점프, 데모스 짧은 접지 시간 점프, 플라이오메트릭","reference":"McMahon (2017), Komi (2003)"},
   "F4_Body": {"name":"체격","short_desc":"신체 구성","meaning":"구속과 관련된 신체 크기. 신장은 릴리스 높이·레버 길이, 체중은 운동량과 관련.","method":"신장·체중·BMI의 백분위 평균","interpretation":[["—","신체 크기는 직접 향상 어려움 — 다른 카테고리에 더 집중"],["","체중 증가는 근육량·체지방 비율 함께 고려"]],"coaching":"영양 섭취, 근육량 증가 (체지방 < 15%)","reference":"Werner et al. (2008)"},
-  "F5_Flexibility": {"name":"유연성","short_desc":"어깨·고관절 ROM (Range of Motion)","meaning":"투구 시 가동범위 한계가 메카닉 표현을 제약. 어깨 외회전 ROM은 레이백 깊이의 기반, 어깨 내회전은 follow-through, 고관절 ROM은 골반 회전·X-Factor 형성의 기반. ROM이 부족하면 회전 가속 단계에서 압박 증가 + 부상 위험.","method":"Shoulder ER (Gaussian optimal 145°, sigma 15°) + Shoulder IR (optimal 60°, sigma 15°) + Hip ER L/R (optimal 45°, sigma 10°) + Hip IR L/R (optimal 40°, sigma 10°). MLB pitcher 평균·문헌 표준 (Wilk 2014, Reinold 2014).","interpretation":[["75-100","ROM 우수 — 모든 부위 elite 가동범위"],["50-75","평균 — 한두 부위 ROM 향상 여지"],["25-50","ROM 부족 — 주요 부위 모빌리티 트레이닝 필요"],["0-25","ROM 매우 부족 — 부상 위험 + 즉시 모빌리티 강화"]],"coaching":"어깨 sleeper stretch, ER PNF, hip 90/90 stretch, hip airplane. ROM 회복 후 안정성 강화로 연결","reference":"Wilk et al. (2014), Reinold et al. (2014), Driveline R&D"},
+  // F5_Flexibility 제거 (v31.44 사용자 요청)
   "F5_LowerBody": {"name":"체중당 파워","short_desc":"체중 정규화 출력 (W/kg·N/kg)","meaning":"체중당 출력 파워. 작은 체격이라도 효율적으로 파워를 낼 수 있는지 평가.","method":"CMJ·SJ Peak Power/BM, IMTP/BM의 백분위 평균","interpretation":[["75-100","체중당 파워 우수 — 효율적 운동 능력"],["50-75","평균 — 하체 강화 또는 체중 조절"],["25-50","체중 대비 파워 부족"],["0-25","심각한 부족 — 체구성 개선 + 파워 훈련"]],"coaching":"스피드 스쿼트, 점프 트레이닝, 체지방 관리","reference":"Driveline체중 정규화 표준"},
   "F6_VelocityIndex": {"name":"복합 폭발력","short_desc":"임펄스·반응성·근력 통합","meaning":"학술 연구에서 구속과 가장 강하게 연관되는 체력 변수 셋. 종합 진단용.","method":"CMJ Concentric Impulse, CMJ RSI-mod, IMTP 절대치의 백분위 평균","interpretation":[["75-100","구속 잠재력 매우 높음"],["50-75","평균적 구속 잠재력"],["25-50","구속 향상 위해 핵심 변수 강화 필요"]],"coaching":"Concentric impulse 향상 훈련, Reactive 점프","reference":"Sakurai (2024), Driveline KineticArm"},
   "C1_LowerBodyDrive": {"name":"하체 추진","short_desc":"뒷다리로 강하게 밀어 추진력 만들기 (KH→FC)","meaning":"키네틱 체인의 첫 단계. 뒷다리(드라이브)에서 만든 추진력이 전체 운동 사슬의 시작점이 됨. 추진력이 약하면 X-Factor 형성, 트렁크 회전, 팔 가속 모두 약해짐.","method":"스트라이드 길이·시간, 뒷다리 hip 신전속도, 뒷다리 hip 회전속도, COG 전진속도의 백분위 평균","interpretation":[["75-100","하체 추진 우수 — 뒷다리 폭발력 좋음, 추진 단단"],["50-75","평균 추진 — 뒷다리 폭발력 향상 여지"],["25-50","추진 부족 — 뒷다리 power 보강 필요"],["0-25","추진 심각 — 단일 다리 power 우선 강화"]],"coaching":"뒷다리를 단단히 밀어내고 골반을 능동적으로 보내라 — '한 발로 폭발적으로 밀어 보내기' cue","reference":"Driveline drive leg, Matsuo (2001)"},

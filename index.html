@@ -655,7 +655,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v31.43';
+const ALGORITHM_VERSION = 'v31.44';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -2124,9 +2124,7 @@ function handleMultipleUpliftFiles(files) {
             'SJ Peak Power [W]', 'SJ Peak Power / BM [W/kg]', 'SJ RSI-modified [m/s]',
             'EUR',
             'IMTP Peak Vertical Force [N]', 'IMTP Peak Vertical Force / BM [N/kg]',
-            // ★ v31.40 유연성 ROM (홍주환 PDF 형식)
-            'Shoulder ER', 'Shoulder IR',
-            'Hip ER L', 'Hip ER R', 'Hip IR L', 'Hip IR R',
+            // ROM 변수 제거 (v31.44 F5_Flexibility 카테고리 제거)
           ];
           let filledCount = 0;
           for (const k of FITNESS_KEYS_FROM_MASTER) {
@@ -4226,7 +4224,7 @@ function calculateScores(input, age, measuredVelo) {
   //   F4_Body는 잠재 변인 아님 (신장은 더 클 수 없고, 체중만 늘려도 구속 안 늘음) → 0.3
   //   F2_Power(체중당)이 구속과 가장 직접 연관 → 2.0 (최대)
   //   F1·F3는 표준 1.0
-  const FITNESS_CAT_WEIGHTS  = { F1_Strength: 1.0, F2_Power: 2.0, F3_Reactivity: 1.0, F4_Body: 0.3, F5_Flexibility: 0.8 };
+  const FITNESS_CAT_WEIGHTS  = { F1_Strength: 1.0, F2_Power: 2.0, F3_Reactivity: 1.0, F4_Body: 0.3 };
   // ★ v31.42 메카닉 카테고리 가중치 — 학술 근거 단일 회귀 r 기반 (Werner 2008, Wood-Smith 2019, Driveline)
   //   C4 몸통 회전 속도 r≈0.61 (단일 최강) / C5 레이백·전달 r≈0.50 / C3 로딩 r≈0.40
   //   C2 앞다리 버팀·C1 하체 추진은 토대(foundation) — 직접 r 낮음
