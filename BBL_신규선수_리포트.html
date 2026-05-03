@@ -654,7 +654,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v31.22';
+const ALGORITHM_VERSION = 'v31.23';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -849,6 +849,66 @@ const KINETIC_FAULTS = [
     drills: ['Plank-throw 3×6', 'Anti-flexion abs', 'Lead leg block ISO'],
   },
 ];
+
+// ★ v31.23 — 결함 변인 설명 + 시각화 (홍주환.pdf 4-5페이지 마네킹 그림 매칭)
+//   각 KINETIC_FAULTS의 id를 PDF의 7개 결함 시각화에 매핑
+//   접이식 카드(details/summary)로 결함 카드 안에 표시
+const FAULT_VISUAL_GUIDE = {
+  WeakDrive: {
+    title: 'Sway',
+    image: 'assets/fault_images/Sway.png',
+    desc: '뒷다리에 힘을 모으는 구간(Wind Up)에서 몸이 홈플레이트 반대 방향으로 움직이는 경우. 몸의 전진을 방해하여 에너지 손실 발생.',
+    physical: '하체·코어 근력/안정성, 고관절 근력/가동범위',
+  },
+  LeadKneeCollapse: {
+    title: 'Knee Collapse',
+    image: 'assets/fault_images/KneeCollapse.png',
+    desc: '앞발착지(FC)~볼릴리즈(BR) 구간에서 무릎이 구부러지는(무너지는) 경우. 지면으로부터 오는 에너지를 상체에 충분히 전달하지 못함. 구속과의 연관성이 매우 높음.',
+    physical: '앞다리 근력 (둔부·허벅지·햄스트링), 코어 안정성',
+  },
+  SoftBlock: {
+    title: 'Knee Collapse (블록 약함)',
+    image: 'assets/fault_images/KneeCollapse.png',
+    desc: '앞다리 block이 부드러워(eccentric 약함) COG 감속이 부족한 상태. 회전 전환이 비효율적이 됨.',
+    physical: '앞다리 eccentric 근력, 코어 안정성',
+  },
+  LateBlock: {
+    title: 'Knee Collapse (블록 늦음)',
+    image: 'assets/fault_images/KneeCollapse.png',
+    desc: 'SSC 효율이 낮아 충격 흡수 후 신전이 늦은 경우. 빠른 reactive block이 안 됨.',
+    physical: 'Plyometric reactive 능력, 앞다리 SSC',
+  },
+  FlyingOpen: {
+    title: 'Flying Open',
+    image: 'assets/fault_images/FlyingOpen.png',
+    desc: '스트라이드 구간에서 몸통이 일찍 열리는 경우. 골반과 몸통의 꼬임을 통한 에너지 생성을 저하. 하체에서 몸통으로 에너지가 충분히 전달되기 전 몸통을 사용하여 비효율적.',
+    physical: '몸통·어깨 가동범위, 코어·견갑 근력',
+  },
+  TrunkFallingForward: {
+    title: 'Getting Out in Front',
+    image: 'assets/fault_images/GettingOutFront.png',
+    desc: '앞발착지(FC) 시 몸통이 골반보다 앞서는 경우(몸통이 일찍 나감). 신체 전면 근육의 늘어남을 통한 에너지 생성 감소.',
+    physical: '코어·앞다리 근력/안정성, 전면 근육(가슴·복부) 유연성',
+  },
+  InsufficientLayback: {
+    title: 'Late Rise',
+    image: 'assets/fault_images/LateRise.png',
+    desc: '앞발착지(FC) 시 손이 팔꿈치보다 낮은 경우. 몸통의 에너지가 전달되는 타이밍에 팔이 힘을 쓰지 못하는 위치에 있어 팔로 충분하게 에너지를 전달하지 못함.',
+    physical: '주로 기술적 능력 (어깨 회전 타이밍)',
+  },
+  TrunkArmDisconnect: {
+    title: 'Forearm Flyout',
+    image: 'assets/fault_images/ForearmFlyout.png',
+    desc: '백스윙 시 팔꿈치가 펴져 있는 경우(Arm Cocking 구간). 팔을 회전하기 위해 더 많은 힘이 필요하므로 비효율적. 몸통→팔 전달 효율 저하 → 팔꿈치 의존.',
+    physical: '주로 기술적 능력 (어깨 외회전 타이밍)',
+  },
+  ElbowOverload: {
+    title: 'Forearm Flyout (팔꿈치 과부하)',
+    image: 'assets/fault_images/ForearmFlyout.png',
+    desc: '몸통→팔 전달이 약한 상태에서 전완 자체가 과도하게 빠르게 신전 — UCL/팔꿈치 부상 위험. PitchSmart 볼륨 가이드라인 준수 필수.',
+    physical: '몸통 활성화 강화 + 볼륨 모니터링',
+  },
+};
 
 // 결함 자동 식별
 function detectKineticFaults(mechanics, measuredVelo, armSide) {
@@ -5097,6 +5157,22 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
       faults.sort((a,b) => sevOrder[a.severity] - sevOrder[b.severity]);
       const faultRows = faults.map(f => {
         const c = sevColor[f.severity] || '#888';
+        // ★ v31.23 변인 설명 접이식 카드 (PDF 시각화)
+        const guide = (typeof FAULT_VISUAL_GUIDE !== 'undefined') ? FAULT_VISUAL_GUIDE[f.id] : null;
+        const visualBlock = guide ? `
+          <details class="mt-2" style="background:#0b1220; border:1px solid var(--border); border-radius:6px;">
+            <summary class="text-xs px-2 py-1.5 cursor-pointer" style="color:#60a5fa; user-select:none;">📖 변인 설명 보기 — <strong>${guide.title}</strong></summary>
+            <div class="p-3 flex flex-col md:flex-row gap-3" style="border-top:1px dashed var(--border);">
+              <div style="flex-shrink:0;">
+                <img src="${guide.image}" alt="${guide.title}" loading="lazy"
+                     style="width:180px; max-width:100%; border-radius:4px; background:#fff;" />
+              </div>
+              <div class="text-xs leading-relaxed" style="flex:1; color:var(--text-secondary);">
+                <div class="mb-2"><strong style="color:#fbbf24;">현상:</strong> ${guide.desc}</div>
+                <div><strong style="color:#4ade80;">관련 피지컬·기술:</strong> ${guide.physical}</div>
+              </div>
+            </div>
+          </details>` : '';
         return `<div class="card p-3 mb-2" style="border-left: 4px solid ${c};">
           <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs px-2 py-0.5 rounded mono" style="background:${c}22; color:${c}; font-weight:600;">${sevLabel[f.severity] || f.severity}</span>
@@ -5112,6 +5188,7 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
           ${f.drills && f.drills.length ? `<div class="text-xs mt-1" style="color:var(--text-muted);">
             <strong style="color:#4ade80;">💪 추천 drill:</strong> ${f.drills.join(' · ')}
           </div>` : ''}
+          ${visualBlock}
         </div>`;
       }).join('');
       const criticalCount = faults.filter(f => f.severity === 'critical').length;
