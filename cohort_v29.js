@@ -8759,7 +8759,7 @@ window.COHORT = {
     "고교": {
       "velo_offset": 0,
       "score_offset": 0,
-      "desc": "BBL 134명 고교 1년 코호트 기준 (변경 없음)"
+      "desc": "BBL 고교 투수 코호트 기준 (변경 없음)"
     },
     "대학": {
       "velo_offset": 5,

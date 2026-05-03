@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>BBL 신규 선수 리포트 생성 — v29 코호트 기반</title>
+<title>BBL 신규 선수 리포트 — 키네틱 체인 기반 에너지 흐름·누수 분석</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>  <!-- xlsx 마스터 파일 지원 (2026-05-03) -->
@@ -433,10 +433,12 @@
   <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
     <div>
       <div class="display text-xl">📋 BBL 신규 선수 리포트 생성</div>
-      <div class="text-xs text-[var(--text-muted)] mt-1 mono">
-        v29 134명 고교 코호트 기준 · 연령군 스케일링 적용 · 
-        <span style="color:#4ade80;font-weight:600;">산식 <span id="algo-version-stamp">v30.7</span></span> 
-        (<span id="algo-date-stamp">2026-05-03</span>)
+      <div class="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+        ⚡ <strong style="color:#fb923c;">키네틱 체인 기반 에너지 흐름·누수 분석</strong>
+        <span style="color:#3a3d44;">·</span>
+        📊 <strong style="color:#60a5fa;">고교 투수 400명 구속 향상 데이터 기반</strong>
+        <span class="ml-2 mono" style="color:#4ade80;">산식 <span id="algo-version-stamp">v30.7</span></span>
+        <span class="mono" style="color:var(--text-muted);">(<span id="algo-date-stamp">2026-05-03</span>)</span>
       </div>
     </div>
     <div class="text-xs text-[var(--text-muted)] flex items-center gap-3">
@@ -505,7 +507,7 @@
         <button class="age-btn" data-age="프로" onclick="selectAge('프로')">프로</button>
       </div>
       <div class="info-box mt-3">
-        <span id="age-desc">고교: BBL 134명 코호트 기준 (변경 없음)</span>
+        <span id="age-desc">고교: BBL 코호트 기준 (변경 없음)</span>
       </div>
     </div>
   </section>
@@ -526,7 +528,7 @@
     <div class="file-drop mb-3" id="fitness-drop-zone" onclick="document.getElementById('fitness-csv-upload').click()">
       <div class="text-3xl mb-1">📤</div>
       <div class="text-sm font-medium">CSV 또는 xlsx 파일을 드래그 앤 드롭하거나 클릭해서 선택</div>
-      <div class="text-xs text-[var(--text-muted)] mt-1">.csv 파일 · BBL 템플릿 / 와이드 포맷 / <strong style="color:#60a5fa;">master_fitness.xlsx (134명 × H1/H2)</strong></div>
+      <div class="text-xs text-[var(--text-muted)] mt-1">.csv 파일 · BBL 템플릿 / 와이드 포맷 / <strong style="color:#60a5fa;">master_fitness.xlsx (선수별 H1/H2)</strong></div>
       <input type="file" id="fitness-csv-upload" accept=".csv,.xlsx,.xls" style="display:none;" onchange="handleFitnessUploadAny(event)">
     </div>
 
@@ -649,7 +651,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v30.31';
+const ALGORITHM_VERSION = 'v30.35';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -4974,24 +4976,21 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
           <div class="display text-2xl mt-1 text-[var(--text-muted)]">미입력</div>
         </div>`}
         <div>
-          <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">체력 기준 구속</div>
+          <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">체력 현재 수준</div>
           <div class="display text-3xl mt-1" style="color: var(--fitness)">${r.PV_predicted?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
-          <div class="text-xs text-[var(--text-muted)] mt-1">체력 ${r.Fitness_Score ?? '—'}점</div>
+          <div class="text-xs text-[var(--text-muted)] mt-1">잠재력 ${r.ceiling_F100?.toFixed(1) ?? '—'} km/h 까지 발전 여지</div>
         </div>
         <div>
-          <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">메카닉 기준 구속</div>
+          <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">메카닉 현재 수준</div>
           <div class="display text-3xl mt-1" style="color: var(--accent)">${r.MV_predicted?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
-          <div class="text-xs text-[var(--text-muted)] mt-1">메카닉 ${r.Mechanics_Score ?? '—'}점</div>
+          <div class="text-xs text-[var(--text-muted)] mt-1">잠재력 ${r.ceiling_M100?.toFixed(1) ?? '—'} km/h 까지 발전 여지</div>
         </div>
         <div>
           <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">잠재 구속 (FM100)</div>
           <div class="display text-3xl mt-1" style="color: var(--warn)">${r.ceiling?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
           ${growth != null ? `
             <div class="text-sm mt-1" style="color: var(--good); font-weight:600;">↑ +${growth.toFixed(1)} km/h 성장 잠재력</div>
-            <div class="text-[10px] text-[var(--text-muted)] mt-1">
-              ${r.ceiling_F100 != null ? `체력만 100점 → ${r.ceiling_F100.toFixed(1)} (+${(r.ceiling_F100 - measuredVelo).toFixed(1)})` : ''}
-              ${r.ceiling_M100 != null ? ` · 메카닉만 100점 → ${r.ceiling_M100.toFixed(1)} (+${(r.ceiling_M100 - measuredVelo).toFixed(1)})` : ''}
-            </div>` : ''}
+            <div class="text-[10px] text-[var(--text-muted)] mt-1">현재 측정 구속 → 잠재력 도달 시</div>` : ''}
         </div>
       </div>
     </div>`;
@@ -5103,9 +5102,10 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
       </div>`;
   })();
 
-  // ★ 강점 변수 Top 5 섹션 (2026-05-03 UX) — 점수 75 이상 변수 자동 추출
-  //   평균 50점 선수도 일부 변수는 우수할 가능성 높음 → 자신감 부여 + 코칭 방향 제시
-  const strengthsHtml = (() => {
+  // ★ v30.33: strengthsHtml 비활성화 — 사용자 피드백으로 요약(summary) 안의 영역별 강점/약점 카드로 대체
+  //   기존 코드는 호환성 위해 유지하되 빈 문자열 반환
+  const strengthsHtml = '';
+  const _strengthsHtml_legacy = (() => {
     const allVarScores = r.var_scores || {};
     const candidates = [];
     // 모든 카테고리에서 변수 수집
@@ -5194,16 +5194,17 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
 
     return `
       <div class="card p-6">
-        <div class="flex justify-between items-end mb-4">
+        <div class="flex justify-between items-end mb-2">
           <div>
-            <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">SECTION</div>
+            <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">${r.age} 또래 대비 내 수준</div>
             <div class="display text-xl mt-1" style="color: ${sec.color}">${sec.label}</div>
           </div>
           <div class="text-right">
             <div class="display text-4xl" style="color: ${scoreColor(score)}">${Math.round(score)}</div>
-            <div class="text-[10px] text-[var(--text-muted)] mono uppercase">/100</div>
+            <div class="text-[10px] text-[var(--text-muted)] mono uppercase">/100 percentile</div>
           </div>
         </div>
+        <div class="text-[11px] text-[var(--text-muted)] mb-3 italic">※ 같은 ${r.age} 코호트 중앙값 = 50점, 상위권 = 70점+</div>
         <div class="mb-4 relative" style="height: 240px;">
           <canvas id="${sec.radarId}"></canvas>
         </div>
@@ -5272,29 +5273,114 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
     <span class="text-[var(--bad)]">보강 필요 (~50) ${weakCount}개</span>
   </p>`;
 
+  // ★ v30.33 키네틱 체인 블록 (GIF + 에너지 흐름 + 결함 진단 + 트레이닝 우선순위)
+  //   sectionsHtml(레이더 차트) 뒤, coachSession 앞에 위치
+  const kineticChainBlock = `
+    ${modeCoachingHtml}
+    ${kineticChainGifHtml}
+    ${energyFlowHtml}
+    ${faultsHtml}
+    ${trainingPriorityHtml}
+  `;
+
+  // ★ v30.33 강점·약점을 영역별로 분리 (사용자 피드백)
+  //   기존: 카테고리별 점수 (체력/메카닉/제구 섞여 있음)
+  //   변경: 변수 단위로 영역(체력/메카닉/제구) 분리해서 강점·약점 카드로 구성
+  const allVarScoresAll = r.var_scores || {};
+  const allCatsAll = [...(COHORT.fitness_cats||[]), ...(COHORT.mechanics_cats||[]), ...(COHORT.control_cats||[])];
+  const varStrengths = { '체력': [], '메카닉': [], '제구': [] };
+  const varWeaknesses = { '체력': [], '메카닉': [], '제구': [] };
+  for (const cat of allCatsAll) {
+    const vars = COHORT.category_vars[cat] || [];
+    for (const v of vars) {
+      const [key, vname] = v;
+      const vsc = allVarScoresAll[key];
+      if (vsc == null) continue;
+      let area = '제구';
+      if ((COHORT.fitness_cats||[]).includes(cat)) area = '체력';
+      else if ((COHORT.mechanics_cats||[]).includes(cat)) area = '메카닉';
+      if (vsc >= 75) varStrengths[area].push({ key, name: vname, score: Math.round(vsc) });
+      else if (vsc <= 35) varWeaknesses[area].push({ key, name: vname, score: Math.round(vsc) });
+    }
+  }
+  Object.keys(varStrengths).forEach(a => varStrengths[a].sort((x,y) => y.score - x.score));
+  Object.keys(varWeaknesses).forEach(a => varWeaknesses[a].sort((x,y) => x.score - y.score));
+
+  const renderVarList = (groups, isStrength) => {
+    const colors = { '체력':'#60a5fa', '메카닉':'#ff6b35', '제구':'#c084fc' };
+    const sections = ['체력','메카닉','제구'].map(area => {
+      const items = groups[area].slice(0, 5);
+      if (items.length === 0) return '';
+      return `<div class="mb-3">
+        <div class="text-xs uppercase tracking-wider mb-1" style="color:${colors[area]}; font-weight:600;">${area}</div>
+        <ul class="list-none pl-0 space-y-1">
+          ${items.map(it => `<li class="text-sm flex justify-between" style="background:var(--bg-elevated); padding:6px 10px; border-left:3px solid ${colors[area]}; border-radius:3px;">
+            <span>${it.name}</span>
+            <strong style="color:${isStrength?'#4ade80':'#f87171'}">${it.score}점</strong>
+          </li>`).join('')}
+        </ul>
+      </div>`;
+    }).filter(s => s).join('');
+    return sections || `<div class="text-xs text-[var(--text-muted)] italic">해당 변수 없음</div>`;
+  };
+
+  const totalStrengths = Object.values(varStrengths).reduce((a,b) => a + b.length, 0);
+  const totalWeaknesses = Object.values(varWeaknesses).reduce((a,b) => a + b.length, 0);
+
+  // ★ v30.35 잠재력 발전 여지 강조 톤 (이전 "거의 발현" 표현 제거)
+  //   elite 구속 케이스에 "현재 잠재력 + 향후 잠재력 자체 성장 가능성" 두 측면 동시 강조
+  let prodigyNote = '';
+  const eliteThr = (CURRENT_INPUT._armSide === 'left') ? 135 : 140;
+  if (measuredVelo != null && measuredVelo >= eliteThr && r.ceiling != null) {
+    const gainKmh = r.ceiling - measuredVelo;
+    prodigyNote = `
+      <div class="card p-4 mb-4" style="border: 2px solid #fbbf24; background: rgba(251,191,36,0.08);">
+        <div class="display text-base mb-2" style="color: #fbbf24;">📐 잠재력 발전 가이드</div>
+        <div class="text-sm leading-relaxed" style="color: var(--text-secondary);">
+          <strong>${name}</strong> 선수는 측정 구속 <strong>${measuredVelo.toFixed(1)} km/h</strong>로
+          BBL 고교 투수 코호트 기준 <strong style="color:#fbbf24;">상위 elite 구간 (≥${eliteThr} km/h)</strong>에 위치합니다.
+          현 시점의 체력·메카닉이 100점까지 발달하면 <strong style="color:var(--warn);">${r.ceiling.toFixed(1)} km/h</strong>까지 도달 가능 (성장 여지 <strong style="color:#4ade80;">+${gainKmh.toFixed(1)} km/h</strong>).
+          <br/><br/>
+          <strong>중요 — 잠재력은 고정된 한계가 아닙니다</strong>:
+          이 잠재 구속은 <em>현 시점의 신체·메카닉 조건</em> 기준 추정값입니다.
+          향후 <strong>신장·근력 성장</strong>, <strong>트레이닝</strong>, <strong>메카닉 정밀화</strong>에 따라
+          <strong style="color:#4ade80;">잠재 구속 자체가 더 높아질 수 있습니다</strong>.
+          본 리포트의 결함 진단·코칭 우선순위를 따라 발달하면 다음 측정에서 잠재 구속과 측정 구속 모두 상향이 통계적으로 기대됩니다.
+          <br/><br/>
+          <strong>점수 해석</strong>:
+          헤더 카드의 <strong>현재 수준(km/h)</strong>은 체력·메카닉 기준 추정 구속이며,
+          참고용 <strong>percentile 점수</strong>(체력 ${r.Fitness_Score}·메카닉 ${r.Mechanics_Score}점)는 또래 코호트 내 상대 위치로
+          코칭 진단·결함 식별에 활용됩니다.
+        </div>
+      </div>`;
+  }
+
   const summary = `
     <div class="card p-6 mt-6" style="background: linear-gradient(135deg, rgba(255,107,53,0.03) 0%, rgba(96,165,250,0.03) 100%); border: 1px solid rgba(255,107,53,0.15);">
       <div class="display text-xl mb-4">📋 종합 평가 (선수·코치용 해설)</div>
 
       <div class="card p-3 mb-4" style="border: 2px solid var(--brand); background: rgba(255,107,53,0.06);">
-        <div class="display text-base mb-2" style="color: var(--brand);">📊 1단계 · 내 점수</div>
-        <p class="text-sm leading-relaxed mb-1">
+        <div class="display text-base mb-2" style="color: var(--brand);">📊 1단계 · 내 현재 수준과 발전 여지</div>
+        <p class="text-sm leading-relaxed mb-2">
           <strong>${name}</strong> 선수 (<strong>${r.age}</strong> 기준)
-          ${measuredVelo != null ? `· 현재 측정 구속 <strong>${measuredVelo.toFixed(1)} km/h</strong>` : ''}
+          ${measuredVelo != null ? `· 측정 구속 <strong>${measuredVelo.toFixed(1)} km/h</strong>` : ''}
         </p>
-        <p class="text-sm leading-relaxed">
-          체력 <strong style="color:var(--brand);">${r.Fitness_Score ?? '—'}점</strong>
-          · 메카닉 <strong style="color:var(--brand);">${r.Mechanics_Score ?? '—'}점</strong>
-          · 제구 <strong style="color:var(--brand);">${r.Control_Score ?? '—'}점</strong>
+        <p class="text-sm leading-relaxed mb-2">
+          <span style="color:var(--fitness);">체력 기준 ${r.PV_predicted?.toFixed(1) ?? '—'} km/h</span>
+          · <span style="color:var(--accent);">메카닉 기준 ${r.MV_predicted?.toFixed(1) ?? '—'} km/h</span>
+          → <strong style="color:var(--warn);">잠재 구속 ${r.ceiling?.toFixed(1) ?? '—'} km/h</strong>
+          ${growth != null ? ` (성장 여지 <strong style="color:#4ade80;">+${growth.toFixed(1)} km/h</strong>)` : ''}
+        </p>
+        <p class="text-[11px] text-[var(--text-muted)] italic">
+          ※ 잠재 구속은 본 시점의 체력·메카닉이 100점 발달했을 때 도달 가능한 구속을 의미하며,
+          향후 신체 성장(신장·근력)·트레이닝·메카닉 정착에 따라 잠재 구속 자체도 더 높아질 수 있습니다.
+          참고용 코호트 percentile 점수 (체력 ${r.Fitness_Score ?? '—'} · 메카닉 ${r.Mechanics_Score ?? '—'} · 제구 ${r.Control_Score ?? '—'})는 결함 식별·코칭 진단에 활용됩니다.
         </p>
         ${distLine}
       </div>
 
-      ${modeCoachingHtml}
-      ${kineticChainGifHtml}
-      ${energyFlowHtml}
-      ${faultsHtml}
-      ${trainingPriorityHtml}
+      ${prodigyNote}
+
       ${utilLine}
       ${scenarioAnalysis}
 
@@ -5302,27 +5388,16 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
         메카닉 점수를 100점까지 끌어올리면 <strong>${r.ceiling.toFixed(1)} km/h</strong>까지 도달 가능합니다 <span class="text-xs text-[var(--text-muted)]">(코호트 절대 회귀 기준 — 측정 구속 입력 시 더 정확)</span>.
       </p>` : ''}
 
-      ${strengths.length ? `
-      <div class="mt-4">
-        <div class="text-sm font-bold mb-2">${_mode_p4 === 'elite' ? '✨ 안정 영역 (70점 이상)' : '💪 Elite-ready 강점 (70점 이상)'}</div>
-        <ul class="list-none pl-0 space-y-1">
-          ${strengths.map(s => {
-            const meta = COHORT.category_meta[s.id] || {};
-            return `<li class="text-sm"><span class="text-[var(--good)]">●</span> <strong>${meta.name}</strong> (${s.area} ${Math.round(s.score)}점) — ${meta.short_desc || ''}</li>`;
-          }).join('')}
-        </ul>
-      </div>` : `<div class="mt-4 text-sm text-[var(--text-muted)] italic">⚠ 70점 이상 ${_mode_p4 === 'elite' ? '안정' : '강점'} 카테고리 없음 — 전반적 발달이 우선 필요</div>`}
-
-      ${weaknesses.length ? `
-      <div class="mt-4">
-        <div class="text-sm font-bold mb-2">${_mode_p4 === 'elite' ? '🔍 변동성 주의 영역 (40점 미만)' : '🔧 보강 우선 영역 (40점 미만)'}</div>
-        <ul class="list-none pl-0 space-y-1">
-          ${weaknesses.map(s => {
-            const meta = COHORT.category_meta[s.id] || {};
-            return `<li class="text-sm"><span class="text-[var(--bad)]">●</span> <strong>${meta.name}</strong> (${s.area} ${Math.round(s.score)}점) — ${meta.short_desc || ''}</li>`;
-          }).join('')}
-        </ul>
-      </div>` : ''}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div class="card p-4" style="border-left: 4px solid #4ade80;">
+          <div class="display text-base mb-3" style="color: #4ade80;">⭐ 강점 (75점 이상, 영역별)</div>
+          ${totalStrengths === 0 ? '<div class="text-xs text-[var(--text-muted)] italic">75점 이상 변수 없음 — 전반적 발달이 우선</div>' : renderVarList(varStrengths, true)}
+        </div>
+        <div class="card p-4" style="border-left: 4px solid #f87171;">
+          <div class="display text-base mb-3" style="color: #f87171;">🔧 약점 (35점 이하, 영역별)</div>
+          ${totalWeaknesses === 0 ? '<div class="text-xs text-[var(--text-muted)] italic">35점 이하 변수 없음 — 전반적 안정 단계</div>' : renderVarList(varWeaknesses, false)}
+        </div>
+      </div>
 
       ${priorityHtml}
     </div>`;
@@ -5340,14 +5415,20 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
 
   // 코칭 세션 (메카닉 결과 시각화 + 영상)
   const coachSession = renderCoachSessionHtml(r);
-  // 잠재 구속 시나리오 — 헤더 바로 아래
-  const ceilingScenarios = renderCeilingScenarioCard(r, measuredVelo);
+  // ★ v30.33: ceilingScenarios 별도 섹션 제거 — 헤더 카드의 잠재 구속(FM100) + 시나리오 텍스트로 통합
 
+  // ★ v30.33 순서 재배치 (사용자 요청)
+  //   1) header (점수 + 잠재 구속 통합)
+  //   2) profileHtml (투수 프로파일 분석)
+  //   3) sectionsHtml (체력·메카닉·제구 레이더 차트)
+  //   4) kineticChainBlock (GIF + 에너지 흐름 + 결함 진단 + 트레이닝 우선순위)
+  //   5) coachSession (코칭 세션 — 메카닉 결과 시각화)
+  //   6) summary (1단계 점수 + 강점·약점 + 종합 멘트)
+  // 별도 ceilingScenarios + strengthsHtml(profile 직후) 제거 — 사용자 피드백
   return header
-    + ceilingScenarios
     + profileHtml
-    + strengthsHtml
     + `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">` + sectionsHtml + `</div>`
+    + kineticChainBlock
     + coachSession
     + summary
     + downloadBtn;
