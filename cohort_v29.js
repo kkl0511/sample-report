@@ -167,13 +167,6 @@ window.COHORT = {
         "higher"
       ],
       [
-        "elbow_flexion_at_fp",
-        "팔꿈치 굽힘 @ FC",
-        "°",
-        0,
-        "higher"
-      ],
-      [
         "trunk_to_arm_lag_ms",
         "몸통→팔 시간차",
         "ms",

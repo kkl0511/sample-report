@@ -1,7 +1,7 @@
 // metadata.js — BBL 신규선수 리포트 데이터 정의
 // v31.24 (2026-05-04): 단일 HTML 파일에서 데이터 블록 분리 (가독성 향상)
 // 의존: cohort_v29.js (먼저 로드되어야 함)
-// 사용: BBL_신규선수_리포트.html에서 <script src="metadata.js"> 로 로드
+// 사용: index.html에서 <script src="metadata.js"> 로 로드 (v31.32 파일명 통일)
 
 // ════════════════════════════════════════════════════════════════════
 // KINETIC_FAULTS
@@ -419,7 +419,7 @@ const EXTRA_VAR_SCORING = {
   'peak_torso_counter_rot':       { min: 15,   max: 60,   polarity: 'higher', useAbs: true }, // ° — elite -37
   'torso_side_bend_at_mer':       { optimal: 25, sigma: 12, useAbs: true },    // ° — elite 25
   'torso_rotation_at_br':         { optimal: 100, sigma: 30, useAbs: true },   // ° — elite 111 (HS 더 짧음)
-  'elbow_flexion_at_fp':          { optimal: 95, sigma: 20 },                  // ° — elite 93
+  // 'elbow_flexion_at_fp' 제거 (v31.25, 사용자 요청)
   // ★ v30.21 옵션 B: SD 변수들 — Mode B에서 좁은 sigma로 정밀 평가
   'mer_to_br_sd_ms':              { optimal: 0, sigma: 20 },                   // ms — elite 5~15 SD
   'trunk_tilt_sd_deg':            { optimal: 0, sigma: 6 },                    // ° — trial 간 forward tilt 변동성
@@ -490,7 +490,7 @@ const LITERATURE_OVERRIDE = new Set([
   'peak_torso_counter_rot',          // Wood-Smith 2019
   'torso_side_bend_at_mer',          // Wood-Smith 2019
   'torso_rotation_at_br',            // Driveline elite
-  'elbow_flexion_at_fp',             // Werner 2008
+  // 'elbow_flexion_at_fp' 제거 (v31.25, 사용자 요청)
   'elbow_ext_vel_max',               // Driveline elite 2400-2700
   'shoulder_ir_vel_max',             // Driveline elite 4500+
   'peak_arm_av',                     // Pitching mechanics standard
@@ -537,7 +537,7 @@ const PLAUSIBLE_RANGES = {
   'lead_knee_amortization_ms':    { min: 5,   max: 500 },       // ms
   'torso_side_bend_at_mer':       { min: -10, max: 70 },        // °
   'torso_rotation_at_br':         { min: 0,   max: 200 },       // °
-  'elbow_flexion_at_fp':          { min: 30,  max: 180 },       // °
+  // 'elbow_flexion_at_fp' 제거 (v31.25, 사용자 요청)
   'peak_torso_counter_rot':       { min: 0,   max: 90 },        // ° (절댓값)
   'arm_slot_mean_deg':            { min: 0,   max: 90 },        // °
   'max_shoulder_ER_deg':          { min: 100, max: 200 },       // °

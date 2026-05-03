@@ -655,7 +655,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v31.24';
+const ALGORITHM_VERSION = 'v31.32';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -1717,11 +1717,8 @@ function extractScalarsFromUplift(parsed) {
     if (v != null) out.torso_rotation_at_br = Math.abs(v);
   }
 
-  // ── elbow_flexion_at_fp ★ — FC 시점 팔꿈치 굴곡 각도 (Arm Action 0.25) ──
-  if (events.fc != null) {
-    const elbowCol = armSide === 'left' ? 'left_elbow_flexion' : 'right_elbow_flexion';
-    out.elbow_flexion_at_fp = valAt(events.fc, elbowCol);
-  }
+  // ── elbow_flexion_at_fp 제거 (v31.25, 사용자 요청) ──
+  //   사유: FC 시점 팔꿈치 굴곡은 결과적 자세 지표로 구속 향상 코칭에 직접 활용도 낮음
 
   // ── MER (max external rotation) — 견고한 추출 ──
   //   1) Uplift가 검출한 MER 프레임 시점 값
@@ -1903,7 +1900,7 @@ function applyMultiTrialUplift(scalarsList) {
     'torso_rotation_at_br':         'torso_rotation_at_br',          // ★Phase2
     'arm_trunk_speedup':            'arm_trunk_speedup',             // ★ 운동량 전달 효율 (2026-05-03)
     'pelvis_trunk_speedup':         'pelvis_trunk_speedup',          // ★ 참고용 (Posture)
-    'elbow_flexion_at_fp':          'elbow_flexion_at_fp',           // ★Phase2 (Arm Action)
+    // 'elbow_flexion_at_fp' 제거 (v31.25, 사용자 요청)
     'pelvis_to_trunk_lag_ms':       'pelvis_to_trunk_lag_ms',
     'trunk_to_arm_lag_ms':          'trunk_to_arm_lag_ms',
   };
@@ -3124,7 +3121,7 @@ const DRIVELINE_5_CATS = {
   'Block':      ['stride_norm_height', 'lead_knee_ext_change_fc_to_br', 'lead_knee_ext_vel_max'],
   'Rotation':   ['max_pelvis_rot_vel_dps', 'max_trunk_twist_vel_dps'],
   'Arm Action': ['max_shoulder_ER_deg', 'shoulder_h_abd_at_fc',
-                 'elbow_ext_vel_max', 'shoulder_ir_vel_max', 'elbow_flexion_at_fp'],
+                 'elbow_ext_vel_max', 'shoulder_ir_vel_max'],  // 'elbow_flexion_at_fp' 제거 v31.25
   'CoG':        ['com_decel_pct', 'max_cog_velo'],
 };
 
@@ -3152,7 +3149,7 @@ const DRIVELINE_5_WEIGHTS = {
     'shoulder_h_abd_at_fc':  0.51,  // Shoulder Abduction at FP
     'elbow_ext_vel_max':     0.56,  // Elbow Extension Velo
     'shoulder_ir_vel_max':   0.36,  // Shoulder Rotation Velo (IR)
-    'elbow_flexion_at_fp':   0.25,  // Elbow Flexion at FP
+    // 'elbow_flexion_at_fp' 제거 (v31.25)
   },
   'CoG': {
     'com_decel_pct':  0.70,  // CoG Decel
@@ -3671,7 +3668,9 @@ function renderKineticChainSvg(r) {
   };
   // ★ v31.16 — 척추(neck) 거치지 않고 throwing-side hip(pelvisR) → throwing shoulder 사선 라우팅
   //   실제 trunk axial rotation 토크는 self-side hip → self-side shoulder 사선으로 전달됨
-  const energyPath = `M ${K.lAnkle[0]} ${K.lAnkle[1]} L ${K.lKnee[0]} ${K.lKnee[1]} L ${K.pelvisC[0]} ${K.pelvisC[1]} L ${K.pelvisR[0]} ${K.pelvisR[1]-2} Q ${(K.pelvisR[0]+K.rShoulder[0])/2+18} ${(K.pelvisR[1]+K.rShoulder[1])/2-12} ${K.rShoulder[0]} ${K.rShoulder[1]} L ${K.rElbow[0]} ${K.rElbow[1]} L ${K.rWrist[0]} ${K.rWrist[1]} L ${K.ball[0]} ${K.ball[1]}`;
+  // ★ v31.25 — 첨부 이미지(MLB 투수 빨간 점선) 참조: 골반 → 몸통 안을 통과하는 직선 → 던지는 어깨
+  //   이전 v31.16 외부 곡선 제거. 척추-throwing shoulder 중심축 직선 통과로 단순화
+  const energyPath = `M ${K.lAnkle[0]} ${K.lAnkle[1]} L ${K.lKnee[0]} ${K.lKnee[1]} L ${K.pelvisC[0]} ${K.pelvisC[1]} L ${K.rShoulder[0]} ${K.rShoulder[1]} L ${K.rElbow[0]} ${K.rElbow[1]} L ${K.rWrist[0]} ${K.rWrist[1]} L ${K.ball[0]} ${K.ball[1]}`;
 
   // ★ v31.16 — Drive leg path (밀고 나가는 발 → 무릎 → 골반 우측)
   //   메인 energyPath와 별도로 그려져 골반에서 합류하는 두 갈래 흐름 구현
@@ -4118,7 +4117,7 @@ const CATEGORY_WEIGHTS = {
   },
   C5_UpperBodyTransfer: {    // 단계 5 — 상지 코킹·전달 (at MER)
     'max_shoulder_ER_deg':    1.00,  // ★ Driveline layback (구속 영향력 2위)
-    'elbow_flexion_at_fp':    0.50,
+    // 'elbow_flexion_at_fp' 제거 (v31.25)
     'arm_trunk_speedup':      1.00,  // ★ 사용자 통찰: 전달 효율 핵심
     'trunk_to_arm_lag_ms':    0.80,  // ★ 사용자 통찰: lag 매우 중요
   },
@@ -4287,11 +4286,12 @@ function calculateScores(input, age, measuredVelo) {
   //    공통 보수화: 개인화 ×2 + 절대 ×1 / 3 → 가중평균
   //    Cap: 측정 + 연령군 max gain | 연령군 elite ceiling | floor: 측정+0
   const AGE_MAX_GAIN     = { '중학': 15, '고교': 12, '대학': 8,  '프로': 5  };
-  const AGE_ELITE_CEILING= { '중학': 142, '고교': 152, '대학': 160, '프로': 168 };
+  // ★ v31.31 잠재 구속 천장 상향 (사용자 요청 2026-05-04)
+  //   고교 elite: 152 → 160 km/h, 좌완 offset: -3 → -5 (좌완 elite 155 km/h)
+  const AGE_ELITE_CEILING= { '중학': 145, '고교': 160, '대학': 165, '프로': 170 };
   const maxGain  = AGE_MAX_GAIN[age]      || 10;
-  // ★ v30.15.2 Phase 3: 좌완은 elite ceiling -3 km/h (운동학적 천장)
-  const HAND_CEILING_OFFSET = { right: 0, left: -3 };
-  const eliteCap = (AGE_ELITE_CEILING[age] || 155) + (HAND_CEILING_OFFSET[CURRENT_ARM_SIDE || 'right'] || 0);
+  const HAND_CEILING_OFFSET = { right: 0, left: -5 };
+  const eliteCap = (AGE_ELITE_CEILING[age] || 160) + (HAND_CEILING_OFFSET[CURRENT_ARM_SIDE || 'right'] || 0);
 
   // 학습 곡선 — quadratic. 현재 점수가 낮을수록 발달 효율 급감 (floor 없음)
   // 학습곡선 — 2026-05-03 (s/100)^2 → (s/100)^1.2 완화
@@ -4620,20 +4620,14 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
       faults.sort((a,b) => sevOrder[a.severity] - sevOrder[b.severity]);
       const faultRows = faults.map(f => {
         const c = sevColor[f.severity] || '#888';
-        // ★ v31.23 변인 설명 접이식 카드 (PDF 시각화)
+        // ★ v31.23 변인 설명 접이식 카드 / v31.26 이미지 제거 (사용자 요청)
         const guide = (typeof FAULT_VISUAL_GUIDE !== 'undefined') ? FAULT_VISUAL_GUIDE[f.id] : null;
         const visualBlock = guide ? `
           <details class="mt-2" style="background:#0b1220; border:1px solid var(--border); border-radius:6px;">
             <summary class="text-xs px-2 py-1.5 cursor-pointer" style="color:#60a5fa; user-select:none;">📖 변인 설명 보기 — <strong>${guide.title}</strong></summary>
-            <div class="p-3 flex flex-col md:flex-row gap-3" style="border-top:1px dashed var(--border);">
-              <div style="flex-shrink:0;">
-                <img src="${guide.image}" alt="${guide.title}" loading="lazy"
-                     style="width:180px; max-width:100%; border-radius:4px; background:#fff;" />
-              </div>
-              <div class="text-xs leading-relaxed" style="flex:1; color:var(--text-secondary);">
-                <div class="mb-2"><strong style="color:#fbbf24;">현상:</strong> ${guide.desc}</div>
-                <div><strong style="color:#4ade80;">관련 피지컬·기술:</strong> ${guide.physical}</div>
-              </div>
+            <div class="p-3 text-xs leading-relaxed" style="border-top:1px dashed var(--border); color:var(--text-secondary);">
+              <div class="mb-2"><strong style="color:#fbbf24;">현상:</strong> ${guide.desc}</div>
+              <div><strong style="color:#4ade80;">관련 피지컬·기술:</strong> ${guide.physical}</div>
             </div>
           </details>` : '';
         return `<div class="card p-3 mb-2" style="border-left: 4px solid ${c};">
@@ -4885,16 +4879,12 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
   const modeDesc = mode === 'elite'
     ? `MaxV ≥${threshold} km/h — 미세조정 (좁은 σ)`
     : `MaxV <${threshold} km/h — gap 측정 (넓은 σ)`;
-  // ★ v30.16.1: 좌투/우투 수동 토글 + 키/몸무게/BMI/MaxV 표시
+  // ★ v31.27 사용자 요청: 헤더 프로필은 신장·체중만 표시 (BMI, MaxV 제거)
   const heightM = CURRENT_INPUT.fitness?.['Height[M]'];
   const weightKg = CURRENT_INPUT.fitness?.['Weight[KG]'];
-  const bmi = (heightM != null && weightKg != null && heightM > 0)
-    ? (weightKg / (heightM * heightM)).toFixed(1) : null;
   const physInfo = [];
   if (heightM != null)  physInfo.push(`${(heightM*100).toFixed(0)} cm`);
   if (weightKg != null) physInfo.push(`${weightKg.toFixed(0)} kg`);
-  if (bmi != null)      physInfo.push(`BMI ${bmi}`);
-  if (measuredVelo != null) physInfo.push(`<span style="color:var(--accent);font-weight:600">${measuredVelo} km/h</span>`);
   const physInfoHtml = physInfo.length
     ? `<div class="mt-2 text-xs flex gap-2" style="color:var(--text-secondary);">${physInfo.join('<span style="opacity:0.4;">·</span>')}</div>`
     : '';
@@ -4925,24 +4915,27 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
           <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">측정 구속</div>
           <div class="display text-2xl mt-1 text-[var(--text-muted)]">미입력</div>
         </div>`}
+        <!-- ★ v31.31 라벨/부연 설명 명확화 — "한 영역만 발달, 다른 영역 현재 유지" 의미 명시 -->
         <div>
-          <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">체력 기준 구속</div>
-          <div class="display text-3xl mt-1" style="color: var(--fitness)">${r.PV_predicted?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
-          <div class="display text-xs mt-2" style="color: var(--text-muted)">잠재력</div>
-          <div class="display text-2xl" style="color: var(--fitness); opacity: 0.8;">${r.ceiling_F100?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
+          <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">체력만 발달 시 잠재 구속</div>
+          <div class="display text-3xl mt-1" style="color: var(--fitness)">${r.ceiling_F100?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
+          ${(measuredVelo != null && r.ceiling_F100 != null) ? `
+            <div class="text-sm mt-1" style="color: #4ade80; font-weight:600;">+${(r.ceiling_F100 - measuredVelo).toFixed(1)} km/h</div>
+            <div class="text-[10px] text-[var(--text-muted)] mt-1">체력 ${r.Fitness_Score?.toFixed(0) ?? '—'} → 100점, 메카닉 ${r.Mechanics_Score?.toFixed(0) ?? '—'}점 유지</div>` : ''}
         </div>
         <div>
-          <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">메카닉 기준 구속</div>
-          <div class="display text-3xl mt-1" style="color: var(--accent)">${r.MV_predicted?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
-          <div class="display text-xs mt-2" style="color: var(--text-muted)">잠재력</div>
-          <div class="display text-2xl" style="color: var(--accent); opacity: 0.8;">${r.ceiling_M100?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
+          <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">메카닉만 발달 시 잠재 구속</div>
+          <div class="display text-3xl mt-1" style="color: var(--accent)">${r.ceiling_M100?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
+          ${(measuredVelo != null && r.ceiling_M100 != null) ? `
+            <div class="text-sm mt-1" style="color: #4ade80; font-weight:600;">+${(r.ceiling_M100 - measuredVelo).toFixed(1)} km/h</div>
+            <div class="text-[10px] text-[var(--text-muted)] mt-1">메카닉 ${r.Mechanics_Score?.toFixed(0) ?? '—'} → 100점, 체력 ${r.Fitness_Score?.toFixed(0) ?? '—'}점 유지</div>` : ''}
         </div>
         <div>
-          <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">잠재 구속 (FM100)</div>
+          <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">동시 발달 시 잠재 구속</div>
           <div class="display text-3xl mt-1" style="color: var(--warn)">${r.ceiling?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
           ${growth != null ? `
-            <div class="text-sm mt-1" style="color: var(--good); font-weight:600;">↑ +${growth.toFixed(1)} km/h 성장 잠재력</div>
-            <div class="text-[10px] text-[var(--text-muted)] mt-1">현재 측정 구속 → 잠재력 도달 시</div>` : ''}
+            <div class="text-sm mt-1" style="color: #4ade80; font-weight:600;">+${growth.toFixed(1)} km/h</div>
+            <div class="text-[10px] text-[var(--text-muted)] mt-1">체력 ${r.Fitness_Score?.toFixed(0) ?? '—'}·메카닉 ${r.Mechanics_Score?.toFixed(0) ?? '—'} → 모두 100점</div>` : ''}
         </div>
       </div>
     </div>`;
@@ -5334,23 +5327,9 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
     <div class="card p-6 mt-6" style="background: linear-gradient(135deg, rgba(255,107,53,0.03) 0%, rgba(96,165,250,0.03) 100%); border: 1px solid rgba(255,107,53,0.15);">
       <div class="display text-xl mb-4">📋 종합 평가 (선수·코치용 해설)</div>
 
+      ${(false) ? `
       <div class="card p-3 mb-4" style="border: 2px solid var(--brand); background: rgba(255,107,53,0.06);">
-        <div class="display text-base mb-2" style="color: var(--brand);">📊 1단계 · 내 현재 수준과 발전 여지</div>
-        <p class="text-sm leading-relaxed mb-2">
-          <strong>${name}</strong> 선수 (<strong>${r.age}</strong> 기준)
-          ${measuredVelo != null ? `· 측정 구속 <strong>${measuredVelo.toFixed(1)} km/h</strong>` : ''}
-        </p>
-        <p class="text-sm leading-relaxed mb-2">
-          <span style="color:var(--fitness);">체력 기준 ${r.PV_predicted?.toFixed(1) ?? '—'} km/h</span>
-          · <span style="color:var(--accent);">메카닉 기준 ${r.MV_predicted?.toFixed(1) ?? '—'} km/h</span>
-          → <strong style="color:var(--warn);">잠재 구속 ${r.ceiling?.toFixed(1) ?? '—'} km/h</strong>
-          ${growth != null ? ` (성장 여지 <strong style="color:#4ade80;">+${growth.toFixed(1)} km/h</strong>)` : ''}
-        </p>
-        <p class="text-[11px] text-[var(--text-muted)] italic">
-          ※ 잠재 구속은 본 시점의 체력·메카닉이 100점 발달했을 때 도달 가능한 구속을 의미하며,
-          향후 신체 성장(신장·근력)·트레이닝·메카닉 정착에 따라 잠재 구속 자체도 더 높아질 수 있습니다.
-        </p>
-
+        <div class="display text-base mb-2" style="color: var(--brand);">📊 1단계 · 내 현재 수준과 발전 여지 (★ v31.27 헤더로 이동)</div>
         ${(() => {
           // ★ v30.36 결측치 신뢰도 표시 — 영역별 입력 변수 비율 + 점수 신뢰도 등급
           const buildRow = (label, score, cov, rel, color) => {
@@ -5424,15 +5403,9 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
         })()}
         ${distLine}
       </div>
+      ` : ''}
+      <!-- ★ v31.27: 1단계 카드 + prodigyNote + utilLine + scenarioAnalysis 통째로 제거 (헤더 카드로 이동) -->
 
-      ${prodigyNote}
-
-      ${utilLine}
-      ${scenarioAnalysis}
-
-      ${r.ceiling != null && measuredVelo == null ? `<p class="text-sm leading-relaxed mb-3">
-        메카닉 점수를 100점까지 끌어올리면 <strong>${r.ceiling.toFixed(1)} km/h</strong>까지 도달 가능합니다 <span class="text-xs text-[var(--text-muted)]">(코호트 절대 회귀 기준 — 측정 구속 입력 시 더 정확)</span>.
-      </p>` : ''}
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         <div class="card p-4" style="border-left: 4px solid #4ade80;">
