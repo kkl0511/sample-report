@@ -649,7 +649,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v30.16';
+const ALGORITHM_VERSION = 'v30.16.1';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -4153,6 +4153,16 @@ function calculateScores(input, age, measuredVelo) {
 // ════════════════════════════════════════════════════════════════════
 // 리포트 렌더링
 // ════════════════════════════════════════════════════════════════════
+// ★ v30.16.1: 좌투/우투 수동 토글 — 헤더 뱃지에서 호출
+function toggleArmSide() {
+  const cur = CURRENT_INPUT._armSide || 'right';
+  CURRENT_INPUT._armSide = (cur === 'left') ? 'right' : 'left';
+  const newLabel = CURRENT_INPUT._armSide === 'left' ? '좌투' : '우투';
+  console.log(`✏️ 투구 손잡이 변경: ${cur} → ${CURRENT_INPUT._armSide} (${newLabel})`);
+  // 리포트 재생성
+  if (typeof generateReport === 'function') generateReport();
+}
+
 function generateReport() {
   resetImplausibleFlags();   // ★ 비상식 값 플래그 reset (2026-05-03)
   // 입력 변수 수 확인
@@ -4295,25 +4305,40 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
   }
   
   // 헤더 — 5칸 직관 (측정 구속 / 체력 PV / 메카닉 MV / 잠재 / 활용도)
-  // ★ v30.15 Phase 2: handedness × mode 뱃지 (가독성 개선 v30.15.1)
+  // ★ v30.15 Phase 2: handedness × mode 뱃지 (가독성 개선 v30.15.1, v30.16.1 hotfix)
   const armSide = CURRENT_INPUT._armSide || 'right';
   const mode = getPlayerMode(armSide, measuredVelo);
   const handLabel = armSide === 'left' ? '좌투' : '우투';
   const modeLabel = mode === 'elite' ? 'Elite 정착 (Mode B)' : 'Sub-elite 발전 (Mode A)';
   const modeIcon = mode === 'elite' ? '⭐' : '🚀';
-  // 진한 단색 + 명확한 라벨로 가독성 ↑
   const modeColor = mode === 'elite' ? '#7c3aed' : '#2563eb';
   const modeBgColor = mode === 'elite' ? '#ede9fe' : '#dbeafe';
   const threshold = armSide === 'left' ? 135 : 140;
   const modeDesc = mode === 'elite'
     ? `MaxV ≥${threshold} km/h — 미세조정 (좁은 σ)`
     : `MaxV <${threshold} km/h — gap 측정 (넓은 σ)`;
+  // ★ v30.16.1: 좌투/우투 수동 토글 + 키/몸무게/BMI/MaxV 표시
+  const heightM = CURRENT_INPUT.fitness?.['Height[M]'];
+  const weightKg = CURRENT_INPUT.fitness?.['Weight[KG]'];
+  const bmi = (heightM != null && weightKg != null && heightM > 0)
+    ? (weightKg / (heightM * heightM)).toFixed(1) : null;
+  const physInfo = [];
+  if (heightM != null)  physInfo.push(`${(heightM*100).toFixed(0)} cm`);
+  if (weightKg != null) physInfo.push(`${weightKg.toFixed(0)} kg`);
+  if (bmi != null)      physInfo.push(`BMI ${bmi}`);
+  if (measuredVelo != null) physInfo.push(`<span style="color:var(--accent);font-weight:600">${measuredVelo} km/h</span>`);
+  const physInfoHtml = physInfo.length
+    ? `<div class="mt-2 text-xs flex gap-2" style="color:var(--text-secondary);">${physInfo.join('<span style="opacity:0.4;">·</span>')}</div>`
+    : '';
   const modeBadge = `<div class="mt-3 flex flex-wrap gap-2 items-center">
       <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold" style="background:${modeBgColor}; color:${modeColor}; border:2px solid ${modeColor};">
         <span>${modeIcon}</span><span>${handLabel}</span><span style="opacity:0.5;">·</span><span>${modeLabel}</span>
       </div>
+      <button onclick="toggleArmSide()" class="text-xs px-2 py-1 rounded border" style="border-color:var(--text-muted);color:var(--text-secondary);background:transparent;" title="좌투/우투 변경 후 리포트 재생성">
+        ✏️ ${armSide === 'left' ? '우투' : '좌투'}로 변경
+      </button>
       <div class="text-xs" style="color:var(--text-muted);">${modeDesc}</div>
-    </div>`;
+    </div>${physInfoHtml}`;
   const header = `
     <div class="card p-6 mb-6" style="border: 2px solid var(--accent);">
       <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -4819,8 +4844,18 @@ function loadSavedPlayer(id) {
   // 입력 데이터 복원
   CURRENT_INPUT.fitness  = JSON.parse(JSON.stringify((saved.inputs && saved.inputs.fitness) || {}));
   CURRENT_INPUT.mechanics = JSON.parse(JSON.stringify((saved.inputs && saved.inputs.mechanics) || {}));
-  // ★ v30.15 Phase 2: armSide 복원 (saved.armSide 우선, fallback 우완)
-  CURRENT_INPUT._armSide = saved.armSide || (saved.inputs && saved.inputs._armSide) || 'right';
+  // ★ v30.15 Phase 2 / v30.16.1: armSide 복원 — 옛 저장본은 master_fitness 자동 매칭으로 추론
+  CURRENT_INPUT._armSide = saved.armSide || (saved.inputs && saved.inputs._armSide) || null;
+  if (!CURRENT_INPUT._armSide && typeof MASTER_FITNESS_LOOKUP === 'object') {
+    // master_fitness에서 같은 이름·날짜 매칭으로 handedness 가져오기
+    const matchKey = `${saved.name}_${saved.date}`;
+    const masterRow = MASTER_FITNESS_LOOKUP?.[matchKey] || MASTER_FITNESS_LOOKUP?.[saved.name];
+    if (masterRow && masterRow.Handedness) {
+      CURRENT_INPUT._armSide = masterRow.Handedness.toLowerCase() === 'l' ? 'left' : 'right';
+      console.log(`📋 master_fitness에서 ${saved.name} 손잡이 복원: ${CURRENT_INPUT._armSide}`);
+    }
+  }
+  if (!CURRENT_INPUT._armSide) CURRENT_INPUT._armSide = 'right';  // 최종 fallback
 
   // Step 2 status 복원
   const fitCount = Object.keys(CURRENT_INPUT.fitness).length;
