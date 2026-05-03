@@ -649,7 +649,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v30.14';
+const ALGORITHM_VERSION = 'v30.14.1';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -1449,7 +1449,9 @@ function extractScalarsFromUplift(parsed) {
     // BBL 컨벤션: 음수 = 뒤로 기울임(이상), 0 = 똑바로, 양수 = 앞으로 기울임
     // Uplift trunk_global_flexion: 180° = upright, >180° = back tilt, <180° = forward tilt
     // 변환: BBL = 180 - Uplift  (예: Uplift 183 → BBL -3°, 거의 똑바로)
-    const upFlexFc = valAt(events.fc, 'trunk_global_flexion');
+    // ★ v30.14: 좌투는 trunk_global_flexion이 부호 반대(-173° vs +173°) → abs 후 변환
+    let upFlexFc = valAt(events.fc, 'trunk_global_flexion');
+    if (upFlexFc != null && armSide === 'left') upFlexFc = Math.abs(upFlexFc);
     out.trunk_forward_tilt_at_fc  = upFlexFc != null ? (180 - upFlexFc) : null;
     const sideHadd = armSide === 'left' ? 'left_shoulder_horizontal_adduction' : 'right_shoulder_horizontal_adduction';
     const habdRaw  = valAt(events.fc, sideHadd);
@@ -1609,7 +1611,10 @@ function extractScalarsFromUplift(parsed) {
   //   변경: raw valAt 단독. trunk_forward_tilt_at_fc는 BBL 컨벤션 변환(180-) 적용했지만
   //         여기서는 trial 간 SD 산출용이라 절대값 변환 무관. 일관되게 raw flexion.
   if (events.br != null) {
-    out.trunk_forward_tilt_at_br_trial = valAt(events.br, 'trunk_global_flexion');
+    let upFlexBr = valAt(events.br, 'trunk_global_flexion');
+    // ★ v30.14: 좌투는 부호 반대 → abs 후 SD 산출 (trial 간 일관성 확보)
+    if (upFlexBr != null && armSide === 'left') upFlexBr = Math.abs(upFlexBr);
+    out.trunk_forward_tilt_at_br_trial = upFlexBr;
   }
 
   // ════════════════════════════════════════════════════════════════════
@@ -2315,19 +2320,21 @@ function processUpliftCsv(header, headerNorm, lines, type) {
   if (events.fc != null) {
     let trunkRot  = valAtFrame(events.fc, 'trunk_global_rotation');
     let pelvisRot = valAtFrame(events.fc, 'pelvis_global_rotation');
-    const trunkFwd  = valAtFrame(events.fc, 'trunk_global_flexion');
+    let trunkFwd  = valAtFrame(events.fc, 'trunk_global_flexion');
     // ★ v30.14 좌투 좌표계 보정 (extractScalarsFromUplift와 동일)
     if (armSide === 'left') {
       trunkRot  = normalizeAngle(trunkRot,  LEFT_TRUNK_REF);
       pelvisRot = normalizeAngle(pelvisRot, LEFT_PELVIS_REF);
       if (trunkRot  != null) trunkRot  = trunkRot  - LEFT_TO_RIGHT_TRUNK_OFFSET;
       if (pelvisRot != null) pelvisRot = pelvisRot - LEFT_TO_RIGHT_PELVIS_OFFSET;
+      if (trunkFwd  != null) trunkFwd  = Math.abs(trunkFwd);  // 좌투 trunk_global_flexion 부호 반대 → abs
     }
     setVal('trunk_rotation_at_fc', trunkRot);
     if (trunkRot != null && pelvisRot != null) {
       setVal('hip_shoulder_sep_at_fc', pelvisRot - trunkRot);  // signed (양수 = pelvis 먼저 열림)
     }
-    setVal('trunk_forward_tilt_at_fc', trunkFwd);
+    // BBL 변환: 180 - Uplift (양수=forward tilt, 음수=back tilt)
+    setVal('trunk_forward_tilt_at_fc', trunkFwd != null ? (180 - trunkFwd) : null);
 
     // shoulder_h_abd_at_fc: Uplift는 horizontal_adduction(수평 내전), BBL은 abduction(수평 외전) — 부호 반전
     const sideHadd = armSide === 'left'
@@ -4929,13 +4936,36 @@ window.addEventListener("DOMContentLoaded", function(){
   }
 }
 
+// ★ v30.14 마이그레이션 — 저장된 좌투 선수의 raw trunk_rot 값 변환
+//   v30.13.1 이전엔 좌투 값이 [+100, +250] 또는 [-250, -150] 범위 (raw)였음
+//   v30.14에선 우완 등가 [-130, -30] 범위로 매핑됨
+//   기존 저장값이 "raw 범위"에 있으면 변환 적용 (idempotent: 이미 변환된 값엔 영향 없음)
+function migrateV30_14_LeftHanded(inputs) {
+  if (!inputs || !inputs.mechanics) return false;
+  const m = inputs.mechanics;
+  let migrated = false;
+  // trunk_rotation_at_fc — raw 좌투 범위: +30~+250 또는 -250~-180
+  if (m.trunk_rotation_at_fc != null) {
+    const t = m.trunk_rotation_at_fc;
+    const isRawLeft = (t > 30) || (t < -180);
+    if (isRawLeft) {
+      let norm = ((t - LEFT_TRUNK_REF + 180) % 360) - 180 + LEFT_TRUNK_REF;
+      m.trunk_rotation_at_fc = norm - LEFT_TO_RIGHT_TRUNK_OFFSET;
+      migrated = true;
+    }
+  }
+  return migrated;
+}
+
 // 알고리즘 변경 시 — 저장된 모든 리포트 자동 재계산
 function recomputeAllSavedReports() {
   if (!SAVED_REPORTS || SAVED_REPORTS.length === 0) return { updated: 0, outdated: 0 };
-  let updated = 0, outdated = 0;
+  let updated = 0, outdated = 0, migrated = 0;
   for (const saved of SAVED_REPORTS) {
     if (!saved.inputs) continue;
     const wasOutdated = saved.algorithm_version !== ALGORITHM_VERSION;
+    // ★ v30.14: 좌투 raw trunk_rot 마이그레이션
+    if (migrateV30_14_LeftHanded(saved.inputs)) migrated++;
     try {
       const result = calculateScores(saved.inputs, saved.age || '고교', saved.measuredVelo);
       saved.scores = result;
@@ -4950,9 +4980,9 @@ function recomputeAllSavedReports() {
   }
   if (updated > 0) {
     persistSavedReports();
-    console.log(`✅ ${updated}개 리포트 재계산 완료 (그중 ${outdated}개는 이전 산식)`);
+    console.log(`✅ ${updated}개 리포트 재계산 완료 (그중 ${outdated}개는 이전 산식, ${migrated}개는 v30.14 좌투 마이그레이션)`);
   }
-  return { updated, outdated };
+  return { updated, outdated, migrated };
 }
 
 // ★ 수동 재계산 트리거 (헤더 버튼 클릭 시)
