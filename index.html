@@ -649,7 +649,7 @@
 
 // ★ 알고리즘 버전 (2026-05-03) — 산식 변경 시 갱신
 //   저장된 리포트의 algorithm_version과 비교해 자동 재계산 + UI 알림
-const ALGORITHM_VERSION = 'v30.16.1';
+const ALGORITHM_VERSION = 'v30.16.2';
 const ALGORITHM_DATE    = '2026-05-03';
 
 let CURRENT_AGE = '고교';
@@ -2095,6 +2095,50 @@ function handleMultipleUpliftFiles(files) {
     if (firstMeta.captureDate) {
       const el = document.getElementById('player-date');
       if (!el.value) el.value = parseDateFlex((firstMeta.captureDate || '').split(' ')[0]);
+    }
+    // ★ v30.16.2: master_fitness.xlsx 자동 매칭 — 체력 CSV 없어도 키/몸무게/MaxV/손잡이 보강
+    try {
+      const masterRaw = localStorage.getItem('bbl_master_fitness');
+      if (masterRaw && firstMeta.athleteName) {
+        const masterRows = JSON.parse(masterRaw);
+        const targetName = firstMeta.athleteName.toLowerCase().replace(/^s\d+\s+/i, '');
+        const targetDate = parseDateFlex((firstMeta.captureDate || '').split(' ')[0]);
+        // 1차 매칭: ID + 측정일 일치
+        let masterRow = masterRows.find(r => {
+          const idMatch = (r.ID || '').toString().toLowerCase() === targetName
+                       || (r.Name || '').toString() === firstMeta.athleteName;
+          const dateNum = parseInt((r.Date || '').toString().replace(/\D/g, ''), 10);
+          const targetNum = parseInt((targetDate || '').toString().replace(/\D/g, ''), 10);
+          return idMatch && (!targetNum || Math.abs(dateNum - targetNum) <= 7);  // ±7일 허용
+        });
+        // 2차 매칭: ID만 일치 (가장 가까운 날짜)
+        if (!masterRow) {
+          masterRow = masterRows.find(r => (r.ID || '').toString().toLowerCase() === targetName);
+        }
+        if (masterRow) {
+          // 손잡이 마스터 우선
+          if (masterRow.Handedness) {
+            const masterHand = masterRow.Handedness.toString().toLowerCase() === 'l' ? 'left' : 'right';
+            CURRENT_INPUT._armSide = masterHand;
+          }
+          // MaxV 자동 채움
+          const veloEl = document.getElementById('player-velo');
+          if (veloEl && (!veloEl.value || veloEl.value === '') && masterRow['Max Velocity'] != null) {
+            veloEl.value = parseFloat(masterRow['Max Velocity']).toFixed(1);
+          }
+          // 키/몸무게 → CURRENT_INPUT.fitness (체력 CSV 없어도 헤더 표시 가능)
+          if (!CURRENT_INPUT.fitness) CURRENT_INPUT.fitness = {};
+          if (masterRow['Height[M]'] != null && CURRENT_INPUT.fitness['Height[M]'] == null) {
+            CURRENT_INPUT.fitness['Height[M]'] = parseFloat(masterRow['Height[M]']);
+          }
+          if (masterRow['Weight[KG]'] != null && CURRENT_INPUT.fitness['Weight[KG]'] == null) {
+            CURRENT_INPUT.fitness['Weight[KG]'] = parseFloat(masterRow['Weight[KG]']);
+          }
+          console.log(`📊 master_fitness 자동 매칭: ${firstMeta.athleteName} → 손잡이 ${CURRENT_INPUT._armSide}, MaxV ${masterRow['Max Velocity']}, ${masterRow['Height[M]']}m / ${masterRow['Weight[KG]']}kg`);
+        }
+      }
+    } catch (e) {
+      console.warn('master_fitness 자동 매칭 실패 (정상 동작에 영향 없음):', e);
     }
 
     // 선수 동일성 체크
