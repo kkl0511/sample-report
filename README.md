@@ -1,3 +1,50 @@
+# BBL v33.1 — Throwing arm 자동검출 신뢰성 가드
+**Build**: 2026-05-04 / **Patch**: v33.0 → v33.1 / **Type**: 검출 버그 픽스
+
+---
+
+## v33.1 변경 (박명균 우완 시퀀스 차트 누락 해결)
+
+### 문제 발견
+박명균(우완) 시퀀스 타이밍 차트 누락. DevTools 콘솔:
+```
+⚠ Throwing arm detected (left, max 0°/s) differs from handedness label (right). Using detected.
+```
+
+### 원인 (v31.12 자동검출 로직 버그)
+```javascript
+// 기존
+const _throwingArmDetected = _leftMaxAv >= _rightMaxAv ? 'left' : 'right';
+```
+- 양 팔 모두 0°/s (윈도우 오류 등) → `0 >= 0 = true` → 'left' 잘못 선택
+- 우완 라벨이 있는데도 left arm을 throwing arm으로 사용
+- 이후 peak detection이 글러브 손 시그널 잡음 → lag null → 차트 누락
+
+### v33.1 수정
+```javascript
+const _ARM_DETECT_THRESHOLD = 800;  // peak arm AV는 보통 1000+
+if (_leftMaxAv < THRESHOLD && _rightMaxAv < THRESHOLD) {
+  // 둘 다 신뢰 임계 미만 → handedness label 사용
+  _throwingArmDetected = armSide;
+} else if (_leftMaxAv > _rightMaxAv) {
+  _throwingArmDetected = 'left';
+} else if (_rightMaxAv > _leftMaxAv) {
+  _throwingArmDetected = 'right';
+} else {
+  _throwingArmDetected = armSide;  // tie → label 우선
+}
+```
+
+3가지 가드:
+1. **임계 800°/s 미만** → 자동검출 거부, label 사용 (박명균 케이스 직접 해결)
+2. **strict `>` 비교** (`>=` 폐기) → tie 시 label로
+3. **tie 명시적 처리** → label 우선
+
+### 변경 파일
+- `index.html`: ALGORITHM_VERSION v33.0 → v33.1, throwing arm 자동검출 로직 가드 추가
+
+---
+
 # BBL v33.0 — 마네킹 경로 + 레이더 라벨 일치 + 5각 누락 변인
 **Build**: 2026-05-04 / **Patch**: v32.9 → v33.0 / **Type**: UX 정밀 + 데이터 완전성
 
@@ -605,7 +652,8 @@ Synthetic input sanity check:
 | v32.7 | 숫자 FP 포매팅 + 좌완 시퀀스 차트 복구 |
 | v32.8 | 음수 lag 해석 정정 (발달 미성숙→이벤트 검출 오류) |
 | v32.9 | 마네킹 누수-only + ARM→FOREARM 신규 + 스토리 재배치 |
-| **v33.0** | **마네킹 경로(앞 hip 경유) + 팔꿈치 노드 + 레이더 라벨 일치 + 5각 stride_norm_height 보강** |
+| v33.0 | 마네킹 경로(앞 hip 경유) + 팔꿈치 노드 + 레이더 라벨 일치 + 5각 stride_norm_height 보강 |
+| **v33.1** | **Throwing arm 자동검출 신뢰성 가드 (박명균 우완 케이스 해결)** |
 
 ---
 

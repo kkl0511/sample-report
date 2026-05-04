@@ -681,7 +681,10 @@
 //   v33.0 — 마네킹 착지다리 경로 변경(앞 hip 경유) + 팔꿈치·손목 노드 시각화 추가
 //           레이더 라벨을 카드 라벨과 일치시킴 (CATEGORY_DETAILS.name 우선 사용)
 //           5각 Driveline Block 카테고리: stride_norm_height Height[M] 부재 시 근사값 산출
-const ALGORITHM_VERSION = 'v33.0';
+//   v33.1 — Throwing arm 자동검출 신뢰성 가드 (박명균 우완 케이스 해결)
+//           v31.12 버그: 양 팔 0°/s 시 `>=` 비교가 'left' 잘못 선택 → 시퀀스 차트 누락
+//           수정: 임계 800°/s 미만이면 handedness label 사용, strict `>` 비교, tie 시 label 우선
+const ALGORITHM_VERSION = 'v33.1';
 const ALGORITHM_DATE    = '2026-05-04';
 
 let CURRENT_AGE = '고교';
@@ -1272,8 +1275,24 @@ function extractScalarsFromUplift(parsed) {
   };
   const _leftMaxAv  = _getMaxAbsInWin('left_arm_rotational_velocity_with_respect_to_ground',  _armLo, _armHi);
   const _rightMaxAv = _getMaxAbsInWin('right_arm_rotational_velocity_with_respect_to_ground', _armLo, _armHi);
-  // 큰 쪽이 throwing arm
-  const _throwingArmDetected = _leftMaxAv >= _rightMaxAv ? 'left' : 'right';
+  // ★ v33.1 — 자동 검출 신뢰성 가드 (2026-05-04 박명균 케이스 해결)
+  //   기존 v31.12 버그: `_leftMaxAv >= _rightMaxAv`가 0 >= 0 케이스에서 true → 'left' 잘못 선택
+  //   → label='right', detected=left(0°/s)인 채로 left arm을 throwing arm으로 사용 → 모든 peak null
+  //   수정:
+  //   (a) 둘 다 신뢰 임계(800°/s) 미만이면 detection 거부, label 사용
+  //   (b) `>=` → `>` 로 strict 비교 (tie 시 label 우선)
+  const _ARM_DETECT_THRESHOLD = 800;  // °/s — peak arm AV는 대개 1000+, 이 미만이면 윈도우 오류 가능
+  let _throwingArmDetected;
+  if (_leftMaxAv < _ARM_DETECT_THRESHOLD && _rightMaxAv < _ARM_DETECT_THRESHOLD) {
+    _throwingArmDetected = armSide;
+    console.warn(`⚠ Throwing arm 자동검출 신뢰 임계 미만 (L:${_leftMaxAv.toFixed(0)}°/s, R:${_rightMaxAv.toFixed(0)}°/s) — handedness label '${armSide}' 사용`);
+  } else if (_leftMaxAv > _rightMaxAv) {
+    _throwingArmDetected = 'left';
+  } else if (_rightMaxAv > _leftMaxAv) {
+    _throwingArmDetected = 'right';
+  } else {
+    _throwingArmDetected = armSide;  // tie → label 우선
+  }
   const armVelCol = _throwingArmDetected + '_arm_rotational_velocity_with_respect_to_ground';
   if (_throwingArmDetected !== armSide) {
     console.warn(`⚠ Throwing arm detected (${_throwingArmDetected}, max ${Math.max(_leftMaxAv,_rightMaxAv).toFixed(0)}°/s) differs from handedness label (${armSide}). Using detected.`);
