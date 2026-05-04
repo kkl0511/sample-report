@@ -385,13 +385,22 @@
     letter-spacing: 0.05em;
     border-bottom: 1px solid var(--border);
   }
+  /* ★ v32.6 — 숫자 칼럼 헤더는 우측 정렬 (text-right 클래스가 .cmp-table th에 덮였던 문제) */
+  .cmp-table th.text-right,
+  .cmp-table th[data-num="true"] { text-align: right; }
   .cmp-table td {
     padding: 10px 12px;
     border-bottom: 1px solid var(--border);
     color: var(--text-primary);
   }
   .cmp-table tr:last-child td { border-bottom: none; }
-  .cmp-table .cmp-num { font-family: 'JetBrains Mono', monospace; text-align: right; }
+  /* ★ v32.6 — tabular-nums로 0.3과 100.0의 자릿수 정렬, 칼럼 폭 명시 */
+  .cmp-table .cmp-num {
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    min-width: 70px;
+  }
   .cmp-table .delta-pos { color: var(--good); }
   .cmp-table .delta-neg { color: var(--bad); }
   .cmp-table .delta-neu { color: var(--text-muted); }
@@ -662,7 +671,8 @@
 //   v32.4 — F2_Power(CMJ_BM·SJ_BM) LITERATURE_OVERRIDE 해제 → percentile 산식
 //   v32.5 — "more is better" 변수 10개 추가 percentile 전환 (IMTP/BM, RSI×2, EUR,
 //           회전속도 3개, lead_knee_ext_vel_max, Height, Weight). 16개 분포 미보유 변수는 Phase 2.
-const ALGORITHM_VERSION = 'v32.5';
+//   v32.6 — 비교표 칼럼 정렬 수정 (헤더 우측 정렬 + tabular-nums 자릿수 정렬)
+const ALGORITHM_VERSION = 'v32.6';
 const ALGORITHM_DATE    = '2026-05-04';
 
 let CURRENT_AGE = '고교';

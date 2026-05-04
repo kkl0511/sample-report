@@ -1,3 +1,29 @@
+# BBL v32.6 — 비교표 칼럼 정렬 수정 (UI)
+**Build**: 2026-05-04 / **Patch**: v32.5 → v32.6 / **Type**: UI 정렬 픽스
+
+---
+
+## v32.6 변경
+
+H1↔H2·선수간 비교표에서 발견된 정렬 이슈 수정.
+
+### 문제
+1. **헤더가 좌측 정렬, 데이터는 우측 정렬** — `<th class="text-right">`이 `.cmp-table th { text-align: left }`에 덮여서 1차·2차·Δ 헤더가 좌측에 붙고 숫자는 우측에 붙어 시각적으로 어긋남
+2. **자릿수 정렬 안 됨** — monospace 폰트지만 tabular-nums가 없어 `0.3`과 `100.0`의 소수점 위치가 맞지 않음
+
+### 수정 (CSS 두 줄)
+```css
+.cmp-table th.text-right { text-align: right; }   /* 헤더 우측 정렬 */
+.cmp-table .cmp-num {
+  font-variant-numeric: tabular-nums;             /* 자릿수 폭 동일 */
+  min-width: 70px;                                /* 칼럼 폭 일관 */
+}
+```
+
+산식 변화 없음 — 순수 시각 정렬 픽스.
+
+---
+
 # BBL v32.5 — "more is better" 변수 10개 추가 percentile 전환
 **Build**: 2026-05-04 / **Patch**: v32.4 → v32.5 / **Type**: 산식 수정 (광범)
 
@@ -426,7 +452,8 @@ Synthetic input sanity check:
 | v32.2 | index.html로 통합 + C5 가중치 절충 (1.5 → 1.0) |
 | v32.3 | IPS 부분측정 경고 FP 비교 버그 수정 |
 | v32.4 | F2_Power(CMJ·SJ /BM) percentile 산식 전환 |
-| **v32.5** | **"more is better" 변수 10개 추가 percentile 전환 (IMTP/BM, RSI×2, EUR, 회전속도, lead_knee, Height/Weight)** |
+| v32.5 | "more is better" 변수 10개 추가 percentile 전환 |
+| **v32.6** | **비교표 칼럼 정렬 수정 (UI 픽스)** |
 
 ---
 
