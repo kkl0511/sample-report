@@ -1,3 +1,52 @@
+# BBL v33.4 — index.html 인라인 script 외부 파일로 분리
+**Build**: 2026-05-04 / **Patch**: v33.3 → v33.4 / **Type**: 리팩토링 (로직 변경 0)
+
+---
+
+## v33.4 변경
+
+### 동기
+v33.x 시리즈를 마치고 점검 결과 index.html이 **7,074라인 / 381KB** — GitHub 웹 편집 매우 느림, diff 가독성 낮음.
+
+### 분석
+```
+index.html 구성:
+  HTML markup:        149 라인 ( 2%)
+  <style> 블록:       512 라인 ( 7%)
+  <script> 인라인: 6,414 라인 (91%) ⚠
+```
+→ HTML 파일이라기보다 .js 파일에 HTML 껍데기가 붙은 형태.
+
+### 변경
+인라인 `<script>` 6,414라인을 **`app.js`로 분리**, index.html은 `<script src="app.js"></script>` 한 줄로 참조.
+
+### 효과
+
+| 파일 | Before | After | 변화 |
+|---|---:|---:|---|
+| `index.html` | 7,074 라인 / 381 KB | **661 라인 / 25 KB** | ↓ 91% |
+| `app.js` (신규) | — | 6,416 라인 / 356 KB | (분리) |
+
+- ✅ GitHub 웹 편집 빨라짐 (661라인은 무리 없음)
+- ✅ Git diff: 마크업/스타일 변경 vs 로직 변경 분리됨
+- ✅ 로직 변경 0 — 단순 분리만 (런타임 동작 동일)
+- ✅ JS syntax 검증 통과
+
+### 변경 파일
+- `index.html`: 인라인 `<script>` 제거, `<script src="app.js">` 추가
+- `app.js` (신규): 메인 로직 6,416라인
+- ALGORITHM_VERSION 위치는 app.js로 이동 (v33.3 → v33.4)
+
+### 의존 순서 (HTML에서 로드 순서 유지)
+```html
+<script src="cohort_v29.js"></script>      <!-- 1. 코호트 데이터 -->
+<script src="metadata.js"></script>         <!-- 2. 결함·점수·카테고리 -->
+<!-- styles -->
+<script src="app.js"></script>             <!-- 3. 메인 로직 (마지막) -->
+```
+
+---
+
 # BBL v33.3 — Uplift 사전계산 peak frame 우선 사용
 **Build**: 2026-05-04 / **Patch**: v33.2 → v33.3 / **Type**: 검출 정확도 개선
 
@@ -761,7 +810,8 @@ Synthetic input sanity check:
 | v33.0 | 마네킹 경로(앞 hip 경유) + 팔꿈치 노드 + 레이더 라벨 일치 + 5각 stride_norm_height 보강 |
 | v33.1 | Throwing arm 자동검출 신뢰성 가드 |
 | v33.2 | Uplift event placeholder 0을 null 처리 |
-| **v33.3** | **Uplift 사전계산 peak frame 우선 (박명균 lag 114→58ms 정상화)** |
+| v33.3 | Uplift 사전계산 peak frame 우선 (박명균 lag 114→58ms 정상화) |
+| **v33.4** | **index.html 인라인 script를 app.js로 분리 (7,074→661라인)** |
 
 ---
 
