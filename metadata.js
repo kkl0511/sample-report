@@ -747,7 +747,50 @@ const OUTPUT_VS_TRANSFER_VAR_META = {
   'stride_to_pelvis_lag_ms':      { name: '★ FC→peakPelvis 시간차',   unit: 'ms',   hint: '★ 하체 contact→골반 회전 시작 타이밍. 절댓값 작을수록 좋음 (음수=일찍 열림 flying open, 양수=지연)' },
   'x_factor_to_peak_pelvis_lag_ms':{ name: '★ X-factor max→peakPelvis 시간차', unit: 'ms', hint: '★ SSC 활용 타이밍. 0~120ms ideal — 분리 저장 후 빠르게 골반 회전' },
   // ── 부상(INJURY) — 3변수 ──
-  'elbow_valgus_torque_proxy':    { name: '★ 팔꿈치 외반 토크 proxy', unit: 'Nm',   hint: '★ UCL stress 모니터링. 0.5×m_forearm×L²×ω² 산식. 절대값보단 코호트 percentile ranking 활용' },
-  'knee_varus_max_drive':         { name: 'Drive 무릎 외반 max',      unit: '°',    hint: '발달기 무릎 안정성. 코호트 90pct(34.56°) 초과 시 stabilizer 강화 권장' },
-  'max_shoulder_ER_deg':          { name: '어깨 외회전 max (Layback)',unit: '°',    hint: '180~190° elite. 200° 초과 시 어깨 valgus stress 위험' },
+  'elbow_valgus_torque_proxy':    { name: '★ 팔꿈치 외반 토크 proxy', unit: 'Nm',   hint: '★ UCL stress 모니터링. 0.5×m_forearm×L²×ω² 산식 (markerless proxy — 절대 토크 X). 코호트 ranking으로만 평가' },
+  'knee_varus_max_drive':         { name: 'Drive 무릎 외반 max',      unit: '°',    hint: '발달기 무릎 안정성. 문헌 임계: ≤15° 정상, 15~25° 주의, >25° 위험 (sport medicine 일반)' },
+  'max_shoulder_ER_deg':          { name: '어깨 외회전 max (Layback)',unit: '°',    hint: 'Layback ROM. 문헌 임계: 180~190° elite, >200° valgus stress 위험 (Davis 2013, Driveline)' },
+};
+
+// ════════════════════════════════════════════════════════════════════
+// INJURY_LITERATURE_THRESHOLDS — 부상 위험 문헌 절대 임계 (코호트와 무관)
+// 코호트 ranking과 동시 표시 — 두 신호 일치 시 강한 위험 신호
+// ════════════════════════════════════════════════════════════════════
+const INJURY_LITERATURE_THRESHOLDS = {
+  // elbow_valgus_torque_proxy는 단순 proxy(0.5×m×L²×ω²)라 절대 비교 불가 — 코호트 ranking만 사용
+  // 정확한 절대 임계는 inverse dynamics 마커 측정 후 적용 가능 (예: Werner 2008 64 Nm)
+  'elbow_valgus_torque_proxy': null,
+
+  // shoulder_ir_vel_max — Werner 2008, Wood-Smith 2019 기준
+  //   <4500 °/s: 발달 코호트 평균 영역 (정상)
+  //   4500~7000 °/s: elite 수준 (정상이지만 모니터링)
+  //   >7000 °/s: 부상 위험 (UCL stress + 어깨 distraction force↑)
+  'shoulder_ir_vel_max': {
+    safe:    { max: 4500, label: '정상',  color: '#4ade80' },
+    monitor: { min: 4500, max: 7000, label: 'Elite (모니터링)', color: '#fbbf24' },
+    risk:    { min: 7000, label: '위험 ⚠', color: '#f87171' },
+    source: 'Werner 2008, Wood-Smith 2019',
+  },
+
+  // max_shoulder_ER_deg (Layback) — Davis 2013, Driveline OnBaseU
+  //   ≤180°: 정상
+  //   180~200°: elite (정상)
+  //   >200°: elbow valgus stress + 어깨 hyperangulation 위험
+  'max_shoulder_ER_deg': {
+    safe:    { max: 180, label: '정상',  color: '#4ade80' },
+    monitor: { min: 180, max: 200, label: 'Elite (정상)', color: '#fbbf24' },
+    risk:    { min: 200, label: '위험 ⚠', color: '#f87171' },
+    source: 'Davis 2013, Driveline OnBaseU',
+  },
+
+  // knee_varus_max_drive — sport medicine 일반 기준 (정확한 임계는 종목별 다름)
+  //   ≤15°: 정상
+  //   15~25°: 주의 (stabilizer 강화 권장)
+  //   >25°: 위험 (drive 다리 무릎 안정성 부족)
+  'knee_varus_max_drive': {
+    safe:    { max: 15, label: '정상',  color: '#4ade80' },
+    monitor: { min: 15, max: 25, label: '주의', color: '#fbbf24' },
+    risk:    { min: 25, label: '위험 ⚠', color: '#f87171' },
+    source: 'Sport medicine general (Powers 2010, Pollard 2017)',
+  },
 };

@@ -1,3 +1,57 @@
+# BBL v33.7.4 — 부상 위험 문헌 임계 + SAVED_REPORTS 마이그레이션 안내 + 자동 저장 토스트
+**Build**: 2026-05-05 / **Patch**: v33.7.3 → v33.7.4 / **Type**: 사용자 피드백 #2 두 가지 동시 반영
+
+### 사용자 피드백
+"부상 위험은 코호트보다 기존 문헌을 이용하는 게 어때? 그리고 계속 데이터를 다시 입력해야만 하는지?"
+
+### A. 부상 위험 — 코호트 ranking + 문헌 절대 임계 동시 표시
+
+**근거:**
+- 발달 코호트(고1) 안 ranking은 elite 기준에서는 정상이거나, 반대로 elite 위험 수준이어도 코호트 평균일 수 있음
+- 절대 해부학·운동학 임계는 코호트와 무관 → 두 신호 동시 표시 시 강한 위험 진단 가능
+
+**`metadata.js`에 `INJURY_LITERATURE_THRESHOLDS` 신설:**
+
+| 변수 | 정상 | Elite/주의 | 위험 ⚠ | 출처 |
+|---|:-:|:-:|:-:|---|
+| `shoulder_ir_vel_max` | <4500 °/s | 4500~7000 (elite) | **>7000 °/s** | Werner 2008, Wood-Smith 2019 |
+| `max_shoulder_ER_deg` | ≤180° | 180~200° (elite) | **>200°** | Davis 2013, Driveline OnBaseU |
+| `knee_varus_max_drive` | ≤15° | 15~25° (주의) | **>25°** | Powers 2010, Pollard 2017 (sport medicine) |
+| `elbow_valgus_torque_proxy` | (markerless proxy 한계) | ranking only | ranking only | Werner 2008 절대값(64 Nm)은 inverse dynamics 마커 측정 후 적용 가능 |
+
+**INJURY 폴더 카드 표시:**
+- 변수별 행에 `raw 값` + `문헌 임계 분류 (정상/elite/위험)` + `코호트 ranking pct` 3컬럼 동시 표시
+- 두 신호 일치 시 강한 위험 신호, 어긋나면 측정 노이즈 또는 코호트 특성 의심
+- elbow_valgus_torque_proxy는 "문헌 임계 X (proxy)" 명시 — 한계 투명 공개
+
+### B. 매번 trial CSV 재입력 부담 — 두 가지 해결책
+
+**1. SAVED_REPORTS 신규 7변수 누락 자동 감지 + 안내 토스트**
+- DOMContentLoaded 시 `showPhase3MissingToast()` 자동 호출
+- `inputs.mechanics`에 `wrist_release_speed`/`angular_chain_amplification`/`elbow_to_wrist_speedup` 모두 누락된 saved 자동 카운트
+- 토스트로 "△△명의 저장 리포트는 trial CSV 재업로드 필요" + 선수 명단 표시 (최대 8명, 그 이상은 "외 N명")
+- 사용자가 어떤 선수를 다시 처리해야 하는지 즉시 파악
+
+**2. Trial CSV 분석 후 자동 저장 명시적 토스트**
+- `autoSaveReport(true)` (silent 모드)는 이미 작동 중이었음 — 분석 직후 inputs deep copy해서 SAVED_REPORTS에 저장
+- 다만 silent 모드라 사용자가 저장된 사실을 모름
+- 신규 7변수가 mechanics에 들어간 케이스(=Phase 3 적용)에 한해 명시적 토스트 표시: "💾 △△ 자동 저장됨 (Phase 3 변수 포함)"
+- 사용자가 "저장" 버튼을 잊지 않게 됨 + 자동 저장 사실 확인 가능
+
+### 영향
+- 부상 위험 진단의 신뢰도 향상 (코호트 + 문헌 둘 다 충족해야 강한 위험 신호)
+- saved report 마이그레이션 부담 명시 + 자동 저장 진행 상황 가시화
+- 사용자가 trial CSV 재업로드를 한 번만 하면, 그 후 saved에서 불러올 때 자동으로 사분면 카드 채워짐
+
+### 변경 파일
+| 파일 | 변경 |
+|---|---|
+| `app.js` | + `showPhase3MissingToast`·`showAutoSavedToast` 함수, DOMContentLoaded·analyze 후 자동 호출, INJURY 카드에 문헌 임계 컬럼·해석 추가 + ALGORITHM_VERSION 'v33.7.4' |
+| `metadata.js` | + `INJURY_LITERATURE_THRESHOLDS` 신설 (shoulder_ir/max_ER/knee_varus 3변수 임계 + 문헌 출처) |
+| `README.md` | v33.7.4 패치노트 |
+
+---
+
 # BBL v33.7.3 — 출력 vs 전달 진단 카드 가독성 강화 (사용자 피드백 반영)
 **Build**: 2026-05-05 / **Patch**: v33.7.2 → v33.7.3 / **Type**: UI 확장 (코치 가독성)
 

@@ -58,7 +58,15 @@
 //             → 차트 위 "이 차트 읽는 법" 안내 박스 (사분면 의미·점 색상 풀어 설명)
 //             → 차트 아래 OUTPUT/TRANSFER/INJURY 3개 폴더 카드 (변수별 한글명·raw·percentile·해석)
 //             → metadata.js에 OUTPUT_VS_TRANSFER_VAR_META 추가 (29개 변수 한글명·단위·코칭 hint)
-const ALGORITHM_VERSION = 'v33.7.3';
+//   v33.7.4 — 사용자 피드백 #2 두 가지:
+//             (A) 부상 위험 — 코호트 ranking + 문헌 절대 임계 동시 표시
+//                 INJURY_LITERATURE_THRESHOLDS 신설 (Werner 2008·Davis 2013·Pollard 2017)
+//                 shoulder_ir_vel >7000°/s, max_shoulder_ER >200°, knee_varus >25° 절대 임계
+//                 elbow_valgus_torque_proxy는 markerless proxy라 ranking only (한계 명시)
+//             (B) 매번 trial CSV 재입력 부담 → 두 가지로 해결:
+//                 1) DOMContentLoaded 시 신규 7변수 누락 saved 자동 감지 + 토스트 안내
+//                 2) trial CSV 분석 후 자동 저장 (silent autoSaveReport는 이미 작동) + 명시적 토스트
+const ALGORITHM_VERSION = 'v33.7.4';
 const ALGORITHM_DATE    = '2026-05-05';
 
 let CURRENT_AGE = '고교';
@@ -4257,7 +4265,12 @@ function generateReport() {
   renderOutputTransferChart(result);
   setupCoachVideoDropZone();
   // 자동 저장 (같은 name+date+age면 update, 아니면 add)
-  autoSaveReport(true);
+  const _savedReport = autoSaveReport(true);
+  // ★ Phase 3 v33.7.4 — 신규 7변수가 mechanics에 들어가서 자동 저장됐으면 사용자에게 알림
+  //   (silent 모드인 autoSaveReport는 토스트 없이 저장만 — 사용자가 저장 사실 모름)
+  if (_savedReport && CURRENT_INPUT.mechanics && CURRENT_INPUT.mechanics.wrist_release_speed != null) {
+    showAutoSavedToast(_savedReport.name);
+  }
   area.scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -4414,20 +4427,37 @@ function renderOutputTransferAccordion(r, catKey, color) {
     // percentile 산출 (var_polarity 자동 사용)
     const polarity = (typeof COHORT !== 'undefined' && COHORT.var_polarity?.[varKey]) || 'higher';
     let pct = percentileOfCohort(varKey, rawVal, polarity);
-    // INJURY 카테고리는 raw rank (높을수록 위험) 별도 표시
+    // INJURY 카테고리는 raw rank (높을수록 위험) + 문헌 절대 임계 동시 표시
     let pctDisplay = '';
     let pctColor = '#94a3b8';
+    let litCell = '<td class="text-right py-1.5 pr-2"></td>';  // 기본 빈 (OUTPUT/TRANSFER용)
     if (catKey === 'INJURY') {
-      // raw rank percentile (높을수록 위험)
+      // (1) raw rank percentile (높을수록 위험) — 코호트 내 위치
       const arr = COHORT.var_sorted_lookup?.[varKey];
       if (arr) {
         let rank = 0;
         for (let i = 0; i < arr.length; i++) { if (arr[i] <= rawVal) rank++; else break; }
         const rankPct = Math.round(100 * rank / arr.length);
         pctColor = rankPct >= 80 ? '#f87171' : rankPct >= 60 ? '#fb923c' : '#4ade80';
-        pctDisplay = `${rankPct}pt<br><span class="text-[9px]" style="color:${pctColor}">${rankPct >= 80 ? '⚠ 위험' : rankPct >= 60 ? '주의' : '안전'}</span>`;
+        pctDisplay = `코호트 ${rankPct}pt`;
       } else {
         pctDisplay = pct != null ? `${pct}pt` : '—';
+      }
+      // (2) 문헌 절대 임계 분류 (있으면 추가 셀 표시)
+      const lit = (typeof INJURY_LITERATURE_THRESHOLDS !== 'undefined') ? INJURY_LITERATURE_THRESHOLDS[varKey] : null;
+      if (lit) {
+        let band = null;
+        if (lit.risk && (lit.risk.min == null || rawVal >= lit.risk.min) && (lit.risk.max == null || rawVal < lit.risk.max)) band = lit.risk;
+        else if (lit.monitor && (lit.monitor.min == null || rawVal >= lit.monitor.min) && (lit.monitor.max == null || rawVal < lit.monitor.max)) band = lit.monitor;
+        else if (lit.safe && (lit.safe.min == null || rawVal >= lit.safe.min) && (lit.safe.max == null || rawVal < lit.safe.max)) band = lit.safe;
+        if (band) {
+          litCell = `<td class="text-right py-1.5 pr-2 mono" style="color:${band.color}; white-space:nowrap" title="문헌: ${lit.source}">문헌 <strong>${band.label}</strong></td>`;
+        } else {
+          litCell = `<td class="text-right py-1.5 pr-2 mono text-[var(--text-muted)]">—</td>`;
+        }
+      } else {
+        // 문헌 임계 없음 (예: elbow_valgus_torque_proxy proxy 한계) — 명시
+        litCell = `<td class="text-right py-1.5 pr-2 text-[10px] text-[var(--text-muted)]" title="proxy 한계 — 절대 토크 X, ranking only">문헌 임계 X<br>(proxy)</td>`;
       }
     } else {
       // OUTPUT/TRANSFER는 percentileOfCohort 결과 그대로 (높을수록 좋음)
@@ -4440,6 +4470,7 @@ function renderOutputTransferAccordion(r, catKey, color) {
     return `<tr style="border-bottom:1px solid rgba(95,99,107,0.15)">
       <td class="py-1.5 pr-2"><div style="font-weight:500">${vm.name}</div><div class="text-[10px] text-[var(--text-muted)]">${vm.hint}</div></td>
       <td class="text-right mono py-1.5 pr-2" style="white-space:nowrap">${rawDisplay}</td>
+      ${catKey === 'INJURY' ? litCell : ''}
       <td class="text-right mono py-1.5" style="color:${pctColor}; white-space:nowrap">${pctDisplay}</td>
     </tr>`;
   }).join('');
@@ -4465,10 +4496,14 @@ function renderOutputTransferAccordion(r, catKey, color) {
           <thead><tr style="border-bottom:1px solid var(--border); color:var(--text-muted)">
             <th class="text-left py-1.5 pr-2">변수 (의미)</th>
             <th class="text-right py-1.5 pr-2">raw</th>
-            <th class="text-right py-1.5">percentile</th>
+            ${catKey === 'INJURY' ? '<th class="text-right py-1.5 pr-2">문헌 임계</th>' : ''}
+            <th class="text-right py-1.5">${catKey === 'INJURY' ? '코호트 ranking' : 'percentile'}</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
+        ${catKey === 'INJURY' ? `<div class="mt-2 text-[10px] text-[var(--text-muted)] leading-relaxed">
+          <strong>해석:</strong> 문헌 임계와 코호트 ranking이 <strong>동시에 위험 수준</strong>이면 강한 부상 위험 신호. 한쪽만 위험이면 측정 노이즈 또는 코호트 특성 의심. <code>elbow_valgus_torque_proxy</code>는 markerless proxy(0.5×m×L²×ω²)라 절대 토크 비교 불가 — ranking으로만 평가.
+        </div>` : ''}
       </div>
     </details>`;
 }
@@ -6045,6 +6080,48 @@ function showRecomputeToast(result) {
   setTimeout(() => { if (toast.parentNode) toast.remove(); }, 8500);
 }
 
+// ★ Phase 3 v33.7.4 — SAVED_REPORTS에서 mechanics raw 누락 자동 감지 + 안내 토스트
+//   v33.6 이전 저장 리포트는 inputs.mechanics에 신규 7변수가 없어서 사분면 카드 빈 상태
+//   사용자에게 누가 trial CSV 재업로드 필요한지 명확히 안내
+function showPhase3MissingToast() {
+  if (!SAVED_REPORTS || SAVED_REPORTS.length === 0) return;
+  const missing = [];
+  for (const saved of SAVED_REPORTS) {
+    const m = saved.inputs?.mechanics;
+    if (!m) continue;  // mechanics 자체 없으면 trial CSV 안 올린 케이스 — 누락 안내 대상 아님
+    // 신규 7변수가 모두 누락이면 마이그레이션 필요 케이스 (1개라도 있으면 OK로 간주)
+    const hasPhase3 = m.wrist_release_speed != null
+      || m.angular_chain_amplification != null
+      || m.elbow_to_wrist_speedup != null;
+    if (!hasPhase3) {
+      missing.push(saved.name + (saved.date ? ` (${saved.date})` : ''));
+    }
+  }
+  if (missing.length === 0) return;  // 모두 OK
+  const msg = `⚠ <strong>${missing.length}명의 저장 리포트</strong>에 Phase 3 변수(출력·전달·부상)가 없습니다. 사분면 카드 활성화를 위해 해당 선수의 <strong>trial CSV 재업로드</strong> 후 자동 저장됩니다.`;
+  const list = missing.slice(0, 8).join(', ') + (missing.length > 8 ? ` 외 ${missing.length-8}명` : '');
+  const toast = document.createElement('div');
+  toast.style.cssText = `position:fixed; top:90px; right:20px; z-index:9998; background:#fb923c; color:#0a0b0d; padding:12px 18px; border-radius:6px; font-size:13px; font-weight:500; box-shadow:0 4px 12px rgba(0,0,0,0.5); max-width:520px; line-height:1.5; cursor:pointer;`;
+  toast.innerHTML = msg + `<div style="font-size:11px;opacity:0.9;margin-top:6px;">${list}</div>` +
+    `<div style="font-size:10px;opacity:0.85;margin-top:6px;">탭해서 닫기 · ${ALGORITHM_VERSION}</div>`;
+  toast.onclick = () => toast.remove();
+  document.body.appendChild(toast);
+  setTimeout(() => { if (toast.parentNode) toast.style.transition = 'opacity 0.5s'; toast.style.opacity = '0'; }, 12000);
+  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 12500);
+}
+
+// ★ Phase 3 v33.7.4 — Trial CSV 분석 후 자동 저장 토스트 (수동 "저장" 클릭 부담 제거)
+function showAutoSavedToast(reportName) {
+  if (!reportName) return;
+  const toast = document.createElement('div');
+  toast.style.cssText = `position:fixed; bottom:20px; right:20px; z-index:9997; background:#60a5fa; color:#0a0b0d; padding:10px 16px; border-radius:6px; font-size:12px; font-weight:500; box-shadow:0 4px 12px rgba(0,0,0,0.5); max-width:380px; line-height:1.4; cursor:pointer;`;
+  toast.innerHTML = `💾 <strong>${reportName}</strong> 자동 저장됨 (Phase 3 변수 포함). <div style="font-size:10px;opacity:0.85;margin-top:3px;">탭해서 닫기</div>`;
+  toast.onclick = () => toast.remove();
+  document.body.appendChild(toast);
+  setTimeout(() => { if (toast.parentNode) toast.style.transition = 'opacity 0.5s'; toast.style.opacity = '0'; }, 5000);
+  setTimeout(() => { if (toast.parentNode) toast.remove(); }, 5500);
+}
+
 function deleteSavedReport(id) {
   if (!confirm('이 리포트를 삭제할까요?')) return;
   SAVED_REPORTS = SAVED_REPORTS.filter(r => r.id !== id);
@@ -6866,6 +6943,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const _recomputeResult = recomputeAllSavedReports();
   refreshPlayerSelector();
   setTimeout(() => showRecomputeToast(_recomputeResult), 500);
+  // ★ Phase 3 v33.7.4 — Phase 3 변수 누락 saved 자동 감지 안내 토스트 (재계산 토스트 다음에)
+  setTimeout(() => showPhase3MissingToast(), 1500);
   // 마스터 DB 자동 로드 (이전 업로드한 게 있으면 힌트 표시)
   _autoLoadMasterDB();
   // 헤더 산식 버전 stamp 동적 갱신 (코드 변경에 자동 추적)
