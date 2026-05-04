@@ -1,3 +1,58 @@
+# BBL v33.3 — Uplift 사전계산 peak frame 우선 사용
+**Build**: 2026-05-04 / **Patch**: v33.2 → v33.3 / **Type**: 검출 정확도 개선
+
+---
+
+## v33.3 변경 (박명균 raw 데이터 검증으로 발견)
+
+### 문제: 박명균이 정상 시퀀스인데 "명확한 누수" 표시
+박명균 raw 10개 trial 직접 계산 (Uplift 사전계산 peak frame 사용):
+
+| 지표 | 정상 범위 | 박명균 평균 | 진단 |
+|---|---|---:|---|
+| pelvis → trunk lag | 30~80ms | **58ms** | ✓ 정상 |
+| trunk → arm lag | 30~80ms | **57ms** | ✓ 정상 |
+
+→ Uplift는 정확한 peak (frame 806/819/834)을 검출하여 lag 54/63ms 산출
+→ **그런데 v33.2까지 화면에는 lag 114/49ms로 표시되며 "명확한 누수"로 잘못 진단**
+
+### 원인 (v31.12 이후 누적된 설계 결함)
+```javascript
+// 기존: BBL 자체 detection만 사용
+events.peakPelvis = detectPeakRotVel('pelvis_rotational_velocity...', _pelvisLo, _pelvisHi);
+events.peakTrunk = detectPeakRotVel('trunk_rotational_velocity...', _trunkLo, _trunkHi);
+events.peakArm = detectPeakRotVel(armVelCol, _armLo, _armHi);
+```
+BBL의 raw detectPeakRotVel이 Uplift와 다른 peak을 잡아 lag 부풀림.
+
+### v33.3 수정
+```javascript
+// Uplift 사전계산 우선, 없을 때만 자체 검출
+events.peakPelvis = upEvents.peakPelvis ?? detectPeakRotVel(...);
+events.peakTrunk  = upEvents.peakTrunk  ?? detectPeakRotVel(...);
+// peakArm: detected throwing arm에 맞는 Uplift 컬럼 우선
+const upPeakArmFrame = getFrameAbs(`max_${_throwingArmDetected}_arm_rotational_velocity_with_respect_to_ground_frame`);
+events.peakArm = upPeakArmFrame ?? detectPeakRotVel(...);
+```
+
+→ Uplift 정밀 검출값 우선 사용. BBL 자체 detection은 Uplift 미검출 시 fallback.
+
+### 박명균 예상 변화 (v33.3 적용 후)
+
+| 지표 | v33.2 (잘못됨) | v33.3 (Raw 일치) |
+|---:|---:|---:|
+| pelvis → trunk | 114ms ⚠ "명확한 누수" | **58ms ✓ 정상** |
+| trunk → arm | 49ms | **57ms** |
+| 진단 | LateTrunkRotation 결함 발동 | 정상 시퀀스 |
+
+### 변경 파일
+- `index.html`: ALGORITHM_VERSION v33.2 → v33.3, events.peakPelvis/Trunk/Arm Uplift 우선 로직
+
+### 파급 효과
+박명균 외 모든 선수의 시퀀스 분석이 더 정확해짐 — Uplift의 정밀 검출 알고리즘을 신뢰하고, BBL은 Uplift 미검출 케이스에만 fallback.
+
+---
+
 # BBL v33.2 — Uplift event placeholder 0을 null로 처리
 **Build**: 2026-05-04 / **Patch**: v33.1 → v33.2 / **Type**: 데이터 파싱 버그 픽스
 
@@ -705,7 +760,8 @@ Synthetic input sanity check:
 | v32.9 | 마네킹 누수-only + ARM→FOREARM 신규 + 스토리 재배치 |
 | v33.0 | 마네킹 경로(앞 hip 경유) + 팔꿈치 노드 + 레이더 라벨 일치 + 5각 stride_norm_height 보강 |
 | v33.1 | Throwing arm 자동검출 신뢰성 가드 |
-| **v33.2** | **Uplift event placeholder 0을 null 처리 (박명균 시퀀스 차트 누락 근본 해결)** |
+| v33.2 | Uplift event placeholder 0을 null 처리 |
+| **v33.3** | **Uplift 사전계산 peak frame 우선 (박명균 lag 114→58ms 정상화)** |
 
 ---
 

@@ -688,7 +688,11 @@
 //           박명균 케이스 발견: max_external_rotation_frame 값이 9/10 trial에서 0 (Uplift 미검출 플레이스홀더)
 //           기존 버그: getFrameAbs(0)이 events.mer = 0 (frame 0) 잘못 사용 → arm peak 윈도우 깨짐
 //           수정: raw frame value === 0이면 null 반환 → rawMER fallback 사용 → 정상 윈도우
-const ALGORITHM_VERSION = 'v33.2';
+//   v33.3 — Uplift 사전계산 peak frame 우선 사용 (peakPelvis/peakTrunk/peakArm)
+//           박명균 검증으로 발견: Uplift peak 정확(54/63ms) 인데 BBL 자체 detection이 잘못된 peak 잡아
+//           lag 114/49ms로 부풀려 표시 → "명확한 누수" 잘못 진단
+//           수정: upEvents.peakX ?? detectPeakRotVel(...) — Uplift 우선, 없을 때만 자체 검출
+const ALGORITHM_VERSION = 'v33.3';
 const ALGORITHM_DATE    = '2026-05-04';
 
 let CURRENT_AGE = '고교';
@@ -1259,15 +1263,21 @@ function extractScalarsFromUplift(parsed) {
   //   사용자 가설: Uplift 좌완 데이터에서 left_arm이 글러브 손이고 throwing arm이 right_arm일 가능성
   //   해결: 양 팔의 max angular velocity 비교 → 큰 쪽이 throwing arm
 
-  // pelvis peak: [KH, MER]
+  // ★ v33.3 (2026-05-04) — Uplift 사전계산 peak frame 우선 사용
+  //   기존 v31.12+: events.peakPelvis/peakTrunk/peakArm을 BBL 자체 detectPeakRotVel로만 산출
+  //   → Uplift의 peak_pelvis_angular_velocity_frame 등 정밀 검출값 무시 → raw 알고리즘이 다른 peak 잡음
+  //   박명균 검증 사례: Uplift peakPelvis=806/peakTrunk=819/peakArm=834 (lag 54/63ms 정상)
+  //                   BBL 자체 detection이 다른 peak 잡아 화면에 lag 114/49ms 표시 → "명확한 누수" 잘못 진단
+  //   수정: upEvents.peakPelvis/peakTrunk/peakArm 있으면 우선 사용, 없을 때만 자체 detection
+  // pelvis peak: Uplift 우선, fallback [KH, MER] 윈도우
   const _pelvisLo = rawKH ?? events.fc;
   const _pelvisHi = events.mer ?? events.br ?? rawBR;
-  events.peakPelvis = detectPeakRotVel('pelvis_rotational_velocity_with_respect_to_ground', _pelvisLo, _pelvisHi);
+  events.peakPelvis = upEvents.peakPelvis ?? detectPeakRotVel('pelvis_rotational_velocity_with_respect_to_ground', _pelvisLo, _pelvisHi);
 
-  // trunk peak: [FC, MER+10]
+  // trunk peak: Uplift 우선, fallback [FC, MER+10] 윈도우
   const _trunkLo = events.fc ?? rawFC;
   const _trunkHi = (events.mer != null) ? events.mer + 10 : (events.br ?? rawBR);
-  events.peakTrunk = detectPeakRotVel('trunk_rotational_velocity_with_respect_to_ground', _trunkLo, _trunkHi);
+  events.peakTrunk = upEvents.peakTrunk ?? detectPeakRotVel('trunk_rotational_velocity_with_respect_to_ground', _trunkLo, _trunkHi);
 
   // arm peak: throwing arm 자동 검출 (handedness 컨벤션 의존 X)
   const _armLo = (events.mer != null) ? events.mer + 3 : (events.fc ?? rawFC);
@@ -1308,7 +1318,11 @@ function extractScalarsFromUplift(parsed) {
   if (_throwingArmDetected !== armSide) {
     console.warn(`⚠ Throwing arm detected (${_throwingArmDetected}, max ${Math.max(_leftMaxAv,_rightMaxAv).toFixed(0)}°/s) differs from handedness label (${armSide}). Using detected.`);
   }
-  events.peakArm = detectPeakRotVel(armVelCol, _armLo, _armHi);
+  // ★ v33.3 — Uplift 사전계산 peak frame 우선 (auto-detected throwing arm 매칭)
+  //   기존 upEvents.peakArm은 master label 기준 → detected와 다르면 잘못된 컬럼 사용
+  //   해결: detected arm 컬럼으로 다시 조회
+  const upPeakArmFrame = getFrameAbs(`max_${_throwingArmDetected}_arm_rotational_velocity_with_respect_to_ground_frame`);
+  events.peakArm = upPeakArmFrame ?? detectPeakRotVel(armVelCol, _armLo, _armHi);
 
   // ★ v31.11 음수 lag 자동 보정 — 시퀀싱 정합성 강제 (proximal-to-distal)
   if (events.peakArm != null && events.peakTrunk != null && events.peakArm < events.peakTrunk + 5) {
