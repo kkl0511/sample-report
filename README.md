@@ -1,3 +1,68 @@
+# BBL v33.8 — master_fitness Height 매핑 (stride_norm_height 정확도 향상)
+**Build**: 2026-05-05 / **Patch**: v33.7.5 → v33.8 / **Type**: 데이터 정확도 + 매칭 로직 강화 (사용자 옵션 C)
+
+### 사용자 요청
+"`stride_norm_height`의 1.80m fallback 제거. 선수별 실제 Height 사용." (옵션 C: Python 코호트 + BBL 매칭 둘 다)
+
+### A. Python 코호트 처리 — 134명 정확 Height 매핑
+
+**입력**: `master_fitness(좌투 수정).xlsx` (268행, Lab_ID + Height[M] 컬럼)
+
+**처리**:
+1. Lab_ID → Height[M] 매핑 dict 생성 (`master_height_mapping.json`, 268건)
+2. `batch_process_cohort.py` → trial 처리 시 session_folder = Lab_ID로 매핑
+3. `stride_norm_height = stride_length / 매핑된 Height` (선수별)
+4. 1810 trial 재처리 (20초)
+
+**매핑 결과**:
+- 1790 trial — Lab_ID 정확 매칭 (98.9%)
+- 20 trial — ID 단독 fallback (kwonjunseo, leetaehoon — master에 해당 세션 누락)
+- 0 trial — 1.80m fallback (모두 매핑 성공)
+
+**분포 변화** (코호트 평균 신장 1.81m라 분포 자체는 거의 동일하지만 개별 정확도 향상):
+
+| 통계 | v33.7 (1.80m fallback) | v33.8 (master Height) |
+|---|---:|---:|
+| mean | 1.020586 | **1.014180** |
+| median | 1.036239 | **1.030134** |
+| q25 | 0.968845 | **0.965441** |
+| q75 | 1.103529 | **1.094903** |
+
+→ 신장 1.68m 선수: 이전 0.97 → v33.8 1.04 (정확)<br>
+→ 신장 1.92m 선수: 이전 1.10 → v33.8 1.03 (정확)
+
+### B. BBL 사이트 매칭 로직 강화
+
+**기존 문제**: 정예준 같은 케이스에서 `Height[M] 부재 → 코호트 평균 1.80m로 근사` 메시지 — master_fitness localStorage에 정예준이 등록되어 있어도 매칭 실패
+
+**원인**: 매칭 키가 ID 정확 비교만 (`r.ID === athleteName.replace(/^s\d+\s+/, '')`). 데이터 불일치(공백, 대소문자, ID 형식)에 취약.
+
+**v33.8 강화 — 4단계 매칭:**
+1. **0차 (★ 신설): Lab_ID 정확 일치** — `extractScalarsFromUplift`가 trial CSV의 `athlete_name`+`capture_time`(unix/ISO)에서 자동 산출하는 `sessionFolder` (예: `jeongyejun_20250429`)와 master의 `Lab_ID` 컬럼 정확 매칭. 가장 신뢰성 높음.
+2. **1차: ID + Date ±7일** — 기존 로직 (Name·athleteName·ID 트림 후 비교)
+3. **2차: ID 단독 정확 일치** — 기존 로직
+4. **3차 (★ 신설): ID 부분 문자열 fuzzy** — `idStr.includes(rid) || rid.includes(idStr)` (4자 이상)
+
+**효과**:
+- 정예준 같은 ID 매칭 실패 케이스 해결 (Lab_ID 0차에서 즉시 매칭)
+- BBL 사이트에서 Height[M] 자동 채워짐 → stride_norm_height 정확 산출 → "1.80m 근사" 경고 메시지 사라짐
+
+### 변경 파일
+| 파일 | 변경 |
+|---|---|
+| `cohort_v29.js` | stride_norm_height var_distributions + sorted_lookup 갱신 (master Height 기반) |
+| `app.js` | + sessionFolder 산출 (extractScalarsFromUplift) + meta object에 추가 + master 매칭 0차 Lab_ID + 3차 fuzzy + v30.0 백업 매칭 키 강화 + ALGORITHM_VERSION 'v33.8' |
+| `README.md` | v33.8 패치노트 |
+| `outputs/batch_process_cohort.py` | master Height 매핑 + per-trial stride_norm_height 재계산 |
+| `outputs/master_height_mapping.json` | 268 Lab_ID→Height 매핑 dict (재현 가능) |
+
+### ⚠ 별도 발견 — 정예준 Handedness 표기
+master_fitness.xlsx에서 정예준의 Handedness 컬럼 = **'L' (좌투)**. 이전 v33.7.5 작업 시 "정예준은 우투수" 가정 하에 좌·우 평가 통일을 진행했는데, 실제 master 표기는 좌투. 메모리에 등록된 "Handedness 정확성 critical" 원칙 발동 — **사용자께서 정예준의 실제 손잡이를 확인 부탁드립니다**.
+
+다행히 v33.7.5에서 좌·우 평가 통일했기 때문에 점수·코칭 메시지는 영향 없음 (배지 라벨만 영향). 다만 마네킹 시각화·해부학적 좌·우 결정에는 영향이 있을 수 있어 정확성 검증이 필요합니다.
+
+---
+
 # BBL v33.7.5 — 좌·우투 평가 통일 (모두 우투 기준)
 **Build**: 2026-05-05 / **Patch**: v33.7.4 → v33.7.5 / **Type**: 평가 정책 통일 (좌·우 분기 제거)
 
