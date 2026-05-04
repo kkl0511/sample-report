@@ -51,7 +51,10 @@
 //           polarity 'absolute' 점수 반전 보정 (lag 변수 의미 정확화)
 //   v33.7.1 — hotfix: applyMultiTrialUplift meanFields에 v33.6 신규 7변수 누락
 //             → 사분면 카드가 항상 빈 상태였음. 신규 trial CSV 업로드 시점부터 정상 산출
-const ALGORITHM_VERSION = 'v33.7.1';
+//   v33.7.2 — hotfix #2: calculateScores return에 mechanics raw 객체 누락
+//             → 사분면 카드가 r.mechanics를 참조하지만 result에 해당 키 없어 항상 null
+//             → result.mechanics = input.mechanics 추가로 raw 값 접근 가능
+const ALGORITHM_VERSION = 'v33.7.2';
 const ALGORITHM_DATE    = '2026-05-05';
 
 let CURRENT_AGE = '고교';
@@ -4064,6 +4067,8 @@ function calculateScores(input, age, measuredVelo) {
     age_elite_cap: eliteCap,
     measuredVelo,
     _raw_inputs,            // ★ v32.0 IPS 계산용
+    mechanics: input.mechanics || {},   // ★ v33.7.2 — 사분면 카드(renderOutputTransferCardInner) raw 값 접근용
+    fitness:   input.fitness   || {},   // 일관성 위해 같이 보존
   };
 }
 
@@ -4296,7 +4301,7 @@ function getQuadrantCoaching(outPct, trPct, injPct) {
 // 사분면 카드 본문 HTML 생성
 function renderOutputTransferCardInner(r) {
   // 통합 지표 percentile 산출 (cohort 기반)
-  const m = r.mechanics || {};
+  const m = r.mechanics || r.inputs?.mechanics || (typeof CURRENT_INPUT !== 'undefined' ? CURRENT_INPUT.mechanics : {}) || {};
   const outRaw = m.wrist_release_speed;
   const trRaw  = m.angular_chain_amplification;
   const injRaw = m.elbow_valgus_torque_proxy;
@@ -4375,7 +4380,7 @@ function renderOutputTransferChart(r) {
   if (_OUTPUT_TRANSFER_CHART) {
     try { _OUTPUT_TRANSFER_CHART.destroy(); } catch(e) {}
   }
-  const m = r.mechanics || {};
+  const m = r.mechanics || r.inputs?.mechanics || (typeof CURRENT_INPUT !== 'undefined' ? CURRENT_INPUT.mechanics : {}) || {};
   const outRaw = m.wrist_release_speed;
   const trRaw  = m.angular_chain_amplification;
   const injRaw = m.elbow_valgus_torque_proxy;
