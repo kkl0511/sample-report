@@ -1,3 +1,54 @@
+# BBL v33.2 — Uplift event placeholder 0을 null로 처리
+**Build**: 2026-05-04 / **Patch**: v33.1 → v33.2 / **Type**: 데이터 파싱 버그 픽스
+
+---
+
+## v33.2 변경 (박명균 raw CSV 분석으로 근본 원인 발견)
+
+### 문제 추적
+박명균 raw Trial CSV 10개 직접 분석 결과:
+
+| Trial | KH | FC | **MER** | BR | peakPelvis | peakTrunk |
+|---|---:|---:|---:|---:|---:|---:|
+| 0002~0009, 0012 (9개) | 음수 | 음수 | **0 ⚠** | 음수 | 음수 | 음수 |
+| 0010 (1개) | -571 | -752 | **-794 ✓** | -785 | -747 | -760 |
+
+→ **Uplift CSV의 `max_external_rotation_frame` 값이 9/10 trial에서 `0`** (Uplift "not detected" 플레이스홀더)
+
+### BBL의 버그
+```javascript
+// 기존 (v33.1 이하):
+const getFrameAbs = (key) => {
+  const ci = idx[key]; if (ci == null) return null;
+  const v = parseFloat(r0[ci]); return isNaN(v) ? null : cur0 - v;  // 0을 valid 값으로 처리
+};
+```
+- raw 값이 0이면 `cur0 - 0 = 0` → `events.mer = 0` (frame 0)
+- arm peak 검출 윈도우 = `[events.mer + 3, events.br + 10]` = `[3, ~840]` (시퀀스 거의 전체)
+- 이 윈도우 내 평균값 vs Uplift MER이 누적 차이로 보여서 평균 90frame 차이로 표시됨
+- 실제로는 9개 trial이 처음부터 **events.mer = 0이라는 잘못된 시점에서 검출 시작**
+- 결과적으로 left arm이든 right arm이든 0으로 평가 → throwing arm 자동검출 'left' 잘못 선택 → 차트 누락
+
+### v33.2 수정
+```javascript
+const getFrameAbs = (key) => {
+  const ci = idx[key]; if (ci == null) return null;
+  const v = parseFloat(r0[ci]);
+  if (isNaN(v) || v === 0) return null;  // ★ 0 = Uplift placeholder
+  return cur0 - v;
+};
+```
+
+→ Uplift MER 0 → events.mer null → BBL의 raw MER detection이 fallback으로 작동 → 정상 윈도우 → arm peak 정상 → 시퀀스 차트 표시.
+
+### 변경 파일
+- `index.html`: ALGORITHM_VERSION v33.1 → v33.2, getFrameAbs에서 0 placeholder 처리
+
+### 박명균 외 영향
+이 fix는 **모든 선수**에게 적용됩니다 — Uplift CSV에서 특정 이벤트가 미검출 시(0 플레이스홀더), 잘못된 valid 값으로 사용하지 않고 raw fallback으로 자동 보완.
+
+---
+
 # BBL v33.1 — Throwing arm 자동검출 신뢰성 가드
 **Build**: 2026-05-04 / **Patch**: v33.0 → v33.1 / **Type**: 검출 버그 픽스
 
@@ -653,7 +704,8 @@ Synthetic input sanity check:
 | v32.8 | 음수 lag 해석 정정 (발달 미성숙→이벤트 검출 오류) |
 | v32.9 | 마네킹 누수-only + ARM→FOREARM 신규 + 스토리 재배치 |
 | v33.0 | 마네킹 경로(앞 hip 경유) + 팔꿈치 노드 + 레이더 라벨 일치 + 5각 stride_norm_height 보강 |
-| **v33.1** | **Throwing arm 자동검출 신뢰성 가드 (박명균 우완 케이스 해결)** |
+| v33.1 | Throwing arm 자동검출 신뢰성 가드 |
+| **v33.2** | **Uplift event placeholder 0을 null 처리 (박명균 시퀀스 차트 누락 근본 해결)** |
 
 ---
 

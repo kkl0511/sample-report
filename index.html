@@ -684,7 +684,11 @@
 //   v33.1 — Throwing arm 자동검출 신뢰성 가드 (박명균 우완 케이스 해결)
 //           v31.12 버그: 양 팔 0°/s 시 `>=` 비교가 'left' 잘못 선택 → 시퀀스 차트 누락
 //           수정: 임계 800°/s 미만이면 handedness label 사용, strict `>` 비교, tie 시 label 우선
-const ALGORITHM_VERSION = 'v33.1';
+//   v33.2 — Uplift CSV event placeholder 0을 null로 처리
+//           박명균 케이스 발견: max_external_rotation_frame 값이 9/10 trial에서 0 (Uplift 미검출 플레이스홀더)
+//           기존 버그: getFrameAbs(0)이 events.mer = 0 (frame 0) 잘못 사용 → arm peak 윈도우 깨짐
+//           수정: raw frame value === 0이면 null 반환 → rawMER fallback 사용 → 정상 윈도우
+const ALGORITHM_VERSION = 'v33.2';
 const ALGORITHM_DATE    = '2026-05-04';
 
 let CURRENT_AGE = '고교';
@@ -1125,10 +1129,17 @@ function extractScalarsFromUplift(parsed) {
   const kinSeq      = r0[idx['kinematic_sequence_order']] || '';
 
   // 이벤트 프레임 절대값
+  // ★ v33.2 (2026-05-04) — Uplift CSV의 "0" 값을 placeholder(검출 실패)로 인식하여 null 처리
+  //   박명균 케이스 발견: Uplift CSV에서 max_external_rotation_frame 값이 0인 trial 9/10개
+  //   (다른 이벤트는 -381, -811 같은 큰 음수 / MER만 0). 0은 "MER 미검출" 의미.
+  //   기존 버그: 0을 valid offset으로 처리 → events.mer = 0 (frame 0) → arm peak 윈도우가 시퀀스 시작점으로 깨짐
+  //   수정: raw 값이 0이면 null 반환 → rawMER fallback 사용 → 정상 윈도우
   const cur0 = parseFloat(r0[idx['frame']]) || 0;
   const getFrameAbs = (key) => {
     const ci = idx[key]; if (ci == null) return null;
-    const v = parseFloat(r0[ci]); return isNaN(v) ? null : cur0 - v;
+    const v = parseFloat(r0[ci]);
+    if (isNaN(v) || v === 0) return null;  // 0 = Uplift "not detected" placeholder
+    return cur0 - v;
   };
   // 이벤트 1차 추출 — Uplift 사전계산 컬럼 (참고용)
   const upEvents = {
