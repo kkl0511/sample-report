@@ -460,13 +460,13 @@ const LITERATURE_OVERRIDE = new Set([
   // 회전 속도 (Werner 2008, Wood-Smith 2019, Aguinaldo 2007)
   // ★ v32.5 (2026-05-04) — "more is better" 회전 속도 변수 percentile 전환
   //   max_trunk_twist_vel_dps, max_pelvis_rot_vel_dps, trunk_flex_vel_max는 코호트 분포 기반 평가
-  //   peak_trunk_av, peak_pelvis_av는 분포 미보유라 가우시안 fallback 유지
-  // 'peak_x_factor',  // → 분포 미보유 — Phase 2 추가 후 percentile 전환 예정
-  // 'max_trunk_twist_vel_dps',  // → percentile (v32.5, n=199)
-  'peak_trunk_av',
-  'peak_pelvis_av',
+  // ★ v33.5 (2026-05-05) — Phase 2 16개 변수 134 코호트(186 세션) raw 분포 산출 완료 → percentile 전환
+  // 'peak_x_factor',           // → percentile (v33.5, n=183)
+  // 'max_trunk_twist_vel_dps', // → percentile (v32.5, n=199)
+  // 'peak_trunk_av',           // → percentile (v33.5, n=186)
+  // 'peak_pelvis_av',          // → percentile (v33.5, n=186)
   // 'max_pelvis_rot_vel_dps',  // → percentile (v32.5, n=199)
-  // 'trunk_flex_vel_max',  // → percentile (v32.5, n=198)
+  // 'trunk_flex_vel_max',      // → percentile (v32.5, n=198)
   // 자세/각도 (Stodden 2001, Driveline) — 진짜 양방향 최적이 있어 가우시안 유지
   'trunk_forward_tilt_at_fc',
   'trunk_rotation_at_fc',
@@ -475,12 +475,12 @@ const LITERATURE_OVERRIDE = new Set([
   'shoulder_h_abd_at_fc',
   'arm_slot_mean_deg',
   // 에너지 전달/효율 (BBL 2026-05-03 정의)
-  'arm_trunk_speedup',
-  'pelvis_trunk_speedup',
+  // 'arm_trunk_speedup',     // → percentile (v33.5, n=186)
+  // 'pelvis_trunk_speedup',  // → percentile (v33.5, n=186)
   // 하체 드라이브 (Driveline)
   // 'lead_knee_ext_vel_max',  // → percentile (v32.5, n=196)
-  'hip_ir_vel_max_drive',
-  'max_cog_velo',
+  // 'hip_ir_vel_max_drive',   // → percentile (v33.5, n=186)
+  // 'max_cog_velo',           // → percentile (v33.5, n=183)
   'com_decel_pct',                 // 타이밍 — 가우시안 유지
   'lead_knee_amortization_ms',     // 타이밍 — 가우시안 유지
   // ★ 2026-05-03 v30.11 메카닉 안정성 — SD 변수 (lower-better, 가우시안 적합)
@@ -492,19 +492,20 @@ const LITERATURE_OVERRIDE = new Set([
   'release_height_sd_cm',
   // ★ v30.22 키네틱 체인 6단계 신규 변인 (Step A)
   'stride_time_ms',                // 타이밍
-  'drive_hip_ext_vel_max',
+  // 'drive_hip_ext_vel_max',  // → percentile (v33.5, n=186)
   'lead_hip_flex_at_fc',           // 자세 — 가우시안 유지
-  'lead_hip_ext_vel_max',
+  // 'lead_hip_ext_vel_max',   // → percentile (v33.5, n=15) ⚠ 발달 코호트 lead hip 신전 약함, 표본 작음
   // ★ v31.0 점수 시스템 전환 — MLB/문헌 표준 기반 (코호트 의존 제거)
-  'lead_knee_ext_change_fc_to_br',  // Driveline lead leg block
-  'peak_torso_counter_rot',          // Wood-Smith 2019
-  'torso_side_bend_at_mer',          // Wood-Smith 2019
-  'torso_rotation_at_br',            // Driveline elite
+  // ★ v33.5 — 모두 134 코호트 분포 기반 percentile로 전환
+  // 'lead_knee_ext_change_fc_to_br',  // → percentile (v33.5, n=186)
+  // 'peak_torso_counter_rot',         // → percentile (v33.5, n=183)
+  // 'torso_side_bend_at_mer',         // → percentile (v33.5, n=186)
+  // 'torso_rotation_at_br',           // → percentile (v33.5, n=183) ⚠ 분포 우편향 (sd>mean)
   // 'elbow_flexion_at_fp' 제거 (v31.25, 사용자 요청)
-  'elbow_ext_vel_max',               // Driveline elite 2400-2700 — 분포 미보유
-  'shoulder_ir_vel_max',             // Driveline elite 4500+ — 분포 미보유
-  'peak_arm_av',                     // Pitching mechanics standard — 분포 미보유
-  'stride_norm_height',              // Driveline standard 0.85-1.0
+  // 'elbow_ext_vel_max',     // → percentile (v33.5, n=186)
+  // 'shoulder_ir_vel_max',   // → percentile (v33.5, n=186)
+  // 'peak_arm_av',           // → percentile (v33.5, n=186)
+  // 'stride_norm_height',    // → percentile (v33.5, n=186)
   // ── 체력 변수 ──
   // ★ v32.5 (2026-05-04) — IMTP·CMJ·SJ Power, RSI, EUR, Height, Weight: percentile 전환
   //   사유: 모두 "more is better" 메트릭. 가우시안 산식으로는 코호트 median 위 선수도 페널티

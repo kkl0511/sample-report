@@ -1,5 +1,68 @@
-# BBL v33.4 — index.html 인라인 script 외부 파일로 분리
-**Build**: 2026-05-04 / **Patch**: v33.3 → v33.4 / **Type**: 리팩토링 (로직 변경 0)
+# BBL v33.5 — Phase 2: 16개 메카닉 변수 134 코호트 분포 산출 + LITERATURE_OVERRIDE 해제
+**Build**: 2026-05-05 / **Patch**: v33.4 → v33.5 / **Type**: 코호트 데이터 갱신 + 점수 산식 전환
+
+---
+
+## v33.5 변경
+
+### 동기
+v32.x~v33.4 시리즈 진행 중 16개 신규 메카닉 변수가 LITERATURE_OVERRIDE(가우시안 산식, elite optimal 기준)에만 의존했음. 발달 코호트(고1) 평균값이 elite optimal보다 낮으면 정상 선수도 점수 폭락하는 구조 (메모리: "v32.4 정예준 H2 F2=0.3 사건"과 동일 메커니즘).
+
+### 작업
+1. 134명 × 평균 ~10 trial = **1810개 raw Uplift CSV** 일괄 처리 (Python multiprocessing, 4 worker, 19초)
+2. BBL `extractScalarsFromUplift` 핵심 로직을 Python으로 1:1 포팅 (`extract_uplift_scalars.py`)
+3. **186 세션** (134명 × 평균 1.4시기, 일부는 한 시기만) 단위로 trial 평균 집계
+4. 16+2개 변수 분포 통계 산출 → `cohort_v29.js`의 `var_distributions` + `var_sorted_lookup` 갱신
+5. `metadata.js`의 `LITERATURE_OVERRIDE` Set에서 16개 변수 주석 처리 → percentile 기반 평가로 전환
+
+### 산출 분포 (134 코호트, 186 세션 기준)
+
+| 변수 | n | mean ± sd | median | 활용 |
+|---|---:|---:|---:|---|
+| `peak_pelvis_av` | 186 | 494 ± 89 °/s | 495 | 회전 속도 카테고리 |
+| `peak_trunk_av` | 186 | 710 ± 134 °/s | 724 | 회전 속도 카테고리 |
+| `peak_arm_av` | 186 | 1319 ± 231 °/s | 1338 | Arm Action |
+| `peak_x_factor` | 183 | 31 ± 10° | 32 | Hip-Shoulder Sep (Stretch) |
+| `arm_trunk_speedup` | 186 | 1.92 ± 0.40 | 1.86 | 운동량 전달 효율 |
+| `pelvis_trunk_speedup` | 186 | 1.45 ± 0.21 | 1.43 | 키네틱 체인 효율 |
+| `drive_hip_ext_vel_max` | 186 | 580 ± 128 °/s | 592 | 단계 1 하체 드라이브 |
+| `lead_hip_ext_vel_max` | **15** ⚠ | 98 ± 97 °/s | 75 | 단계 2 lead leg block (n 작음) |
+| `hip_ir_vel_max_drive` | 186 | 651 ± 181 °/s | 646 | drive 다리 IR |
+| `elbow_ext_vel_max` | 186 | 1566 ± 481 °/s | 1553 | Arm Action — Elbow |
+| `shoulder_ir_vel_max` | 186 | 4868 ± 2962 °/s | 4048 | Arm Action — Shoulder (변동 큼) |
+| `max_cog_velo` | 183 | 2.96 ± 0.42 m/s | 3.01 | CoG 전진 효율 |
+| `peak_torso_counter_rot` | 183 | 65 ± 28° | 70 | Posture |
+| `torso_side_bend_at_mer` | 186 | 15 ± 5° | 16 | Posture |
+| `torso_rotation_at_br` | 183 | 20 ± 32° | 7 | Posture (분포 우편향) |
+| `lead_knee_ext_change_fc_to_br` | 186 | 4 ± 11° | 4 | Block (음수도 빈번) |
+| `stride_length_trial` | 186 | 1.84 ± 0.28 m | 1.87 | (참고용 raw stride) |
+| `stride_norm_height` | 186 | 1.02 ± 0.16 | 1.04 | Stride 정규화 (Driveline 0.85~1.0) |
+
+### ⚠ 주의 사항
+- **`lead_hip_ext_vel_max` n=15만 valid** (186 중 8%). BBL 정의 `-min(hip_flex_velocity in [FC, BR])`은 음수 min일 때만 산출되는데, 발달 코호트에서 lead leg가 FC~BR 동안 충분히 신전 신호를 안 보임. 분포는 그대로 사용하되, 점수 산식에서 누락 케이스는 자동 제외됨.
+- **`shoulder_ir_vel_max` 변동성 큼** (sd≈mean의 60%). 일부 trial에서 18000+ °/s outlier 발견 — 측정 노이즈 가능성. percentile 산식이라 outlier 영향은 자체 제한됨.
+- **`torso_rotation_at_br` 분포 우편향** (sd>mean). BR 시점 trunk가 정면(0°) 근처인 케이스가 다수, 일부만 큰 각도. abs 컨벤션 자체가 그런 분포 생성.
+- **`stride_norm_height`는 Height 부재 시 1.80m fallback** (BBL 동일 컨벤션). 정확도를 더 높이려면 `master_fitness.xlsx`의 선수별 Height로 재계산 가능 (Phase 3 후속).
+
+### 영향
+- ✅ Phase 2 16변수 점수 산식이 가우시안(elite optimal 기반) → percentile(134 코호트 기반)로 전환
+- ✅ 발달 코호트 평균 선수도 50점(중앙값)을 받게 됨 (이전엔 elite 기준에서 0~30점)
+- ✅ `algorithm_version`이 v33.5로 변경되어 모든 저장 리포트는 자동 재계산
+- ✅ Phase 1 정예준·박명균 결함 진단(메모리에 기록됨)은 영향 없음 (검출 로직 동일)
+
+### 검증
+- 1 trial smoke test: `extract_uplift_scalars.py` 단독 실행으로 16변수 산출값이 BBL 사이트 처리 결과와 1:1 일치하는지 확인 가능
+- 1810 trial 일괄 처리: 0 실패, 19초 완료
+- cohort_v29.js syntax: `node --check` 통과
+- metadata.js LITERATURE_OVERRIDE: 31개 → 15개 (16개 주석 처리)
+- (사용자 검증 권장) 정예준·박명균을 BBL 사이트에 다시 업로드 → 점수 변화 확인
+
+### 변경 파일
+| 파일 | 변경 |
+|---|---|
+| `cohort_v29.js` | `var_distributions` +18, `var_sorted_lookup` +18 (8731→8876라인) |
+| `metadata.js` | `LITERATURE_OVERRIDE` 16개 주석 처리 (활성 31→15) |
+| `README.md` | v33.5 패치노트 추가 |
 
 ---
 
