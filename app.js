@@ -81,7 +81,13 @@
 //                  athlete_name + capture_time(unix/ISO) → "{id}_{yyyyMMdd}"
 //                → master_fitness 매칭 키에 Lab_ID(0차 우선) + ID 부분일치 fuzzy 추가
 //                → 정예준 같은 매칭 실패 케이스 해결 (기존 ID 정확 비교만 → Lab_ID 우선)
-const ALGORITHM_VERSION = 'v33.8';
+//   v33.9 — OUTPUT·TRANSFER·INJURY 카테고리별 종합 점수 (사용자 요청 옵션 E)
+//           computeCategoryScore: variables percentile 평균 (단일 변수 outlier 영향 감소)
+//           사분면 차트 점 위치 = 카테고리 종합 점수 (이전: 통합 지표 단일 변수)
+//           폴더 카드 헤더에 "종합 N pt (n/total변수)" 표시
+//           세부 표에 통합 지표 + 카테고리 종합 둘 다 표시 (참고 비교용)
+//           정예준·박명균 사례 검증: 단일 변수 outlier (예: shoulder_ir 17347°/s)에 흔들리지 않고 카테고리 평균이 안정적 진단 제공
+const ALGORITHM_VERSION = 'v33.9';
 const ALGORITHM_DATE    = '2026-05-05';
 
 let CURRENT_AGE = '고교';
@@ -4366,6 +4372,32 @@ function generateReport() {
 //   사분면: ① elite / ② 낭비형 / ③ 효율형 / ④ 발달
 // ════════════════════════════════════════════════════════════════════
 
+// ★ v33.9 — 카테고리별 종합 점수 산출 (OUTPUT·TRANSFER·INJURY 13/13/3 변수 percentile 평균)
+//   percentileOfCohort가 polarity 자동 처리하므로 결과를 단순 평균하면 "높은 점수 = 좋음" 의미로 일관됨
+//   INJURY는 lower-better 변수가 var_polarity에 'lower'로 등록돼서 자동 반전 → "INJURY 종합 80pt = 안전"
+function computeCategoryScore(r, catKey) {
+  if (typeof OUTPUT_VS_TRANSFER === 'undefined' || !OUTPUT_VS_TRANSFER[catKey]) return null;
+  const cat = OUTPUT_VS_TRANSFER[catKey];
+  const m = r.mechanics || r.inputs?.mechanics || (typeof CURRENT_INPUT !== 'undefined' ? CURRENT_INPUT.mechanics : {}) || {};
+  const scores = [];
+  const breakdown = {};  // 변수별 점수 (디버깅·표시용)
+  for (const varKey of cat.variables) {
+    const rawVal = m[varKey];
+    if (rawVal == null) { breakdown[varKey] = null; continue; }
+    const polarity = (typeof COHORT !== 'undefined' && COHORT.var_polarity?.[varKey]) || 'higher';
+    const pct = percentileOfCohort(varKey, rawVal, polarity);
+    if (pct != null) { scores.push(pct); breakdown[varKey] = pct; }
+    else breakdown[varKey] = null;
+  }
+  if (scores.length === 0) return null;
+  return {
+    score: Math.round(scores.reduce((a,b)=>a+b,0) / scores.length),
+    n_used: scores.length,
+    n_total: cat.variables.length,
+    breakdown,
+  };
+}
+
 // 사분면 분류 + 코칭 메시지
 function getQuadrantCoaching(outPct, trPct, injPct) {
   if (outPct == null || trPct == null) return null;
@@ -4400,31 +4432,44 @@ function getQuadrantCoaching(outPct, trPct, injPct) {
 
 // 사분면 카드 본문 HTML 생성
 function renderOutputTransferCardInner(r) {
-  // 통합 지표 percentile 산출 (cohort 기반)
+  // 통합 지표 raw 값 (헤더 ★ 표시용)
   const m = r.mechanics || r.inputs?.mechanics || (typeof CURRENT_INPUT !== 'undefined' ? CURRENT_INPUT.mechanics : {}) || {};
   const outRaw = m.wrist_release_speed;
   const trRaw  = m.angular_chain_amplification;
   const injRaw = m.elbow_valgus_torque_proxy;
 
-  const outPct = outRaw != null ? percentileOfCohort('wrist_release_speed', outRaw, 'higher') : null;
-  const trPct  = trRaw  != null ? percentileOfCohort('angular_chain_amplification', trRaw, 'higher') : null;
-  // injury는 lower better라 polarity 'lower' (낮을수록 좋음 → 큰 값 = 낮은 percentile = 부상 위험)
-  // 부상 진단용으로는 raw rank percentile (높을수록 위험) 사용. 그래서 직접 산출
-  let injRankPct = null;
+  // ★ v33.9 — 사분면 위치는 카테고리 종합 점수(13/13/3 변수 percentile 평균)로 결정 (단일 변수 outlier 영향 감소)
+  const outCat = computeCategoryScore(r, 'OUTPUT');
+  const trCat  = computeCategoryScore(r, 'TRANSFER');
+  const injCat = computeCategoryScore(r, 'INJURY');
+  const outPct = outCat ? outCat.score : null;
+  const trPct  = trCat  ? trCat.score  : null;
+
+  // 통합 지표 단일 percentile (헤더 ★ 표시용 — 카테고리 종합과 별도)
+  const outIntPct = outRaw != null ? percentileOfCohort('wrist_release_speed', outRaw, 'higher') : null;
+  const trIntPct  = trRaw  != null ? percentileOfCohort('angular_chain_amplification', trRaw, 'higher') : null;
+
+  // 부상 카테고리 종합 — INJURY 평균 점수 (높을수록 안전), 사분면 차트 색상은 안전 점수 반전 → 위험 percentile
+  const injSafetyPct = injCat ? injCat.score : null;       // 높을수록 안전
+  const injRiskPct = injSafetyPct != null ? (100 - injSafetyPct) : null;  // 높을수록 위험
+  // 부상 통합 지표 raw rank (참고용)
+  let injIntRankPct = null;
   if (injRaw != null && COHORT.var_sorted_lookup.elbow_valgus_torque_proxy) {
     const arr = COHORT.var_sorted_lookup.elbow_valgus_torque_proxy;
     let rank = 0;
     for (let i = 0; i < arr.length; i++) { if (arr[i] <= injRaw) rank++; else break; }
-    injRankPct = Math.round(100 * rank / arr.length);
+    injIntRankPct = Math.round(100 * rank / arr.length);
   }
 
-  const coach = getQuadrantCoaching(outPct, trPct, injRankPct);
+  // 부상 알림은 INJURY 카테고리 종합(전체 평균) 또는 통합 지표(elbow_valgus) 둘 중 하나라도 위험이면 발동
+  const injAlertPct = Math.max(injRiskPct ?? 0, injIntRankPct ?? 0);
+  const coach = getQuadrantCoaching(outPct, trPct, injAlertPct);
 
   if (outPct == null || trPct == null) {
     return `
       <div class="display text-xl mb-2" style="color: #fb923c">출력 vs 전달 진단</div>
       <div class="text-sm text-[var(--text-muted)] py-8 text-center">
-        wrist_release_speed 또는 angular_chain_amplification 산출 실패 — Uplift CSV 업로드 필요
+        OUTPUT 또는 TRANSFER 카테고리 변수 산출 실패 — Uplift CSV 업로드 필요
       </div>`;
   }
 
@@ -4469,21 +4514,44 @@ function renderOutputTransferCardInner(r) {
     ${renderOutputTransferAccordion(r, 'TRANSFER', '#fb923c')}
     ${renderOutputTransferAccordion(r, 'INJURY', '#f87171')}
     <details class="mt-3 text-xs">
-      <summary class="cursor-pointer text-[var(--text-muted)]">세부 통합 지표 (Phase 3 산출)</summary>
+      <summary class="cursor-pointer text-[var(--text-muted)]">세부 종합 지표 (★ v33.9 카테고리 평균 + 통합 지표)</summary>
       <div class="mt-2">
         <table class="w-full" style="border-collapse:collapse">
-          <thead><tr style="border-bottom:1px solid var(--border)">
-            <th class="text-left py-1">카테고리</th><th class="text-left py-1">통합 지표</th>
-            <th class="text-right py-1">raw</th><th class="text-right py-1">percentile</th>
+          <thead><tr style="border-bottom:1px solid var(--border); color:var(--text-muted)">
+            <th class="text-left py-1">카테고리</th>
+            <th class="text-right py-1">종합 (n변수 평균)</th>
+            <th class="text-left py-1 pl-3">★ 통합 지표</th>
+            <th class="text-right py-1">raw</th>
+            <th class="text-right py-1">percentile</th>
           </tr></thead>
           <tbody>
-            <tr><td class="py-1">출력</td><td>wrist_release_speed (m/s)</td><td class="text-right mono">${outRaw != null ? outRaw.toFixed(2) : '—'}</td><td class="text-right mono" style="color:#4ade80">${formatPct(outPct)}pt</td></tr>
-            <tr><td class="py-1">전달</td><td>angular_chain_amplification</td><td class="text-right mono">${trRaw != null ? trRaw.toFixed(2) : '—'}</td><td class="text-right mono" style="color:#4ade80">${formatPct(trPct)}pt</td></tr>
-            <tr><td class="py-1">부상</td><td>elbow_valgus_torque_proxy (Nm)</td><td class="text-right mono">${injRaw != null ? injRaw.toFixed(0) : '—'}</td><td class="text-right mono" style="color:${injRankPct >= 80 ? '#f87171' : '#94a3b8'}">코호트 ${formatPct(injRankPct)}pt</td></tr>
+            <tr style="border-bottom:1px solid rgba(95,99,107,0.15)">
+              <td class="py-1">출력</td>
+              <td class="text-right mono" style="color:${outPct >= 50 ? '#4ade80' : '#fb923c'}">${formatPct(outPct)}pt <span class="text-[9px] text-[var(--text-muted)]">(${outCat ? outCat.n_used : 0}/${outCat ? outCat.n_total : 0})</span></td>
+              <td class="pl-3">wrist_release_speed (m/s)</td>
+              <td class="text-right mono">${outRaw != null ? outRaw.toFixed(2) : '—'}</td>
+              <td class="text-right mono">${formatPct(outIntPct)}pt</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(95,99,107,0.15)">
+              <td class="py-1">전달</td>
+              <td class="text-right mono" style="color:${trPct >= 50 ? '#4ade80' : '#fb923c'}">${formatPct(trPct)}pt <span class="text-[9px] text-[var(--text-muted)]">(${trCat ? trCat.n_used : 0}/${trCat ? trCat.n_total : 0})</span></td>
+              <td class="pl-3">angular_chain_amplification</td>
+              <td class="text-right mono">${trRaw != null ? trRaw.toFixed(2) : '—'}</td>
+              <td class="text-right mono">${formatPct(trIntPct)}pt</td>
+            </tr>
+            <tr>
+              <td class="py-1">부상 (안전도)</td>
+              <td class="text-right mono" style="color:${injSafetyPct == null ? '#94a3b8' : injSafetyPct >= 50 ? '#4ade80' : '#f87171'}">${formatPct(injSafetyPct)}pt <span class="text-[9px] text-[var(--text-muted)]">(${injCat ? injCat.n_used : 0}/${injCat ? injCat.n_total : 0})</span></td>
+              <td class="pl-3">elbow_valgus_torque_proxy (Nm)</td>
+              <td class="text-right mono">${injRaw != null ? injRaw.toFixed(0) : '—'}</td>
+              <td class="text-right mono" style="color:${injIntRankPct >= 80 ? '#f87171' : '#94a3b8'}">위험 ${formatPct(injIntRankPct)}pt</td>
+            </tr>
           </tbody>
         </table>
-        <div class="mt-2 text-[10px] text-[var(--text-muted)]">
-          ※ 부상 percentile은 raw rank (높을수록 위험). 80pt+ 시 모니터링 권고. 절대 토크값 아닌 ranking proxy.
+        <div class="mt-2 text-[10px] text-[var(--text-muted)] leading-relaxed">
+          <strong>종합 (카테고리 평균)</strong>: 각 카테고리 내 산출 가능한 변수의 percentile 평균. 단일 outlier 영향이 적어 사분면 위치 결정에 사용.<br>
+          <strong>★ 통합 지표</strong>: 카테고리를 가장 잘 대표하는 단일 변수 (참고용).<br>
+          <strong>부상 안전도</strong>: 카테고리 종합은 "높을수록 안전" 의미 (var_polarity가 lower인 변수는 자동 반전됨). 통합 지표 elbow_valgus_torque_proxy는 raw rank 위험 percentile (높을수록 위험)로 별도 표시.
         </div>
       </div>
     </details>`;
@@ -4558,10 +4626,15 @@ function renderOutputTransferAccordion(r, catKey, color) {
     </tr>`;
   }).join('');
 
-  // 카테고리 헤더 + integration_var 강조
+  // 카테고리 헤더 + integration_var 강조 + ★ v33.9 카테고리 종합 점수
   const intVar = cat.integration_var;
   const intMeta = meta[intVar] || {};
   const intRaw = m[intVar];
+  const catScore = computeCategoryScore(r, catKey);  // ★ v33.9
+  const catScoreStr = catScore ? `종합 ${catScore.score}pt (${catScore.n_used}/${catScore.n_total}변수)` : '종합 산출 불가';
+  const catScoreColor = !catScore ? '#94a3b8'
+                      : catKey === 'INJURY' ? (catScore.score >= 50 ? '#4ade80' : '#f87171')
+                      : (catScore.score >= 75 ? '#4ade80' : catScore.score >= 50 ? '#fbbf24' : '#fb923c');
   const headerSubtitle = intRaw != null
     ? `통합 지표: ${intMeta.name || intVar} = ${typeof intRaw === 'number' ? (Math.abs(intRaw) >= 100 ? intRaw.toFixed(0) : intRaw.toFixed(2)) : intRaw}${intMeta.unit ? ' ' + intMeta.unit : ''}`
     : `통합 지표: ${intMeta.name || intVar} = (산출 안 됨)`;
@@ -4571,6 +4644,7 @@ function renderOutputTransferAccordion(r, catKey, color) {
       <summary class="cursor-pointer p-3" style="font-weight:600">
         <span style="color:${color}">${cat.name}</span>
         <span class="text-[10px] text-[var(--text-muted)] ml-2 mono">${cat.variables.length}변수</span>
+        <span class="text-xs ml-3 mono" style="color:${catScoreColor}; font-weight:600">${catScoreStr}</span>
         <div class="text-[11px] mt-1 text-[var(--text-muted)]" style="font-weight:400">${cat.desc}</div>
         <div class="text-[10px] mt-0.5 text-[var(--text-muted)]" style="font-weight:400">${headerSubtitle}</div>
       </summary>
@@ -4600,21 +4674,26 @@ function renderOutputTransferChart(r) {
   if (_OUTPUT_TRANSFER_CHART) {
     try { _OUTPUT_TRANSFER_CHART.destroy(); } catch(e) {}
   }
-  const m = r.mechanics || r.inputs?.mechanics || (typeof CURRENT_INPUT !== 'undefined' ? CURRENT_INPUT.mechanics : {}) || {};
-  const outRaw = m.wrist_release_speed;
-  const trRaw  = m.angular_chain_amplification;
-  const injRaw = m.elbow_valgus_torque_proxy;
-  const outPct = outRaw != null ? percentileOfCohort('wrist_release_speed', outRaw, 'higher') : null;
-  const trPct  = trRaw  != null ? percentileOfCohort('angular_chain_amplification', trRaw, 'higher') : null;
+  // ★ v33.9 — 사분면 위치 = 카테고리 종합 점수 (단일 변수 outlier 영향 감소)
+  const outCat = computeCategoryScore(r, 'OUTPUT');
+  const trCat  = computeCategoryScore(r, 'TRANSFER');
+  const injCat = computeCategoryScore(r, 'INJURY');
+  const outPct = outCat ? outCat.score : null;
+  const trPct  = trCat  ? trCat.score  : null;
   if (outPct == null || trPct == null) return;
 
-  let injRankPct = null;
+  // 부상 위험: INJURY 카테고리 종합 안전도 + 통합 지표 raw rank 둘 중 큰 위험
+  const m = r.mechanics || r.inputs?.mechanics || (typeof CURRENT_INPUT !== 'undefined' ? CURRENT_INPUT.mechanics : {}) || {};
+  const injRaw = m.elbow_valgus_torque_proxy;
+  let injIntRankPct = null;
   if (injRaw != null && COHORT.var_sorted_lookup.elbow_valgus_torque_proxy) {
     const arr = COHORT.var_sorted_lookup.elbow_valgus_torque_proxy;
     let rank = 0;
     for (let i = 0; i < arr.length; i++) { if (arr[i] <= injRaw) rank++; else break; }
-    injRankPct = Math.round(100 * rank / arr.length);
+    injIntRankPct = Math.round(100 * rank / arr.length);
   }
+  const injCatRiskPct = injCat ? (100 - injCat.score) : null;
+  const injRankPct = Math.max(injIntRankPct ?? 0, injCatRiskPct ?? 0);
   // 부상 위험에 따른 점 색상 (낮음=초록, 중간=노랑, 높음=빨강)
   const dotColor = injRankPct == null ? '#94a3b8'
                  : injRankPct >= 80 ? '#f87171'

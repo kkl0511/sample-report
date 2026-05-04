@@ -1,3 +1,48 @@
+# BBL v33.9 — OUTPUT·TRANSFER·INJURY 카테고리 종합 점수 (사분면 진단 정확도 향상)
+**Build**: 2026-05-05 / **Patch**: v33.8 → v33.9 / **Type**: 사분면 차트 산식 정밀화 (사용자 옵션 E)
+
+### 사용자 요청
+v33.7.3 폴더 카드 추가 후 자연스러운 다음 단계: "사분면 차트가 단일 변수 percentile만 사용 → outlier 영향이 큼. 카테고리 13변수 평균을 종합 점수로 산출하면 어떨까?"
+
+### 변경 — 카테고리별 종합 점수 산출 (`computeCategoryScore`)
+변수별 `percentileOfCohort` 결과 평균. `var_polarity`가 자동 처리되므로 OUTPUT/TRANSFER/INJURY 모두 "**높은 점수 = 좋음**" 의미 일관:
+
+- **OUTPUT 종합** = 13변수 percentile 평균 (peak_*_av, elbow_ext_vel_max, drive_hip_ext_vel_max, wrist_release_speed 등)
+- **TRANSFER 종합** = 13변수 percentile 평균 (lag_ms들, speedup들, X-factor 등)
+- **INJURY 안전도** = 3변수 percentile 평균. 부상 변수는 var_polarity='lower'로 등록되어 자동 반전 → "안전도" 의미 (높을수록 안전, 낮을수록 위험)
+
+### 사분면 차트 변경
+| 항목 | v33.7~v33.8 | v33.9 |
+|---|---|---|
+| X축 | wrist_release_speed percentile (단일) | **OUTPUT 종합 점수 (13변수 평균)** |
+| Y축 | angular_chain_amplification percentile (단일) | **TRANSFER 종합 점수 (13변수 평균)** |
+| 점 색상 | elbow_valgus_torque_proxy raw rank (단일) | INJURY 안전도(반전) + 통합 지표 위험 max (둘 중 큰 위험) |
+
+→ **outlier 영향 감소**: 정예준 H2의 shoulder_ir_vel 17,347°/s 같은 단일 outlier가 카테고리 평균에 미치는 영향이 1/13 = 7.7%로 제한됨.
+
+### 폴더 카드 헤더 강화
+각 OUTPUT/TRANSFER/INJURY 카드 헤더에 새로 표시:
+- **종합 점수** (큰 색상 강조): 예 "종합 72pt (12/13변수)"
+- **통합 지표** (참고용): 예 "통합 지표: ★ 손목 릴리스 속도 = 15.84 m/s"
+
+→ 코치가 카테고리 평균(전체 진단) + 통합 지표(핵심 단일 신호) 둘 다 동시 확인 가능.
+
+### 세부 표 4컬럼으로 확장
+세부 통합 지표 표가 종합/통합 둘 다 표시:
+| 카테고리 | 종합 (n변수 평균) | ★ 통합 지표 | raw | percentile |
+|---|---|---|---|---|
+| 출력 | 72pt (12/13) | wrist_release_speed | 15.84 m/s | 73pt |
+| 전달 | 65pt (11/13) | angular_chain_amplification | 2.89 | 69pt |
+| 부상 (안전도) | 45pt (3/3) | elbow_valgus_torque_proxy | 3244 Nm | 위험 99pt |
+
+### 변경 파일
+| 파일 | 변경 |
+|---|---|
+| `app.js` | + `computeCategoryScore(r, catKey)` 함수, renderOutputTransferCardInner·renderOutputTransferChart 카테고리 점수 사용, 폴더 카드 헤더에 종합 점수 표시, 세부 표 4컬럼 확장 + ALGORITHM_VERSION 'v33.9' |
+| `README.md` | v33.9 패치노트 |
+
+---
+
 # BBL v33.8 — master_fitness Height 매핑 (stride_norm_height 정확도 향상)
 **Build**: 2026-05-05 / **Patch**: v33.7.5 → v33.8 / **Type**: 데이터 정확도 + 매칭 로직 강화 (사용자 옵션 C)
 
