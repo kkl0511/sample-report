@@ -387,17 +387,24 @@ const EXTRA_VAR_SCORING = {
   // C2 하체 드라이브
   // C3 몸통 파워
   'peak_x_factor':                { optimal: 50, sigma: 15, useAbs: true },                  // ° — HS 표준 + Driveline elite 기준 (Stodden 2001, Aguinaldo 2007). LITERATURE 우선
-  // ★ v31.47 Uplift Pro Range 표준 / v31.48 oneSided open_is_good (큰 값은 100점 cap)
-  //   회전 속도·전달율·레이백은 elite 이상도 부상 위험으로 직접 감점하지 않음 (KINETIC_FAULTS로 진단)
-  'max_trunk_twist_vel_dps':      { optimal: 855, sigma: 126, oneSided: 'open_is_good' },     // °/s — Uplift Pro 770~940
-  'peak_trunk_av':                { optimal: 855, sigma: 126, oneSided: 'open_is_good' },     // °/s — alias
-  'peak_pelvis_av':               { optimal: 512, sigma: 100, oneSided: 'open_is_good' },     // °/s — Uplift Pro 445~580
-  'peak_pelvis_rot_vel':          { optimal: 512, sigma: 100, oneSided: 'open_is_good' },     // °/s — alias
-  'max_pelvis_rot_vel_dps':       { optimal: 512, sigma: 100, oneSided: 'open_is_good' },     // °/s — alias
-  'peak_arm_av':                  { optimal: 1357, sigma: 182, oneSided: 'open_is_good' },    // °/s — Uplift Pro 1235~1480 (v31.47)
+  // ★ v31.47 Uplift Pro Range 표준 / v33.15 (2026-05-06) oneSided 'open_is_good' 제거 — 양방향 Gaussian
+  //   [근거] 4선수 Uplift 공식 리포트 검증 (정예준 메카닉 최고수준 / 김강연 균형 / 정원진·홍주환 폭주형):
+  //     - 정예준(메카닉 최고수준): pelvis 483, arm 1328 — Pro range 정중앙
+  //     - 김강연(균형 elite): pelvis 488, arm 1427 — Pro range 안
+  //     - 정원진(폭주): pelvis 612, arm 1475, speedup 1.37 (미달)
+  //     - 홍주환(더 심한 폭주): pelvis 635, arm 1578, speedup 1.33 (미달)
+  //   결론: Pro range 초과 = "더 빠른 elite"가 아니라 "trunk·arm sync 못 한 폭주" 신호 (Speed Gain 미달이 직접 증거)
+  //   조치: oneSided 제거 → Pro range 초과는 양방향 Gaussian으로 자연스럽게 감점
+  //   효과: 홍주환 pelvis 635 → 47점, arm 1578 → 48점 (폭주형 정확히 진단) / 정예준·김강연 정중앙 케이스는 90+점 유지
+  'max_trunk_twist_vel_dps':      { optimal: 855, sigma: 126 },     // °/s — Uplift Pro 770~940 (양방향)
+  'peak_trunk_av':                { optimal: 855, sigma: 126 },     // °/s — alias
+  'peak_pelvis_av':               { optimal: 512, sigma: 100 },     // °/s — Uplift Pro 445~580 (양방향)
+  'peak_pelvis_rot_vel':          { optimal: 512, sigma: 100 },     // °/s — alias
+  'max_pelvis_rot_vel_dps':       { optimal: 512, sigma: 100 },     // °/s — alias
+  'peak_arm_av':                  { optimal: 1357, sigma: 182 },    // °/s — Uplift Pro 1235~1480 (양방향)
   // ★ 운동량 전달 효율 — 정예준 같은 효율 타입 elite 평가
-  'arm_trunk_speedup':            { optimal: 1.88, sigma: 0.2, oneSided: 'open_is_good' },    // ratio — elite 1.88+
-  'pelvis_trunk_speedup':         { optimal: 1.55, sigma: 0.22, oneSided: 'open_is_good' },   // ratio — Uplift Pro 1.4~1.7
+  'arm_trunk_speedup':            { optimal: 1.88, sigma: 0.2 },    // ratio — elite 1.88+ (양방향, 너무 큰 값은 trunk 부족 신호)
+  'pelvis_trunk_speedup':         { optimal: 1.55, sigma: 0.22 },   // ratio — Uplift Pro 1.4~1.7 (양방향)
   // ★ 메카닉 각도/속도 — 문헌 기반 점수화 (2026-05-03 라운드 2)
   //   기존엔 코호트 percentile만 사용했으나, 문헌에 풍부한 standard 있는 변수들
   // ★ 2026-05-03 v30.11 후속 — 11명 elite 통계 검증 결과 반영

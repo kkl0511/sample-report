@@ -191,16 +191,23 @@
 //                  → Uplift 자체 Pro 레인지는 Uplift 시스템에서 측정된 분포라 시스템 차이 자동 흡수 = 시스템 일관성 확보
 //                  김강연 Uplift 리포트(2025-11-21) 검증: peak_pelvis 488/peak_trunk 821/peak_arm 1427/speedup 1.68 — 모두 Pro 레인지 안
 //           조치 1: LITERATURE_OVERRIDE에 회전 속도 4종 + alias 재등록
-//                  - peak_pelvis_av · peak_pelvis_rot_vel · max_pelvis_rot_vel_dps (Uplift Pro 445~580°/s)
-//                  - peak_trunk_av · max_trunk_twist_vel_dps (Uplift Pro 770~940°/s)
-//                  - peak_arm_av (Uplift Pro 1235~1480°/s)
-//                  - pelvis_trunk_speedup (Uplift Pro 1.4~1.7x)
-//                  EXTRA_VAR_SCORING의 sigma는 v31.47 그대로 유지 (Pro 레인지 = mean ± ~0.7σ)
-//           조치 2: stride_mean_m PLAUSIBLE {0.5, 1.6} → {0.5, 2.2} 재조정
-//                  Uplift 리포트 stride length 표시는 "% of height" — 김강연 104% × 175cm ≈ 1.82m
-//                  BBL 측정 2.04m도 markerless 깊이 추정 오차 ±10% 고려하면 정상 범위 (v33.13에서 잘못 결측 처리)
-//                  새 범위는 신장 175~200cm 선수 90~110% stride 모두 포용
-const ALGORITHM_VERSION = 'v33.14';
+//           조치 2: stride_mean_m PLAUSIBLE {0.5, 1.6} → {0.5, 2.2} 재조정 (Uplift % of height 단위 부합)
+//   v33.15 — 회전 속도·speedup oneSided 'open_is_good' 제거 — 양방향 Gaussian으로 전환 (사용자 4선수 검증 2026-05-06)
+//           [근거] 4선수 Uplift 공식 리포트 비교 검증:
+//                  - 정예준 (S36, 우투, 2025-10-23, 메카닉스 최고수준): pelvis 483 Pro 정중앙 / arm 1328 Pro 정중앙 / X-Factor 40° elite
+//                  - 김강연 (S07, 우투, 2025-11-21): pelvis 488 / arm 1427 / speedup 1.68 — 균형 elite
+//                  - 정원진 (좌투, 2026-03-21): pelvis 612 ↑Pro / arm 1475 ≈Pro / speedup 1.37 ↓Pro 미달 — 폭주형
+//                  - 홍주환 (좌투, 2026-03-21): pelvis 635 ↑↑Pro / arm 1578 ↑Pro / speedup 1.33 ↓Pro 미달 — 더 심한 폭주
+//           결론: Uplift Pro range는 elite 분포의 양방향 한계. 메카닉 최고수준조차 Pro 정중앙.
+//                 Pro range 초과 = elite의 elite가 아니라 "trunk·arm sync 못 한 폭주" 신호 (Speed Gain 미달이 직접 증거)
+//           조치: peak_pelvis_av·peak_trunk_av·peak_arm_av·pelvis_trunk_speedup 및 alias의 oneSided 'open_is_good' 모두 제거
+//                  - peak_pelvis_rot_vel·max_pelvis_rot_vel_dps·max_trunk_twist_vel_dps·arm_trunk_speedup 모두 양방향 Gaussian
+//           효과 (시뮬레이션):
+//                  - 홍주환 pelvis 635 → 100점 (cap) → 47점 (Pro 580 초과 페널티 정확히 반영)
+//                  - 홍주환 arm 1578 → 100점 → 48점 (Pro 1480 초과 + 부상 위험 감지)
+//                  - 정예준·김강연 (Pro 정중앙) → 90+점 elite 점수 유지
+//           v33.14 LITERATURE_OVERRIDE 재등록은 그대로 유지. 이번엔 Gaussian 함수 형태만 변경.
+const ALGORITHM_VERSION = 'v33.15';
 const ALGORITHM_DATE    = '2026-05-06';
 
 let CURRENT_AGE = '고교';

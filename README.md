@@ -1,3 +1,52 @@
+# BBL v33.15 — 회전 속도·speedup oneSided 제거 — 양방향 Gaussian (4선수 Uplift 공식 리포트 검증)
+**Build**: 2026-05-06 / **Patch**: v33.14 → v33.15 / **Type**: Gaussian 함수 형태 변경 (평가 기준은 Pro range 동일)
+
+### 사용자 검증 — 4선수 Uplift 공식 리포트 비교
+
+| 선수 | Pelvis | Trunk | Arm | Speed Gain | X-Factor | 진단 |
+|---|---|---|---|---|---|---|
+| **정예준** (S36, 메카닉스 최고수준) | **483** ✓ Pro 정중앙 | 706 ↓ Pro 미달 | **1328** ✓ Pro 정중앙 | 1.46 ✓ | **40°** ★ | 메카닉 elite |
+| 김강연 (S07) | 488 ✓ | 821 ✓ | 1427 ✓ | 1.68 ✓ | 37° | 균형 elite |
+| 정원진 (좌투) | 612 ↑ Pro 초과 | 836 ✓ | 1475 ≈ Pro 상한 | **1.37 ↓ 미달** | 27° | Pelvis 폭주 |
+| 홍주환 (좌투) | **635 ↑↑** | 843 ✓ | **1578 ↑** | **1.33 ↓ 미달** | 28° | 더 심한 폭주 |
+
+### 결정적 인사이트
+- **고교 메카닉스 최고수준(정예준)이 Pelvis 483·Arm 1328 — Pro 레인지 정중앙**
+- Pro range 초과(정원진/홍주환)는 "더 빠른 elite"가 아니라 **trunk·arm sync 못 한 폭주** 신호
+- 직접 증거: 두 선수 모두 Speed Gain Pro 1.4 미달 (1.37, 1.33) — pelvis가 너무 빨라 trunk가 따라잡지 못함
+- 진짜 elite 차별 변수: **X-Factor 40° (정예준)** vs 27~28° (폭주형) — 분리 저장이 핵심
+
+### v33.15 변경 — `metadata.js` EXTRA_VAR_SCORING
+
+| 변수 | v33.14 (oneSided) | v33.15 (양방향) |
+|---|---|---|
+| `peak_pelvis_av` + alias 2종 | optimal 512, sigma 100, **oneSided: 'open_is_good'** | optimal 512, sigma 100 |
+| `peak_trunk_av` + alias | 855/126 + oneSided | 855/126 |
+| `peak_arm_av` | 1357/182 + oneSided | 1357/182 |
+| `pelvis_trunk_speedup` | 1.55/0.22 + oneSided | 1.55/0.22 |
+| `arm_trunk_speedup` | 1.88/0.2 + oneSided | 1.88/0.2 |
+
+LITERATURE_OVERRIDE 등록은 v33.14 그대로 유지. Gaussian 함수 형태만 oneSided 제거 → 양방향.
+
+### 시뮬레이션 — v33.14 vs v33.15 점수 변화
+
+| 변수·선수 | v33.14 (oneSided) | v33.15 (양방향) |
+|---|---|---|
+| 정예준 pelvis 483 | 100점 | **97점** (정중앙 elite) |
+| 김강연 pelvis 488 | 97점 | **97점** |
+| **정원진 pelvis 612** | 100점 (cap) | **61점** (Pro 초과 감점) |
+| **홍주환 pelvis 635** | 100점 (cap) | **47점** |
+| **홍주환 arm 1578** | 100점 (cap) | **48점** (UCL stress 위험 신호) |
+
+→ Pro range 정중앙은 90+점 elite 유지 / Pro range 초과는 정확히 비효율 페널티
+
+### 변경 없음
+- 산식·코호트 분포·LITERATURE_OVERRIDE 등록 키 모두 v33.14와 동일
+- v33.14의 stride_mean_m PLAUSIBLE 재조정 그대로 유지
+- 카테고리 종합 산출 로직 동일
+
+---
+
 # BBL v33.14 — 회전 속도 Uplift Pro 레인지 평가 + stride PLAUSIBLE 재조정
 **Build**: 2026-05-06 / **Patch**: v33.13.2 → v33.14 / **Type**: 평가 기준 변경 (산식 동일, 평가 기준만 외부→Uplift Pro)
 
