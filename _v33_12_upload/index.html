@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>BBL 신규 선수 리포트 — 키네틱 체인 기반 에너지 흐름·누수 분석</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>  <!-- xlsx 마스터 파일 지원 (2026-05-03) -->
+<script src="cohort_v29.js"></script>  <!-- 코호트 통계 데이터 (외부화 2026-05-03) -->
+<script src="metadata.js"></script>     <!-- 결함·점수·카테고리 정의 (외부화 v31.24, 2026-05-04) -->
+<!-- v33.11 (Theia v0.98) — Google Fonts: Inter + Space Grotesk + JetBrains Mono -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ════════════════════════════════════════════════════════════════════
+     v33.11 Phase F — Theia v0.98 Day 라이트 톤 전환 (2026-05-06)
+     KBO 의사결정자 시연용 라이트 + Navy 액센트 + 카테고리 5색
+     ════════════════════════════════════════════════════════════════════ */
+  :root {
+    /* 배경·텍스트 (Theia Day) */
+    --bg-primary: #f5f7fa;
+    --bg-card: #ffffff;
+    --bg-elevated: #f0f4f8;
+    --border: #d8dde2;
+    --text-primary: #1a1a1a;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
+    /* 액센트 (Theia KBO Navy + Gold) */
+    --accent: #1F3864;          /* Navy — 의사결정자 시연 톤 */
+    --accent-soft: #2E75B6;
+    --brand: #1F3864;
+    --kbo-gold: #E8C77A;
+    /* 영역 색 (BBL 호환) */
+    --fitness: #2E75B6;         /* 진한 블루 (라이트 톤 가독성) */
+    --mechanics: #C00000;       /* Theia output red — 메카닉=출력 의미 */
+    --control: #2E7D32;         /* Theia control green */
+    /* 카테고리 5색 (Theia v0.98 신규) */
+    --output: #C00000;
+    --transfer: #0070C0;
+    --leak: #7030A0;
+    --injury: #D97706;
+    /* 상태 (라이트 톤 강도 조정) */
+    --good: #16a34a;
+    --warn: #d97706;
+    --bad: #dc2626;
+    /* 그림자 */
+    --shadow: 0 1px 3px rgba(15,42,74,0.06), 0 1px 2px rgba(15,42,74,0.04);
+    --shadow-lift: 0 4px 12px rgba(15,42,74,0.08), 0 2px 4px rgba(15,42,74,0.05);
+  }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  .display { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; }
+  .mono { font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);  /* v33.11 Theia Day 라이트 톤 — soft elevation */
+  }
+  .input-field {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    width: 100%;
+  }
+  .input-field:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .input-field::placeholder { color: var(--text-muted); }
+  .btn {
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.15s;
+    font-size: 13px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-secondary {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); }
+  .age-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .age-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .step-title { font-size: 18px; font-weight: 700; }
+  .label-row {
+    display: grid;
+    grid-template-columns: 1fr 110px 60px;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px dashed rgba(95,99,107,0.2);
+  }
+  .label-text { font-size: 13px; color: var(--text-secondary); }
+  .label-text .key { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); display: block; margin-top: 2px; }
+  .label-unit { font-size: 11px; color: var(--text-muted); text-align: right; padding-right: 8px; }
+  .polarity-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(95,99,107,0.2);
+    color: var(--text-muted);
+    margin-left: 6px;
+  }
+  .polarity-pill.lower { background: rgba(192,132,252,0.15); color: var(--control); }
+  .polarity-pill.absolute { background: rgba(251,191,36,0.15); color: var(--warn); }
+  .info-box {
+    background: rgba(96,165,250,0.05);
+    border-left: 3px solid var(--fitness);
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 10px 0;
+  }
+  .file-drop {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    background: var(--bg-elevated);
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+  .file-drop:hover, .file-drop.dragover {
+    border-color: var(--accent);
+    background: rgba(255,107,53,0.05);
+  }
+  .preview-table {
+    width: 100%;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .preview-table th, .preview-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  .preview-table th { color: var(--text-muted); font-weight: 500; }
+  .stat-card {
+    text-align: center;
+    padding: 16px;
+  }
+  .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 36px;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+  }
+  .score-bar-container {
+    background: rgba(95,99,107,0.2);
+    border-radius: 3px;
+    height: 6px;
+    overflow: hidden;
+    width: 100%;
+  }
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+  .summary-callout {
+    background: rgba(96,165,250,0.08);
+    border-left: 3px solid var(--fitness);
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 13.5px;
+    line-height: 1.7;
+    margin: 10px 0;
+  }
+  .summary-callout strong { color: var(--text-primary); }
+  .summary-callout.good { background: rgba(34,197,94,0.08); border-left-color: #4ade80; }
+  .summary-callout.bad { background: rgba(239,68,68,0.08); border-left-color: #f87171; }
+  .summary-callout.warn { background: rgba(245,158,11,0.08); border-left-color: #fbbf24; }
+  details > summary { cursor: pointer; padding: 6px 0; }
+  details > summary::marker { color: var(--text-muted); }
+  .var-row {
+    display: grid;
+    grid-template-columns: 1fr 100px 60px 80px;
+    gap: 10px;
+    padding: 6px 0;
+    align-items: center;
+    border-bottom: 1px dashed rgba(95,99,107,0.2);
+    font-size: 12px;
+  }
+  .var-name { font-weight: 500; }
+  .var-key { color: var(--text-muted); font-family: monospace; font-size: 10px; }
+  .var-raw { font-family: monospace; text-align: right; color: var(--text-secondary); }
+  .var-score { font-family: monospace; text-align: right; font-weight: 700; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: monospace;
+  }
+  .badge-good { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .badge-warn { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .badge-bad { background: rgba(239,68,68,0.15); color: #f87171; }
+  .badge-stale { background: rgba(95,99,107,0.2); color: var(--text-muted); }
+  .hidden { display: none !important; }
+  .mech-mode-btn {
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mech-mode-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+  .mech-mode-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  /* === v29 동일: 카테고리 아코디언 + 변인 점수 + 변인 설명 === */
+  .accordion-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .accordion-card.open { border-color: var(--accent); }
+  .accordion-header {
+    padding: 12px 14px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+    user-select: none;
+  }
+  .accordion-header:hover { background: rgba(255,107,53,0.08); }
+  .accordion-icon {
+    transition: transform 0.3s;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .accordion-card.open .accordion-icon { transform: rotate(90deg); color: var(--accent); }
+  .accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+  .accordion-card.open .accordion-content { max-height: 3000px; }
+  .accordion-body {
+    padding: 0 14px 14px 14px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  /* 변인 점수 행 */
+  .var-row-v29 {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .var-row-v29 .var-name { font-weight: 500; color: var(--text-secondary); font-size: 12px; }
+  .var-row-v29 .var-desc { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .var-row-v29 .var-raw {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-muted); text-align: right; min-width: 80px;
+  }
+  .var-row-v29 .var-score {
+    display: flex; align-items: center; gap: 6px; min-width: 90px;
+  }
+  .var-mini-bar {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .var-mini-bar-fill { height: 100%; border-radius: 2px; }
+  /* 점수 해석 테이블 */
+  .interp-table {
+    width: 100%;
+    font-size: 12px;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+  .interp-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .interp-table td:first-child {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    width: 70px;
+  }
+  /* 카테고리 카드 점수 미니 막대 (헤더의 점수 옆) */
+  .cat-mini-score { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; }
+
+  /* === 상단 네비 탭 === */
+  .nav-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+  .nav-tab {
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--text-muted);
+    border: none;
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .nav-tab:hover { color: var(--text-primary); }
+  .nav-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+  /* 뷰 전환 */
+  .view-content { display: block; }
+  .view-content.hidden { display: none; }
+
+  /* === 비교 표 (H1↔H2, 선수간) === */
+  .cmp-table {
+    width: 100%;
+    font-size: 13px;
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .cmp-table th {
+    padding: 10px 12px;
+    background: var(--bg-elevated);
+    font-weight: 600;
+    text-align: left;
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  /* ★ v32.6 — 숫자 칼럼 헤더는 우측 정렬 (text-right 클래스가 .cmp-table th에 덮였던 문제) */
+  .cmp-table th.text-right,
+  .cmp-table th[data-num="true"] { text-align: right; }
+  .cmp-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .cmp-table tr:last-child td { border-bottom: none; }
+  /* ★ v32.6 — tabular-nums로 0.3과 100.0의 자릿수 정렬, 칼럼 폭 명시 */
+  .cmp-table .cmp-num {
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    min-width: 70px;
+  }
+  .cmp-table .delta-pos { color: var(--good); }
+  .cmp-table .delta-neg { color: var(--bad); }
+  .cmp-table .delta-neu { color: var(--text-muted); }
+  /* 비교표 카테고리별 옅은 배경색 */
+  .cmp-table tr.area-fitness { background: rgba(96,165,250,0.05); }
+  .cmp-table tr.area-mech    { background: rgba(255,107,53,0.05); }
+  .cmp-table tr.area-ctrl    { background: rgba(192,132,252,0.05); }
+  .cmp-table tr.area-fitness:hover { background: rgba(96,165,250,0.10); }
+  .cmp-table tr.area-mech:hover    { background: rgba(255,107,53,0.10); }
+  .cmp-table tr.area-ctrl:hover    { background: rgba(192,132,252,0.10); }
+
+  /* 저장된 리포트 카드 */
+  .saved-report-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .saved-report-card .meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .delete-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .delete-btn:hover { border-color: var(--bad); color: var(--bad); }
+
+  /* ════════════════════════════════════════════════════════════════════
+     v33.11 (2026-05-06) — Theia v0.97/v0.98 패턴 이식
+     모바일 가로 스크롤 + KPI 카드 unit overflow 방어 + 인과 카드
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* (1) 모바일·좁은 화면에서 SVG·표를 강제 stack 대신 좌우 panning */
+  .scroll-x-mobile {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+  .scroll-x-mobile > * { scroll-snap-align: start; }
+  .scroll-x-mobile::-webkit-scrollbar { height: 6px; }
+  .scroll-x-mobile::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* SVG 자연 폭 보장 — 좁은 화면에서 자동 가로 스크롤 */
+  .svg-min-mannequin { min-width: 720px; display: block; }
+  .svg-min-sequence  { min-width: 560px; display: block; }
+  .svg-min-chain     { min-width: 800px; display: block; }
+
+  /* (2) KPI 카드: unit overflow 방어 + flex-wrap + clamp */
+  .kpi-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 0;        /* flex item 축소 허용 */
+  }
+  .kpi-num {
+    font-size: clamp(22px, 5vw, 36px);
+    font-weight: 700;
+    line-height: 1.0;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+  .kpi-unit {
+    font-size: 0.4em;     /* number의 40% (Theia v0.98 표준) */
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 4px;
+    white-space: nowrap;
+  }
+
+  /* (3) v0.92 인과 카드 (Cause ↔ Result ↔ Coaching 3-card) */
+  .cause-result-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .cause-result-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-left-width: 3px;
+    border-radius: 4px;
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  .cause-result-card .crc-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .cause-result-card .crc-body {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+  .cause-result-card.crc-cause   { border-left-color: #f59e0b; }
+  .cause-result-card.crc-result  { border-left-color: var(--accent); }
+  .cause-result-card.crc-coach   { border-left-color: #4ade80; }
+
+  /* (4) "Primary Leak" 1문장 박스 (P3 패턴) */
+  .primary-leak-line {
+    background: linear-gradient(90deg, rgba(245,158,11,0.10), transparent 70%);
+    border-left: 3px solid #f59e0b;
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .primary-leak-line.is-good {
+    background: linear-gradient(90deg, rgba(74,222,128,0.10), transparent 70%);
+    border-left-color: #4ade80;
+  }
+
+  /* (5) 펼침 details 스타일 통일 (P2/P3 세부 카드 격리) */
+  details.theia-details {
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: rgba(20, 21, 24, 0.4);
+  }
+  details.theia-details summary {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-muted);
+    user-select: none;
+  }
+  details.theia-details[open] summary {
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  details.theia-details > div { padding: 12px 14px; }
+
+  @media (max-width: 720px) {
+    .kpi-num { font-size: clamp(20px, 6.5vw, 28px); }
+    .cause-result-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     v33.11 Phase F — Theia v0.98 신규 컴포넌트 (KBO 의사결정자 톤)
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* 페이지 헤더 (P1~P6 패턴) — 페이지 번호 박스 + EN 큰 제목 + KR 부제 + Navy 보더 */
+  .kbo-page-head {
+    display: flex; align-items: baseline; gap: 10px;
+    padding-bottom: 14px; margin: 8px 0 20px;
+    border-bottom: 2px solid var(--accent);
+    flex-wrap: wrap;
+  }
+  .kbo-page-num {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 700; font-size: 11px; letter-spacing: 0.16em;
+    color: var(--accent);
+    padding: 4px 9px; border: 1.5px solid var(--accent); border-radius: 4px;
+    flex: 0 0 auto;
+  }
+  .kbo-page-title-en {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 700; font-size: 20px;
+    color: var(--accent); letter-spacing: -0.01em;
+  }
+  .kbo-page-title-kr {
+    font-size: 13px; color: var(--text-muted);
+  }
+
+  /* Plain-language 박스 (코칭 메시지·해석 하이라이트) */
+  .kbo-plain {
+    background: #EAF0F7;
+    border-radius: 10px;
+    padding: 12px 14px; margin-top: 14px;
+    display: flex; gap: 10px; align-items: flex-start;
+    font-size: 13px; line-height: 1.6; color: var(--text-secondary);
+  }
+  .kbo-plain-tag {
+    flex: 0 0 auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 700; color: var(--accent);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    background: #fff; border: 1px solid var(--accent);
+    padding: 3px 7px; border-radius: 4px;
+  }
+
+  /* 신뢰도 뱃지 (h/m/l) */
+  .kbo-conf {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 999px; letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .kbo-conf-h { color: var(--good); background: rgba(22,163,74,0.08); border: 1px solid var(--good); }
+  .kbo-conf-m { color: var(--warn); background: rgba(217,119,6,0.08); border: 1px solid var(--warn); }
+  .kbo-conf-l { color: var(--bad);  background: rgba(220,38,38,0.06); border: 1px solid var(--bad); }
+
+  /* 상태 Pill (good/caution/leak — 색깔 점 + 라벨) */
+  .kbo-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 4px; letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .kbo-pill::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+  .kbo-pill-good    { color: var(--good); background: rgba(22,163,74,0.08); }
+  .kbo-pill-caution { color: var(--warn); background: rgba(217,119,6,0.10); }
+  .kbo-pill-leak    { color: var(--bad);  background: rgba(220,38,38,0.08); }
+
+  /* 카테고리 카드 (OUTPUT/TRANSFER/LEAK/CONTROL/INJURY 5색 left-border) */
+  .cat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .cat-card.OUTPUT   { border-left: 4px solid var(--output); }
+  .cat-card.TRANSFER { border-left: 4px solid var(--transfer); }
+  .cat-card.LEAK     { border-left: 4px solid var(--leak); }
+  .cat-card.CONTROL  { border-left: 4px solid var(--control); }
+  .cat-card.INJURY   { border-left: 4px solid var(--injury); }
+
+  /* Theia 톤에 맞춰 details 스타일 갱신 */
+  details.theia-details {
+    background: rgba(46,117,182,0.04);  /* very subtle blue tint */
+  }
+  details.theia-details summary {
+    color: var(--text-secondary);
+  }
+
+  /* Primary leak 라이트 톤 재조정 */
+  .primary-leak-line {
+    background: linear-gradient(90deg, rgba(217,119,6,0.10), transparent 70%);
+    border-left: 3px solid var(--warn);
+    color: var(--text-primary);
+  }
+  .primary-leak-line.is-good {
+    background: linear-gradient(90deg, rgba(22,163,74,0.10), transparent 70%);
+    border-left-color: var(--good);
+  }
+
+  /* 인과 카드 라이트 톤 재조정 */
+  .cause-result-card {
+    background: var(--bg-card);
+    box-shadow: var(--shadow);
+  }
+  .cause-result-card .crc-body { color: var(--text-secondary); }
+  .cause-result-card.crc-cause   { border-left-color: var(--warn); }
+  .cause-result-card.crc-result  { border-left-color: var(--accent); }
+  .cause-result-card.crc-coach   { border-left-color: var(--good); }
+
+  /* Tailwind 호환 — bg-black 류 잔존 다크 클래스 라이트 매핑 */
+  .bg-black\/70 { background: rgba(255,255,255,0.92) !important; backdrop-filter: blur(8px); }
+  .border-\[\#2a2c31\] { border-color: var(--border) !important; }
+  .text-\[var\(--text-muted\)\] { color: var(--text-muted); }
+
+  @media (max-width: 768px) {
+    .kbo-page-title-en { font-size: 17px; }
+    .kbo-plain { padding: 10px 12px; font-size: 12px; }
+  }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Header -->
+<header class="border-b border-[#2a2c31] sticky top-0 z-40 backdrop-blur-md bg-black/70">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div>
+      <div class="display text-xl">📋 BBL 신규 선수 리포트 생성</div>
+      <div class="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+        ⚡ <strong style="color:#fb923c;">키네틱 체인 기반 에너지 흐름·누수 분석</strong>
+        <span style="color:#3a3d44;">·</span>
+        📚 <strong style="color:#60a5fa;">체력·메카닉 점수: MLB 평균 대비</strong>
+        <span class="ml-2 mono" style="color:#4ade80;">산식 <span id="algo-version-stamp">v30.7</span></span>
+        <span class="mono" style="color:var(--text-muted);">(<span id="algo-date-stamp">2026-05-03</span>)</span>
+      </div>
+      <div class="text-[10px] text-[var(--text-muted)] mt-1">
+        Driveline R&D · Werner 2008 · Wood-Smith 2019 · Aguinaldo 2007 · Stodden 2001 · MLB Combine
+      </div>
+    </div>
+    <div class="text-xs text-[var(--text-muted)] flex items-center gap-3">
+      <span id="cohort-info"></span>
+      <button onclick="manualRecompute()" 
+              style="background:rgba(74,222,128,0.1); color:#4ade80; padding:4px 10px; border-radius:4px; border:1px solid #4ade80; font-size:10px; cursor:pointer;"
+              title="저장된 모든 선수의 결과를 현재 산식으로 다시 계산">
+        🔄 모든 선수 재계산
+      </button>
+    </div>
+  </div>
+  <!-- 네비 탭 (v29와 동일) -->
+  <div class="max-w-7xl mx-auto">
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-view="individual" onclick="switchView('individual')">📋 개별 선수</button>
+      <button class="nav-tab" data-view="h1h2" onclick="switchView('h1h2')">🔄 1차 ↔ 2차 비교</button>
+      <button class="nav-tab" data-view="vs"   onclick="switchView('vs')">⚔️ 선수간 비교</button>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-6 py-8">
+
+  <!-- ═══════════ 뷰 1: 개별 선수 (기본) ═══════════ -->
+  <div id="view-individual" class="view-content">
+
+  <!-- Step 1: 선수 정보 -->
+  <section class="card p-6 mb-6">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">선수 정보 + 연령군</div>
+    </div>
+
+    <!-- 저장된 선수 빠른 선택 (자동 저장된 선수가 있으면 노출) -->
+    <div id="saved-player-selector" class="hidden mb-4 p-3 rounded" style="background: rgba(96,165,250,0.05); border-left: 3px solid var(--fitness);">
+      <label class="text-xs text-[var(--text-muted)] block mb-1">📋 이전에 분석한 선수 — 선택해서 데이터 불러오기 (자동 리포트 생성)</label>
+      <div class="flex gap-2 items-center">
+        <select id="saved-player-select" class="input-field flex-1" onchange="loadSavedPlayer(this.value)">
+          <option value="">— 선택 안 함 (새로 입력) —</option>
+        </select>
+        <button class="btn btn-secondary text-xs" onclick="deleteSelectedSavedPlayer()" title="선택한 선수 삭제">🗑</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">선수 ID 또는 이름</label>
+        <input type="text" class="input-field" id="player-name" placeholder="P001 또는 홍길동" value="신규 선수">
+      </div>
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">측정 구속 (km/h, 선택)</label>
+        <input type="number" class="input-field" id="player-velo" placeholder="검증용 — 입력 안 해도 됨" step="0.1">
+      </div>
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">측정 일자</label>
+        <input type="text" class="input-field" id="player-date" placeholder="2026-05" value="">
+      </div>
+    </div>
+    
+    <div>
+      <label class="text-xs text-[var(--text-muted)] block mb-2">연령군 — 스케일링 기준</label>
+      <div class="flex gap-2 flex-wrap">
+        <button class="age-btn" data-age="중학" onclick="selectAge('중학')">중학</button>
+        <button class="age-btn active" data-age="고교" onclick="selectAge('고교')">고교 (BBL 기준)</button>
+        <button class="age-btn" data-age="대학" onclick="selectAge('대학')">대학</button>
+        <button class="age-btn" data-age="프로" onclick="selectAge('프로')">프로</button>
+      </div>
+      <div class="info-box mt-3">
+        <span id="age-desc">고교: BBL 코호트 기준 (변경 없음)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step 2: 체력 + 구속 (CSV 전용 + 드래그앤드롭) -->
+  <section class="card p-6 mb-6">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">체력 + 구속 변수 입력 (CSV 업로드)</div>
+    </div>
+    <div class="info-box">
+      <strong>지원 형식</strong> ① BBL 템플릿 — <code class="mono text-[11px]">field_key, value</code> (한 변수 한 행) ·
+      ② Hawkin/포스플레이트 와이드 포맷 — 첫 행이 컬럼명, 다음 행마다 한 선수.<br>
+      코호트와 매칭되는 측정값만 자동 적용됩니다. 코호트에 없는 컬럼(Shoulder IR, 30m Sprint 등)은 자동으로 무시.
+      <code class="mono text-[11px]">Name</code>·<code class="mono text-[11px]">Date</code>·<code class="mono text-[11px]">Max Velocity</code> 컬럼이 있으면 <strong>Step 1의 선수명·측정일·구속도 자동 입력</strong>됩니다.
+    </div>
+
+    <div class="file-drop mb-3" id="fitness-drop-zone" onclick="document.getElementById('fitness-csv-upload').click()">
+      <div class="text-3xl mb-1">📤</div>
+      <div class="text-sm font-medium">CSV 또는 xlsx 파일을 드래그 앤 드롭하거나 클릭해서 선택</div>
+      <div class="text-xs text-[var(--text-muted)] mt-1">.csv 파일 · BBL 템플릿 / 와이드 포맷 / <strong style="color:#60a5fa;">master_fitness.xlsx (선수별 H1/H2)</strong></div>
+      <input type="file" id="fitness-csv-upload" accept=".csv,.xlsx,.xls" style="display:none;" onchange="handleFitnessUploadAny(event)">
+    </div>
+
+    <div class="flex gap-2 mb-4 flex-wrap">
+      <button class="btn btn-secondary text-xs" onclick="downloadTemplate('fitness')">📥 BBL 템플릿 다운로드</button>
+      <button class="btn btn-secondary text-xs" onclick="clearInputs('fitness')">🗑 초기화</button>
+    </div>
+
+    <!-- 선수 선택 (와이드 CSV에 여러 선수가 있을 때만 노출) -->
+    <div id="fitness-player-selector" class="hidden mb-4">
+      <label class="text-xs text-[var(--text-muted)] block mb-1">선수 선택 (CSV에 여러 명 포함됨)</label>
+      <select class="input-field" id="fitness-player-select" onchange="selectPlayerFromCsv(this.value)"></select>
+    </div>
+
+    <!-- 업로드 결과 요약 -->
+    <div id="fitness-upload-status" class="hidden">
+      <div id="fitness-upload-summary" class="info-box" style="border-left-color: var(--good); background: rgba(74,222,128,0.05);"></div>
+      <details class="mt-2">
+        <summary class="text-xs text-[var(--text-secondary)] py-1">📋 로드된 변수 보기</summary>
+        <div id="fitness-loaded-table" class="mt-3"></div>
+      </details>
+    </div>
+
+    <!-- 빈 상태 -->
+    <div id="fitness-empty-state" class="text-center text-sm text-[var(--text-muted)] py-6 border border-dashed border-[var(--border)] rounded">
+      아직 업로드된 데이터가 없습니다. CSV 파일을 업로드하세요.
+    </div>
+  </section>
+
+  <!-- Step 3: 메카닉 (CSV 전용 + 드래그앤드롭) -->
+  <section class="card p-6 mb-6">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">메카닉 변수 입력 (CSV 업로드)</div>
+    </div>
+    <div class="info-box">
+      <strong>지원 형식</strong> ① Uplift Capture raw 시계열 CSV (Trial_XXXX.csv) — <strong>여러 trial 한 번에 업로드 시 평균·SD 자동 산출</strong> (제구 P1·P6 SD 변수 포함) ·
+      ② BBL 메카닉 템플릿 — <code class="mono text-[11px]">field_key, value</code> ·
+      ③ 와이드 포맷 — 컬럼명에 BBL 변수 키.<br>
+      코호트에 분포가 있는 변수만 점수 산출에 사용됩니다 (★ Phase 2 변수는 자동 제외).
+    </div>
+
+    <div class="file-drop mb-3" id="mech-drop-zone" onclick="document.getElementById('mech-csv-upload').click()">
+      <div class="text-3xl mb-1">📤</div>
+      <div class="text-sm font-medium">메카닉 CSV 파일을 드래그 앤 드롭하거나 클릭해서 선택 (여러 파일 가능)</div>
+      <div class="text-xs text-[var(--text-muted)] mt-1">.csv 파일 · 1개 단일 trial 또는 N개 trial 다중 업로드</div>
+      <input type="file" id="mech-csv-upload" accept=".csv" multiple style="display:none;" onchange="handleCsvUpload(event, 'mechanics')">
+    </div>
+
+    <div class="flex gap-2 mb-4 flex-wrap">
+      <button class="btn btn-secondary text-xs" onclick="downloadTemplate('mechanics')">📥 BBL 메카닉 템플릿 다운로드</button>
+      <button class="btn btn-secondary text-xs" onclick="clearInputs('mechanics')">🗑 초기화</button>
+    </div>
+
+    <!-- 선수 선택 (와이드 CSV 다중 행) -->
+    <div id="mech-player-selector" class="hidden mb-4">
+      <label class="text-xs text-[var(--text-muted)] block mb-1">선수 선택 (CSV에 여러 명 포함됨)</label>
+      <select class="input-field" id="mech-player-select" onchange="selectMechanicsPlayerFromCsv(this.value)"></select>
+    </div>
+
+    <!-- 업로드 결과 요약 -->
+    <div id="mech-upload-status" class="hidden">
+      <div id="mech-upload-summary" class="info-box" style="border-left-color: var(--accent); background: rgba(255,107,53,0.05);"></div>
+      <details class="mt-2">
+        <summary class="text-xs text-[var(--text-secondary)] py-1">📋 로드된 변수 보기</summary>
+        <div id="mech-loaded-table" class="mt-3"></div>
+      </details>
+    </div>
+
+    <!-- 빈 상태 -->
+    <div id="mech-empty-state" class="text-center text-sm text-[var(--text-muted)] py-6 border border-dashed border-[var(--border)] rounded">
+      아직 업로드된 데이터가 없습니다. CSV 파일을 업로드하세요.
+    </div>
+  </section>
+
+  <!-- Step 4: 계산 + 리포트 -->
+  <section class="text-center mb-8">
+    <button class="btn btn-primary text-base px-12 py-4" onclick="generateReport()">
+      🎯 리포트 생성
+    </button>
+    <div class="text-xs text-[var(--text-muted)] mt-2">입력된 변수만으로 점수·구속 예측·코칭 해설을 생성합니다</div>
+  </section>
+
+  <!-- 리포트 영역 -->
+  <section id="report-area" class="hidden"></section>
+
+  </div><!-- /view-individual -->
+
+  <!-- ═══════════ 뷰 2: 1차 ↔ 2차 비교 ═══════════ -->
+  <div id="view-h1h2" class="view-content hidden">
+    <section class="card p-6 mb-6">
+      <div class="display text-xl mb-2">🔄 1차 ↔ 2차 비교</div>
+      <div class="text-sm text-[var(--text-muted)] mb-4">
+        같은 선수의 두 시점(예: H1 봄 ↔ H2 가을) 측정을 비교합니다.
+        먼저 <strong>개별 선수</strong> 탭에서 각 시점의 리포트를 만들고 <strong>💾 저장</strong>한 뒤 여기로 돌아오세요.
+      </div>
+      <div id="h1h2-content"></div>
+    </section>
+  </div>
+
+  <!-- ═══════════ 뷰 3: 선수간 비교 ═══════════ -->
+  <div id="view-vs" class="view-content hidden">
+    <section class="card p-6 mb-6">
+      <div class="display text-xl mb-2">⚔️ 선수간 비교</div>
+      <div class="text-sm text-[var(--text-muted)] mb-4">
+        서로 다른 두 선수의 리포트를 나란히 비교합니다.
+        먼저 <strong>개별 선수</strong> 탭에서 각 선수 리포트를 저장한 뒤 여기로 돌아오세요.
+      </div>
+      <div id="vs-content"></div>
+    </section>
+  </div>
+
+</main>
+
+<script src="app.js"></script>  <!-- ★ v33.4: 메인 로직 외부 파일 분리 -->
+
+</body>
+</html>
