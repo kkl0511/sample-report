@@ -1,3 +1,109 @@
+# BBL v33.11 — Theia 리포트 v0.98 디자인·포맷 이식 (UX·가독성 개선)
+**Build**: 2026-05-06 / **Patch**: v33.10 → v33.11 / **Type**: UX·디자인 (산식·점수 변경 없음)
+
+### 사용자 요청
+> "여기서 디자인과 리포트 형식 등 반영해줘"
+> — Theia_Pitching_Report v0.98 인계 문서를 BBL 리포트에 이식
+
+### v33.11 변경 — Theia v0.92~v0.98 4 패턴 이식
+
+| Phase | Theia 출처 | 변경 영역 | 핵심 |
+|---|---|---|---|
+| A | v0.97 + v0.98 | index.html style + app.js SVG 컨테이너 + 헤더 KPI 4종 | 모바일 가로 스크롤(`.scroll-x-mobile`·SVG min-width) + KPI 유닛 overflow fix(`.kpi-row`+`.kpi-num`+`.kpi-unit`, unit 0.4em) |
+| B | v0.92 | 4단계 (에너지 리크의 원인) | Cause↔Result↔Coaching 3카드 SummaryBar, 변수별 상세는 details 펼침. 톤: '🚨 매우 위험' → '⚠ 우선 보강' |
+| C | v0.93 P3 | 3단계 (당신의 에너지 흐름) | Primary Leak 1문장 + 3 KPI(C2 앞다리 · C3 몸통 로딩 · C5 팔/UCL) 메인, 6단계 누수 상세는 펼침 |
+| D | v0.94 P2 | renderReportHtml `kineticChainBlock` | 메인은 사분면(outputTransferCardHtml) + 마네킹·단계 진단, 키네틱 체인 GIF + 모드별 코칭은 details 펼침 |
+
+### 변경 없음 (확인사항)
+- 점수 산식·코호트 분포·LITERATURE_OVERRIDE 모두 v33.10과 동일
+- D등급 추가 변수 제거 검토 → `shoulder_ir_vel_max`·`peak_x_factor`는 진단 가치 큰 핵심 변수라 유지
+
+### 신규 CSS 클래스 (index.html)
+- `.scroll-x-mobile` · `.svg-min-mannequin`(720px) · `.svg-min-sequence`(560px) · `.svg-min-chain`(800px)
+- `.kpi-row` · `.kpi-num`(clamp 22-36px) · `.kpi-unit`(0.4em, white-space:nowrap)
+- `.cause-result-grid` · `.cause-result-card.crc-cause/.crc-result/.crc-coach`
+- `.primary-leak-line` (`.is-good` variant)
+- `details.theia-details` · `summary` 통일 스타일
+- `@media (max-width: 720px)`: KPI clamp + 인과 카드 1열 stack
+
+---
+
+# BBL v33.10 — Theia/Qualisys 비교 검증 기반 산식 보정 + 신뢰 어려운 변수 제거
+**Build**: 2026-05-05 / **Patch**: v33.9 → v33.10 / **Type**: 외부 시스템 검증 적용
+
+### 사용자 요청
+> "테이아 데이터로 새로운 리포트 웹 앱을 만들기 전에, 이 비교 결과를 BBL 로직에 적용. Theia를 골든 스탠다드로 간주했을 때 Uplift 측정·산출을 신뢰하기 어려운 변인(특히 stride_length)들은 제거"
+
+### 배경 — Theia 비교 분석 (별도 보고서 v2)
+23명 매칭 선수 12변수 ICC + Bland-Altman + "Theia 산식을 BBL raw에 적용한 산식 차이 vs 측정 차이 분리" 결과:
+- ICC 0.5 이상 = `max_shoulder_ER` **1개뿐** (0.722)
+- 산식 차이로 식별 = `trunk_forward_tilt` (mean diff 86°→3°), `lag` (30→6ms)
+- 시스템 측정 차이 = `pelvis_peak`/`trunk_peak` (BBL 일관 -100 deg/s)
+- 정의 본질 차이 = `stride_length`, `peak_torso_counter_rot`, `shoulder_h_abd_at_fc`
+
+### v33.10 변경 — D등급 3변수 제거 (신뢰 어려움)
+
+| 변수 | 제거 사유 |
+|---|---|
+| `stride_norm_height` | 4개 정의 후보 모두 ICC <0.13. BBL KH→FC ankle 3D 거리 vs Theia stride 정의 본질 차이 |
+| `peak_torso_counter_rot` | BBL 70° vs Theia 38°. 윈도우·정의 차이로 매칭 불가 |
+| `shoulder_h_abd_at_fc` | BBL `-horizontal_adduction`(횡단면) vs Theia 어깨 외전(전두면) — 평면 자체 다름 |
+
+**제거 위치** (metadata.js · app.js):
+- KINETIC_FAULTS 3건(ShortStride, InsufficientCounterRot, OpenFrontSide)
+- EXTRA_VAR_SCORING 3건 + LITERATURE_OVERRIDE 1건 + PLAUSIBLE 4건
+- OUTPUT_VS_TRANSFER · OUTPUT_VS_TRANSFER_VAR_META 1건
+- DRIVELINE_5_CATS · DRIVELINE_5_WEIGHTS · CATEGORY_WEIGHTS C1
+- meanFields(applyMultiTrialUplift) · stride_norm_height 산출 비활성화
+
+→ Phase 2 raw 산출 코드(line 998, 1207-1219, 2081-2086)는 보존 — 추후 분석용. 점수 평가에서만 제외.
+→ `stride_mean_m`/`stride_sd_cm`은 P5 trial-to-trial **변동성**(SD) 지표로 유지 (절대값 X).
+
+### v33.10 변경 — B등급 3 산식 수정 (신뢰 가능 보정)
+
+#### B-1. `trunk_forward_tilt_at_fc` wrap-around 처리 (app.js line 993~)
+- 기존: 좌투만 abs(), 우투수에서 trunk_global_flexion 값이 [-180,180] 범위 초과 시 산출 결과 100°+ outlier 발생
+- 수정: 좌·우투 통일 — `((flex + 180) % 360 + 360) % 360 - 180` 후 `180 - |flex|`
+- 효과: 23명 평균 BBL 81° → **6.7°** (Theia -5°와 일치). 1810 trial 재산출 결과 mean +6.71°/SD 4.18° 정상 범위
+
+#### B-2. Lag signal-based detection (app.js line 700~)
+- 기존: `events.peakPelvis = upEvents.peakPelvis ?? detectPeakRotVel(...)` — Uplift 사전 frame 우선
+- 수정: `events.peakPelvis = detectPeakRotVel(...)` — Uplift 사전 frame **무시**, signal-based만 사용
+- pelvis · trunk · arm peak frame 모두 동일 정책
+- 효과: P→T lag mean 32.6→**65.7ms**, T→A lag mean 32.6→**67.0ms** (Theia 평균과 일치 방향)
+
+#### B-3. `shoulder_ir_vel_max` 95-percentile (app.js line 1184~)
+- 기존: raw abs max — noise spike 취약 (1 trial 검증 시 38719°/s 같은 outlier)
+- 수정: 윈도우 내 abs 값 sorted 후 95-percentile 추출 (Theia 비교 권고 #3)
+- 효과: 코호트 평균 4868→**2721 °/s**, SD 2962→860 (정상 범위 4000~7000 elite humerus IR vel과 부합)
+
+### 코호트 분포 갱신 (cohort_v29.js)
+B-2, B-3 적용 결과 1810 trial 재산출. 영향 변수 분포 갱신:
+- `pelvis_to_trunk_lag_ms`: mean 26.18→65.70, q25/75 0/56→38/91, n 199→185
+- `trunk_to_arm_lag_ms`: mean 27.67→67.02, q25/75 13/46→44/82, n 199→182
+- `shoulder_ir_vel_max`: mean 4868→2721, q25/75 2922/5712→2180/3129, n 186→185
+
+`trunk_forward_tilt_at_fc`는 var_distributions에 없음 (가우시안 평가 — optimal -5, sigma 15) → 분포 갱신 불필요.
+
+### Python 동기화
+`extract_uplift_scalars.py`도 동일 변경 (BBL JS 1:1 매핑 원칙):
+- trunk_forward_tilt_at_fc wrap-around
+- peak frame Uplift 사전 무시 (signal-based만)
+- shoulder_ir_vel_max 95-percentile
+
+### 검증 권고 (배포 전)
+1. 사이트 Cmd+Shift+R 강제 새로고침 후 좌상단 산식 버전 v33.10 확인
+2. 정예준·박명균 H2 리포트 비교: 사분면 카드의 trunk_forward_tilt·lag 값이 합리적인지
+3. ShortStride·InsufficientCounterRot·OpenFrontSide fault가 더 이상 표시되지 않는지
+4. shoulder_ir_vel_max raw 값이 outlier(>10000) 없이 정상 분포
+
+### 다음 단계 후보
+- Theia 41명 자체 분포 분석 (BBL 매칭 안 된 18명 포함)
+- stride_length 정의 표준화 (Visual3D STRIDE_LENGTH 컬럼 명세 확보 시 재도입)
+- ground truth 검증 데이터 (같은 trial 두 시스템 동시 측정) 확보
+
+---
+
 # BBL v33.9 — OUTPUT·TRANSFER·INJURY 카테고리 종합 점수 (사분면 진단 정확도 향상)
 **Build**: 2026-05-05 / **Patch**: v33.8 → v33.9 / **Type**: 사분면 차트 산식 정밀화 (사용자 옵션 E)
 

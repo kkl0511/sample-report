@@ -434,6 +434,121 @@
     cursor: pointer;
   }
   .delete-btn:hover { border-color: var(--bad); color: var(--bad); }
+
+  /* ════════════════════════════════════════════════════════════════════
+     v33.11 (2026-05-06) — Theia v0.97/v0.98 패턴 이식
+     모바일 가로 스크롤 + KPI 카드 unit overflow 방어 + 인과 카드
+     ════════════════════════════════════════════════════════════════════ */
+
+  /* (1) 모바일·좁은 화면에서 SVG·표를 강제 stack 대신 좌우 panning */
+  .scroll-x-mobile {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+  .scroll-x-mobile > * { scroll-snap-align: start; }
+  .scroll-x-mobile::-webkit-scrollbar { height: 6px; }
+  .scroll-x-mobile::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* SVG 자연 폭 보장 — 좁은 화면에서 자동 가로 스크롤 */
+  .svg-min-mannequin { min-width: 720px; display: block; }
+  .svg-min-sequence  { min-width: 560px; display: block; }
+  .svg-min-chain     { min-width: 800px; display: block; }
+
+  /* (2) KPI 카드: unit overflow 방어 + flex-wrap + clamp */
+  .kpi-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 0;        /* flex item 축소 허용 */
+  }
+  .kpi-num {
+    font-size: clamp(22px, 5vw, 36px);
+    font-weight: 700;
+    line-height: 1.0;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+  .kpi-unit {
+    font-size: 0.4em;     /* number의 40% (Theia v0.98 표준) */
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: 4px;
+    white-space: nowrap;
+  }
+
+  /* (3) v0.92 인과 카드 (Cause ↔ Result ↔ Coaching 3-card) */
+  .cause-result-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .cause-result-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-left-width: 3px;
+    border-radius: 4px;
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  .cause-result-card .crc-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .cause-result-card .crc-body {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+  }
+  .cause-result-card.crc-cause   { border-left-color: #f59e0b; }
+  .cause-result-card.crc-result  { border-left-color: var(--accent); }
+  .cause-result-card.crc-coach   { border-left-color: #4ade80; }
+
+  /* (4) "Primary Leak" 1문장 박스 (P3 패턴) */
+  .primary-leak-line {
+    background: linear-gradient(90deg, rgba(245,158,11,0.10), transparent 70%);
+    border-left: 3px solid #f59e0b;
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .primary-leak-line.is-good {
+    background: linear-gradient(90deg, rgba(74,222,128,0.10), transparent 70%);
+    border-left-color: #4ade80;
+  }
+
+  /* (5) 펼침 details 스타일 통일 (P2/P3 세부 카드 격리) */
+  details.theia-details {
+    margin-top: 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: rgba(20, 21, 24, 0.4);
+  }
+  details.theia-details summary {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-muted);
+    user-select: none;
+  }
+  details.theia-details[open] summary {
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  details.theia-details > div { padding: 12px 14px; }
+
+  @media (max-width: 720px) {
+    .kpi-num { font-size: clamp(20px, 6.5vw, 28px); }
+    .cause-result-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body class="min-h-screen">

@@ -87,8 +87,47 @@
 //           폴더 카드 헤더에 "종합 N pt (n/total변수)" 표시
 //           세부 표에 통합 지표 + 카테고리 종합 둘 다 표시 (참고 비교용)
 //           정예준·박명균 사례 검증: 단일 변수 outlier (예: shoulder_ir 17347°/s)에 흔들리지 않고 카테고리 평균이 안정적 진단 제공
-const ALGORITHM_VERSION = 'v33.10';
-const ALGORITHM_DATE    = '2026-05-05';
+//   v33.10 — Theia/Qualisys 비교 검증 기반 산식 보정 + 신뢰 어려운 D등급 변수 제거
+//           [근거] Theia_BBL_비교분석_보고서_v2.docx — 23명 매칭 12변수 ICC + Bland-Altman + "Theia 산식을 BBL raw에 적용한 산식차 vs 측정차 분리"
+//           ICC 0.5 이상 = max_shoulder_ER 1개뿐 (0.722). 단순 변수명 매칭으로는 시스템 일치도 거의 불가능.
+//           B-1. trunk_forward_tilt_at_fc wrap-around 처리 (line 990~)
+//                  좌·우투 통일: ((flex+180)%360+360)%360-180 → 180-|flex|
+//                  효과: 23명 mean BBL 81° → 6.7° (Theia -5°와 일치)
+//           B-2. Lag signal-based detection (line 700~)
+//                  events.peakPelvis = detectPeakRotVel(...) — Uplift 사전 frame 무시, signal-based만
+//                  효과: P→T lag mean 32.6→65.7ms, T→A 32.6→67.0ms (Theia 평균 방향)
+//           B-3. shoulder_ir_vel_max 95-percentile robust (line 1184~)
+//                  raw abs max → sorted 95-percentile (noise spike 제거)
+//                  효과: 코호트 평균 4868→2721 °/s (elite 4000~7000 humerus IR vel 범위 부합)
+//           D등급 변수 제거 (3건): KINETIC_FAULTS · EXTRA_VAR_SCORING · LITERATURE_OVERRIDE · PLAUSIBLE_RANGES · OUTPUT_VS_TRANSFER ·
+//                                 OUTPUT_VS_TRANSFER_VAR_META · DRIVELINE_5_CATS · DRIVELINE_5_WEIGHTS · CATEGORY_WEIGHTS C1 · meanFields
+//             - stride_norm_height: 4 정의 후보 모두 ICC <0.13. KH→FC ankle 3D 거리 vs Theia stride 정의 본질 차이
+//             - peak_torso_counter_rot: BBL [KH-50,FC] 70° vs Theia 38°. 윈도우·정의 차이 매칭 불가
+//             - shoulder_h_abd_at_fc: BBL -horizontal_adduction(횡단면) vs Theia 어깨 외전(전두면) — 평면 자체 다름
+//           Phase 2 raw 산출 코드(line 998, 1228, 2095)는 보존 — 추후 분석용. 점수 평가에서만 제외.
+//           stride_mean_m / stride_sd_cm은 P5 trial-to-trial 변동성 지표로 유지 (제구 카테고리 SD만 사용).
+//           코호트 분포 갱신 (cohort_v29.js): pelvis_to_trunk_lag_ms 26.18→65.70 / trunk_to_arm_lag_ms 27.67→67.02 / shoulder_ir_vel_max 4868→2721
+//           Python(extract_uplift_scalars.py)도 동일 변경 (BBL JS 1:1 매핑 원칙)
+//   v33.11 — Theia 리포트 v0.98 디자인·포맷 이식 (점수 산식 변경 없음, UX·가독성 개선만)
+//           [근거] Theia_Pitching_Report v0.92~v0.98 인계 문서 (2026-05-06)
+//           Phase A. v0.97 모바일 가로 스크롤 + v0.98 KPI 유닛 overflow fix (index.html + app.js)
+//                  - .scroll-x-mobile · .svg-min-mannequin(720px) · .svg-min-sequence(560px) 클래스 신설
+//                  - .kpi-row + .kpi-num(clamp 22-36px) + .kpi-unit(0.4em, white-space:nowrap)
+//                  - 헤더 KPI 4종(measuredVelo / ceiling_F100 / ceiling_M100 / ceiling) kpi-row 패턴 통일
+//           Phase B. v0.92 인과 구조 — 4단계 SummaryBar (Cause↔Result↔Coaching 3카드)
+//                  - 가장 심각한 fault 1건 추출 → cause-result-grid 3카드로 즉시 진단 노출
+//                  - 톤 정리: '🚨 매우 위험 (즉시 조치)' → '⚠ 우선 보강', '즉시 조치 필요' → '점검 권장'
+//                  - 변수별 상세는 details 펼침으로 격리 (메인 가독성 확보)
+//           Phase C. v0.93 P3 패턴 — 3단계 에너지 흐름 단순화
+//                  - 메인: Primary Leak 1문장 (가장 심각 fault) + 3 KPI (C2 앞다리·C3 몸통 로딩·C5 팔/UCL)
+//                  - 6단계별 누수 상세는 details 펼침으로 격리
+//                  - .primary-leak-line · cohort cat_scores 색상 매핑(75/50/25 임계)
+//           Phase D. v0.94 P2 패턴 — 키네틱 체인 GIF + 모드별 코칭을 details 펼침으로 격리
+//                  - 메인: 출력 vs 전달 사분면 (outputTransferCardHtml) + 마네킹·단계 진단으로 즉시 결론
+//                  - 보조 컨텐츠는 사용자가 필요할 때만 펼쳐 보도록 격리
+//           산식·점수·코호트 분포 변경 없음 (D등급 변수 추가 제거 검토 결과: 진단 가치 큰 핵심 변수라 유지)
+const ALGORITHM_VERSION = 'v33.11';
+const ALGORITHM_DATE    = '2026-05-06';
 
 let CURRENT_AGE = '고교';
 let CURRENT_INPUT = { fitness: {}, mechanics: {} };
@@ -3202,7 +3241,8 @@ function renderKinematicSequenceSvg(r) {
 
   return `
     <div class="card p-3" style="background: #0a1322;">
-      <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="xMidYMid meet">
+      <div class="scroll-x-mobile"><!-- v33.11 모바일 가로 스크롤 (Theia v0.97) -->
+      <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="xMidYMid meet" class="svg-min-sequence">
         <defs>
           <filter id="curveGlow-${uid}" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="3" result="b"/>
@@ -3226,6 +3266,7 @@ function renderKinematicSequenceSvg(r) {
         ${dtBars}
         <text x="${padL + 6}" y="${padT + 14}" fill="#64748b" font-size="9" font-family="Inter">↑ 정규화 회전 속도 (이상 lag 30~60 ms 영역 음영)</text>
       </svg>
+      </div><!-- /scroll-x-mobile (v33.11) -->
       ${immatureNoteHtml}
     </div>`;
 }
@@ -3364,7 +3405,8 @@ function renderKineticChainSvg(r) {
 
   return `
     <div class="card p-3" style="background: #0b1220;">
-      <svg viewBox="0 0 800 520" width="100%" preserveAspectRatio="xMidYMid meet" style="max-height: 520px;">
+      <div class="scroll-x-mobile"><!-- v33.11 모바일 가로 스크롤 (Theia v0.97 패턴) -->
+      <svg viewBox="0 0 800 520" width="100%" preserveAspectRatio="xMidYMid meet" style="max-height: 520px;" class="svg-min-mannequin">
         <defs>
           <linearGradient id="bg-${uid}" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0" stop-color="#0b1220" stop-opacity="0"/>
@@ -3581,6 +3623,7 @@ function renderKineticChainSvg(r) {
           <text x="480" y="533" fill="#86efac" font-size="11" font-family="Inter" text-anchor="middle">모든 단계 에너지 전달 효율 양호 — 누수 미감지</text>
         </g>` : ''}
       </svg>
+      </div><!-- /scroll-x-mobile (v33.11) -->
 
       <div class="text-xs text-[var(--text-muted)] mt-2 px-2">
         <span style="color:#4ade80">●</span> 정상 단계는 라벨 없음 ·
@@ -4914,14 +4957,50 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
     const criticalLeak = faults_step3.filter(f => f.severity === 'critical').length;
     const highLeak = faults_step3.filter(f => f.severity === 'high').length;
     const summaryColor = criticalLeak > 0 ? '#dc2626' : highLeak > 0 ? '#f97316' : totalLeak > 0 ? '#eab308' : '#4ade80';
-    const summaryMsg = totalLeak === 0
-      ? '✅ 6단계 모두 정상 — 에너지가 깨끗하게 전달되고 있습니다'
-      : `⚠ ${totalLeak}개 단계에서 에너지 누출 감지 — 아래에서 원인 확인`;
+
+    // ★ v33.11 (Theia v0.93 P3 패턴) — Primary Leak 1문장 + 3 KPI 메인, 6단계 상세는 펼침
+    //   가장 심각한 fault 1건을 자연어 1문장으로 추출 (사용자가 한 줄로 핵심 진단 인지)
+    const sevOrder_p3 = { critical: 0, high: 1, medium: 2, low: 3 };
+    const sortedFaults_p3 = [...faults_step3].sort((a,b) => sevOrder_p3[a.severity] - sevOrder_p3[b.severity]);
+    const topF = sortedFaults_p3[0];
+    const primaryLeakLine = totalLeak === 0
+      ? `✅ <strong>전 단계 정상</strong> — 에너지가 깨끗하게 전달되고 있습니다.`
+      : `🎯 <strong>주요 손실 구간</strong>: <strong style="color:${summaryColor};">${STAGE_NAMES_S3[topF.stage]}</strong> 단계 — ${topF.label}` +
+        (totalLeak > 1 ? ` <span style="color:var(--text-muted);">(추가 ${totalLeak - 1}건은 펼침)</span>` : '');
+
+    // 3 KPI: Lead-leg Block (C2) · Pelvis→Trunk Transfer (C3) · Arm Load Monitor (C5)
+    const cs = r.cat_scores || {};
+    const kpiSpec = [
+      { key: 'C2_FrontLegBlock',      label: '앞다리 블록',         hint: 'Lead-leg Block — FC→BR 무릎 무너짐 여부' },
+      { key: 'C3_SeparationFormation',label: '몸통 로딩·전달',       hint: 'Pelvis→Trunk Transfer — 분리·lag·골반 회전 통합' },
+      { key: 'C5_UpperBodyTransfer',  label: '팔 에너지·UCL',       hint: 'Arm Load Monitor — 레이백·전달율·IR 속도' },
+    ];
+    const kpiHtml = kpiSpec.map(kp => {
+      const sc = cs[kp.key];
+      const scNum = (sc != null) ? Math.round(sc) : null;
+      const c = scNum == null ? 'var(--text-muted)'
+              : scNum >= 75 ? '#4ade80'
+              : scNum >= 50 ? '#60a5fa'
+              : scNum >= 25 ? '#f59e0b'
+              : '#ef4444';
+      return `<div class="card p-3" style="border-left: 3px solid ${c}; background: var(--bg-elevated);">
+        <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">${kp.label}</div>
+        <div class="kpi-row mt-1"><span class="kpi-num" style="color:${c};">${scNum ?? '—'}</span><span class="kpi-unit">/ 100</span></div>
+        <div class="text-[11px] mt-1" style="color: var(--text-muted); line-height:1.4;">${kp.hint}</div>
+      </div>`;
+    }).join('');
+
     energyFlowHtml = `
     <div class="card p-4 mb-6" style="border: 2px solid ${summaryColor}; background: ${summaryColor}08;">
       <div class="display text-base mb-3" style="color: ${summaryColor};">⚡ 3단계 · 당신의 에너지 흐름</div>
-      <div class="text-sm mb-3" style="color: ${summaryColor}; font-weight:600;">${summaryMsg}</div>
-      <div>${stageRows}</div>
+      <div class="primary-leak-line ${totalLeak === 0 ? 'is-good' : ''}">${primaryLeakLine}</div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+        ${kpiHtml}
+      </div>
+      <details class="theia-details">
+        <summary>6단계별 누수 상세 펼치기 (✓/⚠ 6 분절)</summary>
+        <div>${stageRows}</div>
+      </details>
     </div>`;
   } catch (e) { console.warn('Energy flow render error:', e); }
 
@@ -4935,7 +5014,8 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
         4: '트렁크 가속', 5: '상지 코킹·전달', 6: '릴리스 가속'
       };
       const sevColor = { critical: '#dc2626', high: '#f97316', medium: '#eab308', low: '#60a5fa' };
-      const sevLabel = { critical: '🚨 매우 위험', high: '⚠️ 높음', medium: '⚡ 중간', low: 'ℹ️ 낮음' };
+      // ★ v33.11 톤 정리 (Theia v0.92) — "매우 위험 (즉시 조치)" → "우선 보강", 프로페셔널 표현
+      const sevLabel = { critical: '⚠ 우선 보강', high: '⚠ 점검 권장', medium: '⚡ 중간', low: 'ℹ️ 낮음' };
       // 심각도 정렬
       const sevOrder = { critical: 0, high: 1, medium: 2, low: 3 };
       faults.sort((a,b) => sevOrder[a.severity] - sevOrder[b.severity]);
@@ -4972,18 +5052,55 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
       const criticalCount = faults.filter(f => f.severity === 'critical').length;
       const highCount = faults.filter(f => f.severity === 'high').length;
       const headerColor = criticalCount > 0 ? '#dc2626' : highCount > 0 ? '#f97316' : '#eab308';
+
+      // ★ v33.11 (Theia v0.92 패턴) — 1차 원인↔주요 손실 구간↔코칭 우선순위 SummaryBar
+      //   가장 심각한 fault 1건을 추출해 인과 3카드로 요약 (사용자 인지 부담 감소)
+      const STAGE_NAMES_SUM = {
+        1: '하체 드라이브', 2: '앞다리 블로킹', 3: '분리 형성',
+        4: '트렁크 가속', 5: '상지 코킹·전달', 6: '릴리스 가속'
+      };
+      const topFault = faults[0]; // 정렬됨 — 가장 심각도 높은 1건
+      const causeText  = topFault.cause || '핵심 변수 점검';
+      const resultText = `${STAGE_NAMES_SUM[topFault.stage]} 단계 · ${topFault.label}`;
+      const coachText  = topFault.coaching || '약점 보강 trial 반복';
+      const summaryBarHtml = `
+        <div class="cause-result-grid">
+          <div class="cause-result-card crc-cause">
+            <div class="crc-label">1차 원인 (Cause)</div>
+            <div class="crc-body">${causeText}</div>
+          </div>
+          <div class="cause-result-card crc-result">
+            <div class="crc-label">주요 손실 구간 (Result)</div>
+            <div class="crc-body">${resultText}</div>
+          </div>
+          <div class="cause-result-card crc-coach">
+            <div class="crc-label">코칭 우선순위 (Action)</div>
+            <div class="crc-body">${coachText}</div>
+          </div>
+        </div>`;
+
+      const tonePreface = criticalCount > 0
+        ? `<span style="color:${headerColor}; font-weight:600;">우선 보강 ${criticalCount}건 — 부상 가능성 변수 포함, 가까운 일정으로 점검·중재 권장.</span>`
+        : (highCount > 0 ? `점검 권장 ${highCount}건 — 다음 세션 중 보강 진행.` : '');
+
       faultsHtml = `<div class="card p-4 mb-6" style="border: 2px solid ${headerColor}; background: ${headerColor}08;">
         <div class="display text-base mb-2" style="color:${headerColor};">
           🔬 4단계 · 에너지 리크의 원인
         </div>
-        <div class="text-sm mb-3" style="color: var(--text-secondary);">
-          위에서 감지된 ${faults.length}개 단계의 에너지 누출 원인을 변인별로 분석합니다.
-          ${criticalCount > 0 ? `<span style="color:#dc2626; font-weight:600;">부상 위험 ${criticalCount}개 즉시 조치 필요.</span>` : ''}
+        <div class="text-sm mb-1" style="color: var(--text-secondary);">
+          감지된 ${faults.length}개 단계의 누출 변수와 인과 구조를 정리합니다.
+          ${tonePreface}
         </div>
-        ${faultRows}
-        <div class="text-[11px] mt-2" style="color:var(--text-muted);">
-          심각도: 🚨 매우 위험 (즉시 조치) → ⚠️ 높음 (우선 보강) → ⚡ 중간 → ℹ️ 낮음
-        </div>
+        ${summaryBarHtml}
+        <details class="theia-details" style="margin-top: 14px;">
+          <summary>변수별 상세 진단 펼치기 (${faults.length}건)</summary>
+          <div>
+            ${faultRows}
+            <div class="text-[11px] mt-2" style="color:var(--text-muted);">
+              심각도: ⚠ 우선 보강 → ⚠ 점검 권장 → ⚡ 중간 → ℹ️ 낮음
+            </div>
+          </div>
+        </details>
       </div>`;
     } else if (measuredVelo != null) {
       faultsHtml = '';  // Step 3에서 이미 정상 메시지 표시 — 중복 제거
@@ -5234,30 +5351,31 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
         ${measuredVelo != null ? `
         <div>
           <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">측정 구속</div>
-          <div class="display text-3xl mt-1">${measuredVelo.toFixed(1)}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
+          <div class="kpi-row mt-1"><span class="kpi-num">${measuredVelo.toFixed(1)}</span><span class="kpi-unit">km/h</span></div>
         </div>` : `
         <div>
           <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">측정 구속</div>
           <div class="display text-2xl mt-1 text-[var(--text-muted)]">미입력</div>
         </div>`}
         <!-- ★ v31.31 라벨/부연 설명 명확화 — "한 영역만 발달, 다른 영역 현재 유지" 의미 명시 -->
+        <!-- ★ v33.11 KPI 카드 unit overflow fix (Theia v0.98 패턴) — kpi-row + kpi-num + kpi-unit -->
         <div>
           <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">체력만 발달 시 잠재 구속</div>
-          <div class="display text-3xl mt-1" style="color: var(--fitness)">${r.ceiling_F100?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
+          <div class="kpi-row mt-1"><span class="kpi-num" style="color: var(--fitness)">${r.ceiling_F100?.toFixed(1) ?? '—'}</span><span class="kpi-unit">km/h</span></div>
           ${(measuredVelo != null && r.ceiling_F100 != null) ? `
             <div class="text-sm mt-1" style="color: #4ade80; font-weight:600;">+${(r.ceiling_F100 - measuredVelo).toFixed(1)} km/h</div>
             <div class="text-[10px] text-[var(--text-muted)] mt-1">체력 ${r.Fitness_Score?.toFixed(0) ?? '—'} → 100점, 메카닉 ${r.Mechanics_Score?.toFixed(0) ?? '—'}점 유지</div>` : ''}
         </div>
         <div>
           <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">메카닉만 발달 시 잠재 구속</div>
-          <div class="display text-3xl mt-1" style="color: var(--accent)">${r.ceiling_M100?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
+          <div class="kpi-row mt-1"><span class="kpi-num" style="color: var(--accent)">${r.ceiling_M100?.toFixed(1) ?? '—'}</span><span class="kpi-unit">km/h</span></div>
           ${(measuredVelo != null && r.ceiling_M100 != null) ? `
             <div class="text-sm mt-1" style="color: #4ade80; font-weight:600;">+${(r.ceiling_M100 - measuredVelo).toFixed(1)} km/h</div>
             <div class="text-[10px] text-[var(--text-muted)] mt-1">메카닉 ${r.Mechanics_Score?.toFixed(0) ?? '—'} → 100점, 체력 ${r.Fitness_Score?.toFixed(0) ?? '—'}점 유지</div>` : ''}
         </div>
         <div>
           <div class="mono text-[10px] uppercase tracking-widest text-[var(--text-muted)]">동시 발달 시 잠재 구속</div>
-          <div class="display text-3xl mt-1" style="color: var(--warn)">${r.ceiling?.toFixed(1) ?? '—'}<span class="text-sm ml-1" style="color: var(--text-muted)">km/h</span></div>
+          <div class="kpi-row mt-1"><span class="kpi-num" style="color: var(--warn)">${r.ceiling?.toFixed(1) ?? '—'}</span><span class="kpi-unit">km/h</span></div>
           ${growth != null ? `
             <div class="text-sm mt-1" style="color: #4ade80; font-weight:600;">+${growth.toFixed(1)} km/h</div>
             <div class="text-[10px] text-[var(--text-muted)] mt-1">체력 ${r.Fitness_Score?.toFixed(0) ?? '—'}·메카닉 ${r.Mechanics_Score?.toFixed(0) ?? '—'} → 모두 100점</div>` : ''}
@@ -5571,10 +5689,17 @@ function renderReportHtml(name, measuredVelo, date, r, totalFit, totalMech) {
   const _coachSessionInline = renderCoachSessionHtml(r);
   // ★ Phase 3 v33.7 — 출력 vs 전달 사분면 진단 카드 (메카닉 카드 다음, 키네틱 체인 블록 시작)
   const outputTransferCardHtml = `<div class="card p-6" id="output-transfer-card">${renderOutputTransferCardInner(r)}</div>`;
+  // ★ v33.11 (Theia v0.94 P2 패턴) — 메인은 사분면+5축 + 마네킹·단계 진단,
+  //   부가 컨텐츠(개념 설명 GIF·모드별 코칭)는 details 펼침으로 격리해 메인 가독성 확보
   const kineticChainBlock = `
     ${outputTransferCardHtml}
-    ${modeCoachingHtml}
-    ${kineticChainGifHtml}
+    <details class="theia-details">
+      <summary>📘 키네틱 체인 개념 + 모드별 코칭 가이드 (펼치기)</summary>
+      <div>
+        ${kineticChainGifHtml}
+        ${modeCoachingHtml}
+      </div>
+    </details>
     ${_coachSessionInline}
     ${energyFlowHtml}
     ${faultsHtml}
