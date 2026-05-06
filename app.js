@@ -207,7 +207,38 @@
 //                  - 홍주환 arm 1578 → 100점 → 48점 (Pro 1480 초과 + 부상 위험 감지)
 //                  - 정예준·김강연 (Pro 정중앙) → 90+점 elite 점수 유지
 //           v33.14 LITERATURE_OVERRIDE 재등록은 그대로 유지. 이번엔 Gaussian 함수 형태만 변경.
-const ALGORITHM_VERSION = 'v33.15';
+//   v33.17 — H1→H2 발달 신호 SD 변수 5종 신규 추가 (BBL 90명 매칭 분석, 2026-05-06)
+//           [근거] 사용자 통찰: "h1→h2 속도 향상이 많이 된 선수들의 특성(타이밍 일관성 등)을 메카닉 평가에 반영"
+//           BBL 코호트 90명 H1·H2 매칭 분석 (peak_arm_av Δ로 발달 그룹 분류, |Δ|>400 outlier 제거 후 n=83):
+//             - 향상 그룹(상위 1/3, 평균 Δarm +184) vs 정체 그룹(하위 1/3, 평균 Δarm -133)
+//             - 효과크기 큰 발달 신호 변수 식별 (Cohen's d 0.5~1.1)
+//           추가된 SD 변수 5종 (EXTRA_VAR_SCORING + LITERATURE_OVERRIDE):
+//             1. pelvis_to_trunk_lag_ms_sd (sigma 15) — H1 d=+0.51 ★ 가장 강력한 발달 신호
+//                lag 자체도 d=+0.92 (mean), 발달 시 lag 단축 (Δ d=-1.09)
+//             2. trunk_to_arm_lag_ms_sd (sigma 18) — 몸통→팔 타이밍 일관성
+//             3. peak_trunk_av_sd (sigma 30) — Δ d=-0.72 (향상 시 일관성↑)
+//             4. pelvis_trunk_speedup_sd (sigma 0.06) — Δ d=-0.70
+//             5. lead_knee_ext_change_fc_to_br_sd (sigma 4) — 사용자 요청, H1 d=-0.66
+//           sigma 산출: 코호트 q75 도달 시 약 70점 기준 (q75 ≈ mean ± 1σ for lower-better)
+//           효과: 발달 잠재력 신호(타이밍·일관성) 변수 카드에서 평가 가능. 코칭 우선순위 산출 시 참조
+//           카테고리 매핑(P 시리즈 통합)은 v33.18+ 향후 작업 (cohort_v29.js 갱신 필요)
+//   v33.16 — Trunk sigma 126 → 180 완화 (사용자 통찰 + 9선수 통합 검증, 2026-05-06)
+//           [근거 1] 사용자 통찰: 정예준(메카닉 최고) trunk 706 → 50점은 부적절
+//                  - Uplift 수직축 회전 측정 오차 가능성
+//                  - 느린 trunk가 팔 전달 효율적 타이밍 전략일 수 있음 (정예준: 706 + speedup 1.46 + X-Factor 40°)
+//           [근거 2] 9선수 통합 비교 (정예준·김강연·박명균·정지원·김진하·정원진·홍주환·이성민·이지환)
+//                  - Elite 4명 vs 폭주 3명 평균: Trunk 91 vs 98 — 차별력 거의 없음 (오히려 역전)
+//                  - 진짜 elite 차별 변수: X-Factor (40° vs 27°, +13°), Speed Gain (93 vs 48, +45)
+//                  - Trunk 단독 점수는 비중 낮춰도 카테고리 종합에서 자연 흡수
+//           조치: peak_trunk_av·max_trunk_twist_vel_dps sigma 126 → 180 (Pro range 폭의 ±2.1σ 정도로 완화)
+//           효과:
+//                  - 정예준 trunk 706: 50점 → 71점 (메카닉 최고 합리화)
+//                  - 김진하 trunk 680: 38점 → 62점 (Trunk 약점 인정하되 너무 가혹 X)
+//                  - 박명균 trunk 790: 88점 → 94점 (정상 elite 자연 회복)
+//                  - 다른 정상 케이스(800~870): 거의 영향 없음 (이미 95+점)
+//           검증: 9선수 BBL CSV vs Uplift 측정 일관성 — 박명균 0.3% / 이성민 3.7% / 정지원 4% 일치
+//                 시스템 일관성 확인. 이지환은 다른 세션 컨디션 차이로 BBL 1801 vs Uplift 1052
+const ALGORITHM_VERSION = 'v33.17';
 const ALGORITHM_DATE    = '2026-05-06';
 
 let CURRENT_AGE = '고교';
