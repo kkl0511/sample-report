@@ -207,6 +207,29 @@
 //                  - 홍주환 arm 1578 → 100점 → 48점 (Pro 1480 초과 + 부상 위험 감지)
 //                  - 정예준·김강연 (Pro 정중앙) → 90+점 elite 점수 유지
 //           v33.14 LITERATURE_OVERRIDE 재등록은 그대로 유지. 이번엔 Gaussian 함수 형태만 변경.
+//   v33.18 — H2 elite 차별 SD 변수 5종 신규 추가 (BBL 91명 상위 20% vs 하위 20%, 2026-05-06)
+//           [근거] 사용자 통찰: "H2 기준 구속 상위/하위 20% 차이 특성도 메카닉 평가에 반영"
+//           BBL 91명 H2 시점 분석 (peak_arm_av 기준, IQR outlier 제거):
+//             - 상위 20% (n=18, 평균 arm 1575 °/s) vs 하위 20% (n=18, 평균 arm 1088 °/s)
+//           Elite 출력 차별 (mean d 큰 순):
+//             - elbow_ext_vel_max_mean d=+1.48 ★★ (상위 1637 vs 하위 1192)
+//             - peak_trunk_av_mean d=+1.37 ★★ (상위 801 vs 하위 668)
+//             - arm_to_forearm_speedup_mean d=+1.25 ★★ (상위 0.84 vs 하위 0.51 — 팔→전완 증폭 elite 핵심)
+//             - pelvis_trunk_speedup_mean d=+1.15 ★ (이미 v33.14에서 평가)
+//           Elite 일관성 차별 (SD 거의 모든 변수에서 상위가 우수):
+//             - max_x_factor_sd d=-0.68 (상위 1.86° vs 하위 4.01° ★ 분리 일관성)
+//             - trunk_tilt_at_br_trial_sd d=-0.65 (상위 1.24° vs 하위 2.83°)
+//             - wrist_release_speed_sd d=-0.62 (상위 0.52 vs 하위 1.61)
+//             - trunk_flex_vel_max_sd d=-0.60 (상위 18 vs 하위 58)
+//             - arm_trunk_speedup_sd d=-0.57 (상위 0.12 vs 하위 0.41)
+//           추가된 SD 5종 — sigma 코호트 q75 기준 약 70점 도달
+//             1. max_x_factor_sd (sigma 3) — 분리 일관성
+//             2. trunk_tilt_at_br_trial_sd (sigma 1.5) — 릴리스 자세 일관성
+//             3. wrist_release_speed_sd (sigma 0.7) — 손목 일관성
+//             4. trunk_flex_vel_max_sd (sigma 25) — 몸통 굴곡 일관성
+//             5. arm_trunk_speedup_sd (sigma 0.18) — speedup 일관성
+//           효과: v33.17 발달 신호 + v33.18 elite 차별 통합 → "안정적 메카닉" 핵심 특성 평가 강화
+//           기존 elbow_ext_vel_max·arm_to_forearm_speedup은 이미 코호트 percentile로 평가 중 (LITERATURE_OVERRIDE 등록됨)
 //   v33.17 — H1→H2 발달 신호 SD 변수 5종 신규 추가 (BBL 90명 매칭 분석, 2026-05-06)
 //           [근거] 사용자 통찰: "h1→h2 속도 향상이 많이 된 선수들의 특성(타이밍 일관성 등)을 메카닉 평가에 반영"
 //           BBL 코호트 90명 H1·H2 매칭 분석 (peak_arm_av Δ로 발달 그룹 분류, |Δ|>400 outlier 제거 후 n=83):
@@ -238,7 +261,7 @@
 //                  - 다른 정상 케이스(800~870): 거의 영향 없음 (이미 95+점)
 //           검증: 9선수 BBL CSV vs Uplift 측정 일관성 — 박명균 0.3% / 이성민 3.7% / 정지원 4% 일치
 //                 시스템 일관성 확인. 이지환은 다른 세션 컨디션 차이로 BBL 1801 vs Uplift 1052
-const ALGORITHM_VERSION = 'v33.17';
+const ALGORITHM_VERSION = 'v33.18';
 const ALGORITHM_DATE    = '2026-05-06';
 
 let CURRENT_AGE = '고교';
