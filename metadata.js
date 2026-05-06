@@ -30,15 +30,9 @@ const KINETIC_FAULTS = [
     coaching: 'Hip hinge 강조, drive 다리 신전 폭발력',
     drills: ['Hip airplane 3×6', 'Single-leg RDL 3×8', 'Romanian deadlift'],
   },
-  {
-    id: 'ShortStride', stage: 1, severity: 'low',
-    label: '스트라이드 짧음 (Short Stride)',
-    detect: m => m.stride_norm_height != null && m.stride_norm_height < 0.7,
-    cause: 'drive 종합 약함 또는 부상·균형 두려움',
-    coaching: '스트라이드 길이 70~90% 신장 목표, drive 길게',
-    drills: ['스트라이드 마커 drill', 'Plyo 점프', 'Sled push'],
-  },
   // ── 단계 2 (앞다리 블로킹) ──
+  // [v33.10] ShortStride fault 제거 — Theia/Qualisys 비교에서 stride_norm_height 정의 불일치 (ICC <0.13)
+  //   BBL Uplift KH→FC ankle 3D 거리 vs Theia stride_length 정의 본질 차이로 신뢰 어려움
   {
     id: 'LeadKneeCollapse', stage: 2, severity: 'high',
     label: '앞무릎 무너짐 ⚠ (Lead Knee Collapse)',
@@ -79,26 +73,10 @@ const KINETIC_FAULTS = [
     coaching: 'FC 시 closed posture 유지, 골반 먼저 분리',
     drills: ['FC 거울 hold drill 3×30s', '비디오 cue', 'Hip dissociation drill'],
   },
-  {
-    id: 'InsufficientCounterRot', stage: 3, severity: 'medium',
-    label: '카운터 로테이션 부족 (Insufficient Counter-Rotation)',
-    detect: m => m.peak_torso_counter_rot != null && m.peak_torso_counter_rot < 25,
-    cause: 'KH 시 어깨 추가 회전 안 함 → load 부족',
-    coaching: 'KH 시 글러브 어깨 추가 비틀림 cue',
-    drills: ['Hip-shoulder dissociation 3×8', 'KH pause 3초'],
-  },
-  {
-    id: 'OpenFrontSide', stage: 3, severity: 'low',
-    label: '글러브 사이드 열림 (Open Front Side)',
-    // ★ v30.27 임계값 재조정 (2026-05-03): 134명 코호트 Q75 기반
-    //   v30.26 이전: > 30° (Driveline 외국 표준) → 48.2% 양성 — 한국 코호트에 비현실
-    //   v30.27: > 40° (코호트 Q75) → 23.1% 양성 — 상위 25%만 경고
-    detect: m => m.shoulder_h_abd_at_fc != null && m.shoulder_h_abd_at_fc > 40,
-    cause: 'glove side 약함 또는 cue 부족',
-    coaching: 'glove side hold cue, 글러브 안 무너지게',
-    drills: ['Glove-side wall throw', 'Anti-rotation press'],
-  },
   // ── 단계 4 (트렁크 가속) ──
+  // [v33.10] InsufficientCounterRot · OpenFrontSide fault 제거
+  //   - peak_torso_counter_rot: BBL [KH-50, FC] max-min 진폭 vs Theia 정의 차이 (BBL 70° vs Theia 38°)
+  //   - shoulder_h_abd_at_fc: BBL -horizontal_adduction(횡단면) vs Theia shoulder_abd(전두면) — 평면 자체 다름
   {
     id: 'LateTrunkRotation', stage: 4, severity: 'medium',
     label: '몸통 회전 늦음 (Late Trunk Rotation)',
@@ -437,12 +415,12 @@ const EXTRA_VAR_SCORING = {
   // C4 앞다리 블로킹 — 무릎 신전량은 음수(무너짐)부터 양수(정상)까지 polarity higher
   'lead_knee_ext_change_fc_to_br':{ min: -10, max: 0, polarity: 'higher' },   // ° — 0° 이상(굴곡 유지/신전)=100점, -10°에서 0점, -10°↓=무릎 무너짐. 2026-05-03 step 변경
   // C1 — Phase2 자세 변수
-  'stride_norm_height':           { min: 0.55, max: 0.95, polarity: 'higher' }, // 신장 정규화 (HS 더 짧음)
+  // [v33.10] stride_norm_height 제거 — Theia 비교에서 정의 본질 차이 (ICC <0.13)
   'trunk_forward_tilt_at_fc':     { optimal: -5, sigma: 15 },                   // ° — 직립(0°) ~ 약간 뒤(-15°) 이상적, 앞으로 굽는 건 페널티 (2026-05-03 보정)
   // ── Driveline 5각형 추가 변수 — HS 한국 현실 반영 ──
   'elbow_ext_vel_max':            { min: 1200, max: 2800, polarity: 'higher' }, // °/s — Driveline elite 2630, HS는 더 낮음
   'shoulder_ir_vel_max':          { min: 1500, max: 4500, polarity: 'higher' }, // °/s — HS elite 4700, 평균 2500-3500
-  'peak_torso_counter_rot':       { min: 15,   max: 60,   polarity: 'higher', useAbs: true }, // ° — elite -37
+  // [v33.10] peak_torso_counter_rot 제거 — Theia 비교에서 정의 차이 (BBL 70° vs Theia 38°)
   'torso_side_bend_at_mer':       { optimal: 25, sigma: 12, useAbs: true },    // ° — elite 25
   'torso_rotation_at_br':         { optimal: 100, sigma: 30, useAbs: true },   // ° — elite 111 (HS 더 짧음)
   // 'elbow_flexion_at_fp' 제거 (v31.25, 사용자 요청)
@@ -507,7 +485,7 @@ const LITERATURE_OVERRIDE = new Set([
   'trunk_rotation_at_fc',
   'hip_shoulder_sep_at_fc',
   'max_shoulder_ER_deg',           // 부상 모니터링 (180° elite, 200°+ valgus 위험)
-  'shoulder_h_abd_at_fc',
+  // [v33.10] shoulder_h_abd_at_fc 제거 — BBL은 횡단면(-horizontal_adduction), Theia는 전두면 외전 — 평면 자체 다름
   'arm_slot_mean_deg',
   // 에너지 전달/효율 (BBL 2026-05-03 정의)
   // 'arm_trunk_speedup',     // → percentile (v33.5, n=186)
@@ -566,8 +544,7 @@ const LITERATURE_OVERRIDE = new Set([
 // ════════════════════════════════════════════════════════════════════
 const PLAUSIBLE_RANGES = {
   // ── 거리/길이
-  'stride_norm_height':           { min: 0.30, max: 1.10 },     // 신장 정규화
-  'stride_mean_m':                { min: 0.5,  max: 2.5 },      // m
+  // [v33.10] stride_norm_height · stride_mean_m plausible 제거 — Theia 비교 결과 정의 본질 차이
   'release_height_m':             { min: 1.0,  max: 2.5 },      // m
   // ── 일관성 SD 변수 (max만 — 이보다 크면 측정 오류)
   'stride_sd_cm':                 { max: 30 },                  // cm
@@ -586,10 +563,10 @@ const PLAUSIBLE_RANGES = {
   'torso_side_bend_at_mer':       { min: -10, max: 70 },        // °
   'torso_rotation_at_br':         { min: 0,   max: 200 },       // °
   // 'elbow_flexion_at_fp' 제거 (v31.25, 사용자 요청)
-  'peak_torso_counter_rot':       { min: 0,   max: 90 },        // ° (절댓값)
+  // [v33.10] peak_torso_counter_rot plausible 제거 — Theia 비교 결과 정의 차이
   'arm_slot_mean_deg':            { min: 0,   max: 90 },        // °
   'max_shoulder_ER_deg':          { min: 100, max: 240 },       // °
-  'shoulder_h_abd_at_fc':         { min: -30, max: 60 },        // °
+  // [v33.10] shoulder_h_abd_at_fc plausible 제거 — Theia 비교 결과 평면 차이
   // ── 메카닉 속도
   'hip_ir_vel_max_drive':         { min: 50,  max: 1500 },      // °/s
   'max_cog_velo':                 { min: 0.3, max: 6 },         // m/s
@@ -696,7 +673,7 @@ const OUTPUT_VS_TRANSFER = {
       'proper_sequence_binary',          // 시퀀스 정확도 (P-T-A)
       'peak_x_factor',                   // 분리 저장
       'hip_shoulder_sep_at_fc',          // FC 시점 분리 자세
-      'peak_torso_counter_rot',          // 와인드업 저장
+      // [v33.10] peak_torso_counter_rot 제거 — Theia 비교 결과 정의 차이 (BBL 70° vs Theia 38°)
       'stride_to_pelvis_lag_ms',         // ★ FC→peakPelvis 타이밍
       'x_factor_to_peak_pelvis_lag_ms',  // ★ 분리저장→골반회전 타이밍 (SSC)
     ],
@@ -743,7 +720,7 @@ const OUTPUT_VS_TRANSFER_VAR_META = {
   'proper_sequence_binary':       { name: '시퀀스 정확도',            unit: '0/1',  hint: 'Pelvis→Trunk→Arm 순서 준수 여부. 0이면 시퀀스 오류' },
   'peak_x_factor':                { name: 'X-factor (분리 저장)',     unit: '°',    hint: 'KH→FC 동안 최대 골반-몸통 분리각. 클수록 SSC 저장량 많음' },
   'hip_shoulder_sep_at_fc':       { name: 'FC 시점 hip-shoulder 분리',unit: '°',    hint: 'FC 도달 시점의 분리 자세' },
-  'peak_torso_counter_rot':       { name: '와인드업 counter rotation',unit: '°',    hint: 'KH→FC 동안 trunk가 뒤로 회전한 max — 저장 자세' },
+  // [v33.10] peak_torso_counter_rot VAR_META 제거
   'stride_to_pelvis_lag_ms':      { name: '★ FC→peakPelvis 시간차',   unit: 'ms',   hint: '★ 하체 contact→골반 회전 시작 타이밍. 절댓값 작을수록 좋음 (음수=일찍 열림 flying open, 양수=지연)' },
   'x_factor_to_peak_pelvis_lag_ms':{ name: '★ X-factor max→peakPelvis 시간차', unit: 'ms', hint: '★ SSC 활용 타이밍. 0~120ms ideal — 분리 저장 후 빠르게 골반 회전' },
   // ── 부상(INJURY) — 3변수 ──
