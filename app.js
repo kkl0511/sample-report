@@ -1944,6 +1944,19 @@ function handleMultipleUpliftFiles(files) {
     const scalarsList = valid.map(v => v.scalars);
     const loaded = applyMultiTrialUplift(scalarsList);
 
+    // ★ 2026-05-07 — 다중 trial events를 영상 매칭용 전역에 저장
+    CURRENT_UPLIFT_TRIAL_EVENTS = valid.map((v, i) => {
+      const meta = (v.scalars && v.scalars.meta) || {};
+      const fps = meta.fps || 240;
+      return _makeTrialEventEntry(i, v.name, fps, v.scalars && v.scalars.events, meta.captureDate);
+    });
+    // 영상이 이미 선택돼 있으면 파일명으로 자동 매칭, 없으면 0번
+    CURRENT_UPLIFT_SELECTED_TRIAL = CURRENT_VIDEO_FILE
+      ? _autoMatchTrialByFilename(CURRENT_VIDEO_FILE.name)
+      : 0;
+    renderTrialSelector();
+    autofillVideoEventsFromUplift({ overwrite: true });
+
     if (Object.keys(loaded).length === 0) {
       alert('변수 추출에 실패했습니다.');
       return;
@@ -2433,17 +2446,14 @@ function processUpliftCsv(header, headerNorm, lines, type) {
   hidePlayerSelector('mechanics');
 
   // ★ 2026-05-07 — Uplift 이벤트 시간을 전역에 저장 (영상 입력란 자동 채움용)
-  //   frame은 trial 기준 0부터 — fps로 나누면 영상 시작 0초 기준 시간이 됨
-  //   영상이 trial 시작 frame부터 정확히 시작했다는 가정 (실제 운영도 그렇게 trim)
-  CURRENT_UPLIFT_EVENTS = {
-    fps,
-    kh_time:  events.kh  != null ? events.kh  / fps : null,
-    fc_time:  events.fc  != null ? events.fc  / fps : null,
-    mer_time: events.mer != null ? events.mer / fps : null,
-    br_time:  events.br  != null ? events.br  / fps : null,
-  };
-  // 영상 입력 UI에 자동 채움 (UI가 페이지에 있으면 입력란 값 + fps + 상태 메시지 갱신)
-  if (typeof autofillVideoEventsFromUplift === 'function') autofillVideoEventsFromUplift();
+  //   단일 file = 단일 trial — CURRENT_UPLIFT_TRIAL_EVENTS 배열에 1개 entry로 저장
+  if (typeof _makeTrialEventEntry === 'function') {
+    const filename = (window._lastUpliftFilename || 'uplift.csv');
+    CURRENT_UPLIFT_TRIAL_EVENTS = [_makeTrialEventEntry(0, filename, fps, events, captureDate)];
+    CURRENT_UPLIFT_SELECTED_TRIAL = 0;
+    if (typeof renderTrialSelector === 'function') renderTrialSelector();
+    if (typeof autofillVideoEventsFromUplift === 'function') autofillVideoEventsFromUplift({ overwrite: true });
+  }
 
   const handLabel = armSide === 'left' ? '좌투' : '우투';
   const eventsLabel = `KH=${events.kh ?? '?'} · FC=${events.fc ?? '?'} · MER=${events.mer ?? '?'} · BR=${events.br ?? '?'}`;
@@ -4563,27 +4573,106 @@ function toggleArmSide() {
 // ════════════════════════════════════════════════════════════════════
 // 영상 입력 헬퍼 — v2 P3 player + P6 정지 frame 4장 자동 캡처 (2026-05-07)
 //   knee_high / FC / MER / BR — Uplift CSV 이벤트 시간 자동 추출 + 영상 frame 캡처
+//   ★ 다중 trial 지원: 영상이 어느 trial인지 사용자가 선택 (자동 파일명 매칭 시도)
 // ════════════════════════════════════════════════════════════════════
 let CURRENT_VIDEO_FILE = null;         // 선택된 File 객체
 let CURRENT_VIDEO_OBJECT_URL = null;   // createObjectURL 결과 (해제 추적)
-let CURRENT_UPLIFT_EVENTS = null;      // Uplift CSV에서 추출한 이벤트 시간 { fps, kh_time, fc_time, mer_time, br_time }
+let CURRENT_UPLIFT_TRIAL_EVENTS = [];  // [{ index, filename, captureDate, fps, events:{kh,fc,mer,br}, eventTimes:{...} }, ...]
+let CURRENT_UPLIFT_SELECTED_TRIAL = 0; // 영상에 매칭된 trial 인덱스
+
+// Uplift trial 메타에서 trial events 객체 빌드 (handleMultipleUpliftFiles + processUpliftCsv 공통)
+function _makeTrialEventEntry(index, filename, fps, events, captureDate) {
+  const e = events || {};
+  return {
+    index, filename, fps, captureDate,
+    events: { kh: e.kh ?? null, fc: e.fc ?? null, mer: e.mer ?? null, br: e.br ?? null },
+    eventTimes: {
+      kh_time:  e.kh  != null ? e.kh  / fps : null,
+      fc_time:  e.fc  != null ? e.fc  / fps : null,
+      mer_time: e.mer != null ? e.mer / fps : null,
+      br_time:  e.br  != null ? e.br  / fps : null,
+    },
+  };
+}
+
+// Trial selector UI 렌더 — Step 3.5에 trial 드롭다운 표시
+function renderTrialSelector() {
+  const wrap = document.getElementById('player-video-trial-wrap');
+  const sel  = document.getElementById('player-video-trial-select');
+  if (!wrap || !sel) return;
+
+  if (CURRENT_UPLIFT_TRIAL_EVENTS.length <= 1) {
+    // 단일 trial: 드롭다운 숨김, 값은 0으로 고정
+    wrap.classList.add('hidden');
+    return;
+  }
+
+  // 다중 trial: 드롭다운 채우기
+  wrap.classList.remove('hidden');
+  sel.innerHTML = CURRENT_UPLIFT_TRIAL_EVENTS.map((t, i) => {
+    const t1 = t.eventTimes;
+    const summary = ['kh','fc','mer','br'].map(k => {
+      const v = t1[k + '_time'];
+      return v != null ? `${k.toUpperCase()}=${v.toFixed(2)}s` : `${k.toUpperCase()}=?`;
+    }).join(' · ');
+    return `<option value="${i}">Trial ${i+1} — ${escapeHtmlSafe(t.filename || 'unknown')} (${summary})</option>`;
+  }).join('');
+  sel.value = String(CURRENT_UPLIFT_SELECTED_TRIAL);
+}
+
+// 영상 파일명과 trial 파일명을 매칭 (숫자 매칭 우선, 부분 문자열 매칭 fallback)
+function _autoMatchTrialByFilename(videoFilename) {
+  if (!videoFilename || CURRENT_UPLIFT_TRIAL_EVENTS.length === 0) return 0;
+  const vname = videoFilename.toLowerCase().replace(/\.[^.]+$/, '');  // 확장자 제거
+  // 1) 영상명에 숫자 N이 있으면 trial N (1-based) 매칭
+  const numMatch = vname.match(/\d+/);
+  if (numMatch) {
+    const n = parseInt(numMatch[0], 10);
+    if (n >= 1 && n <= CURRENT_UPLIFT_TRIAL_EVENTS.length) return n - 1;
+  }
+  // 2) trial 파일명이 영상명에 부분 포함, 또는 그 반대
+  for (let i = 0; i < CURRENT_UPLIFT_TRIAL_EVENTS.length; i++) {
+    const tname = (CURRENT_UPLIFT_TRIAL_EVENTS[i].filename || '').toLowerCase().replace(/\.[^.]+$/, '');
+    if (tname && (vname.includes(tname) || tname.includes(vname))) return i;
+  }
+  return 0;
+}
+
+// HTML escape (이미 다른 곳에 있을 수 있어 안전한 별칭)
+function escapeHtmlSafe(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+// 사용자가 trial 드롭다운을 변경했을 때
+function onTrialSelectChange(event) {
+  CURRENT_UPLIFT_SELECTED_TRIAL = parseInt(event.target.value, 10) || 0;
+  // 4 timestamp 입력란을 새 trial 값으로 강제 갱신 (사용자 입력 덮어쓰기)
+  autofillVideoEventsFromUplift({ overwrite: true });
+}
 
 // Uplift 이벤트 시간을 영상 입력 UI에 자동 채움
-function autofillVideoEventsFromUplift() {
-  if (!CURRENT_UPLIFT_EVENTS) return;
-  const ev = CURRENT_UPLIFT_EVENTS;
-  const setIfEmpty = (id, val) => {
+//   opts.overwrite=true 면 사용자 입력값도 덮어씀 (trial 변경 시)
+//   기본값 false: 빈 칸만 채움 (CSV 업로드 직후)
+function autofillVideoEventsFromUplift(opts) {
+  if (CURRENT_UPLIFT_TRIAL_EVENTS.length === 0) return;
+  const idx = Math.min(CURRENT_UPLIFT_SELECTED_TRIAL, CURRENT_UPLIFT_TRIAL_EVENTS.length - 1);
+  const trial = CURRENT_UPLIFT_TRIAL_EVENTS[idx];
+  const ev = trial.eventTimes;
+  const overwrite = !!(opts && opts.overwrite);
+  const setVal = (id, val) => {
     const el = document.getElementById(id);
     if (!el) return;
-    if (el.value === '' || el.value == null) {  // 사용자가 이미 입력한 값은 보존
+    if (overwrite || el.value === '' || el.value == null) {
       if (val != null && !isNaN(val)) el.value = val.toFixed(2);
+      else if (overwrite) el.value = '';
     }
   };
-  setIfEmpty('player-video-fps',     ev.fps);
-  setIfEmpty('player-video-t-kh',    ev.kh_time);
-  setIfEmpty('player-video-t-fc',    ev.fc_time);
-  setIfEmpty('player-video-t-mer',   ev.mer_time);
-  setIfEmpty('player-video-t-br',    ev.br_time);
+  setVal('player-video-fps',  trial.fps);
+  setVal('player-video-t-kh', ev.kh_time);
+  setVal('player-video-t-fc', ev.fc_time);
+  setVal('player-video-t-mer',ev.mer_time);
+  setVal('player-video-t-br', ev.br_time);
   const status = document.getElementById('player-video-uplift-status');
   if (status) {
     const filled = [
@@ -4593,7 +4682,10 @@ function autofillVideoEventsFromUplift() {
       ev.br_time  != null ? 'BR'  : null,
     ].filter(Boolean);
     if (filled.length > 0) {
-      status.innerHTML = `✓ Uplift CSV에서 이벤트 시점 자동 입력: <span class="font-mono">${filled.join(' / ')}</span> · fps ${ev.fps.toFixed(0)}`;
+      const trialLabel = CURRENT_UPLIFT_TRIAL_EVENTS.length > 1
+        ? `Trial ${idx+1}/${CURRENT_UPLIFT_TRIAL_EVENTS.length} (${trial.filename || 'unknown'})`
+        : '단일 trial';
+      status.innerHTML = `✓ Uplift CSV에서 이벤트 시점 자동 입력 — <b>${escapeHtmlSafe(trialLabel)}</b> · ${filled.join(' / ')} · fps ${trial.fps.toFixed(0)}`;
       status.classList.remove('hidden');
     }
   }
@@ -4607,6 +4699,12 @@ function onVideoFileSelected(event) {
   CURRENT_VIDEO_OBJECT_URL = URL.createObjectURL(file);
   const info = document.getElementById('player-video-info');
   if (info) info.textContent = `✓ ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+  // 다중 trial이 이미 로드돼 있으면 영상 파일명으로 자동 trial 매칭 시도
+  if (CURRENT_UPLIFT_TRIAL_EVENTS.length > 1) {
+    CURRENT_UPLIFT_SELECTED_TRIAL = _autoMatchTrialByFilename(file.name);
+    renderTrialSelector();
+    autofillVideoEventsFromUplift({ overwrite: true });
+  }
 }
 
 function clearVideoInput() {

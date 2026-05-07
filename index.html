@@ -905,6 +905,13 @@
       </div>
     </div>
 
+    <!-- 다중 trial 매칭: 영상이 어느 trial인지 선택 (단일 trial이면 숨김) -->
+    <div id="player-video-trial-wrap" class="hidden mt-4">
+      <label class="text-xs text-[var(--text-muted)] block mb-1">📌 이 영상이 어느 trial인지 선택 (Uplift CSV 다중 업로드 시)</label>
+      <select class="input-field" id="player-video-trial-select" onchange="onTrialSelectChange(event)"></select>
+      <div class="text-[11px] text-[var(--text-muted)] mt-1">💡 영상 파일명에 trial 번호 또는 CSV 파일명이 포함되면 자동 선택됩니다. 빗나갔으면 직접 선택.</div>
+    </div>
+
     <div class="text-xs text-[var(--text-muted)] mt-4 mb-2">⏱ 4 이벤트 시점 (초 단위, 영상 시작 0.00s 기준)</div>
     <div id="player-video-uplift-status" class="hidden text-[11px] text-[var(--good)] mb-2"></div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
