@@ -905,23 +905,28 @@
       </div>
     </div>
 
-    <div class="text-xs text-[var(--text-muted)] mt-4 mb-2">⏱ 3 이벤트 시점 (초 단위, 영상 시작 0.00s 기준)</div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div class="text-xs text-[var(--text-muted)] mt-4 mb-2">⏱ 4 이벤트 시점 (초 단위, 영상 시작 0.00s 기준)</div>
+    <div id="player-video-uplift-status" class="hidden text-[11px] text-[var(--good)] mb-2"></div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div>
-        <label class="text-xs text-[var(--text-muted)] block mb-1">① 드라이브 시작</label>
-        <input type="number" class="input-field" id="player-video-t-drive" placeholder="예: 0.30" step="0.01" min="0">
+        <label class="text-xs text-[var(--text-muted)] block mb-1">① Knee High</label>
+        <input type="number" class="input-field" id="player-video-t-kh" placeholder="예: 0.30" step="0.01" min="0">
       </div>
       <div>
-        <label class="text-xs text-[var(--text-muted)] block mb-1">② 앞발 착지 (FC)</label>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">② FC (앞발 착지)</label>
         <input type="number" class="input-field" id="player-video-t-fc" placeholder="예: 1.10" step="0.01" min="0">
       </div>
       <div>
-        <label class="text-xs text-[var(--text-muted)] block mb-1">③ 어깨 최대 젖혀짐 (MER)</label>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">③ MER</label>
         <input type="number" class="input-field" id="player-video-t-mer" placeholder="예: 1.40" step="0.01" min="0">
+      </div>
+      <div>
+        <label class="text-xs text-[var(--text-muted)] block mb-1">④ BR (공 놓기)</label>
+        <input type="number" class="input-field" id="player-video-t-br" placeholder="예: 1.55" step="0.01" min="0">
       </div>
     </div>
     <div class="text-[11px] text-[var(--text-muted)] mt-3">
-      💡 시점은 영상을 직접 재생해보고 해당 순간의 시간을 입력하세요. 영상 없이 리포트만 보려면 비워두면 됩니다.
+      💡 Uplift CSV를 업로드하면 4 이벤트 시점이 자동으로 입력됩니다. 수동 입력도 가능합니다 (영상 없으면 비워두기).
     </div>
   </section>
 

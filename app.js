@@ -2432,6 +2432,19 @@ function processUpliftCsv(header, headerNorm, lines, type) {
   WIDE_CSV_CACHE.mechanics = null;
   hidePlayerSelector('mechanics');
 
+  // ★ 2026-05-07 — Uplift 이벤트 시간을 전역에 저장 (영상 입력란 자동 채움용)
+  //   frame은 trial 기준 0부터 — fps로 나누면 영상 시작 0초 기준 시간이 됨
+  //   영상이 trial 시작 frame부터 정확히 시작했다는 가정 (실제 운영도 그렇게 trim)
+  CURRENT_UPLIFT_EVENTS = {
+    fps,
+    kh_time:  events.kh  != null ? events.kh  / fps : null,
+    fc_time:  events.fc  != null ? events.fc  / fps : null,
+    mer_time: events.mer != null ? events.mer / fps : null,
+    br_time:  events.br  != null ? events.br  / fps : null,
+  };
+  // 영상 입력 UI에 자동 채움 (UI가 페이지에 있으면 입력란 값 + fps + 상태 메시지 갱신)
+  if (typeof autofillVideoEventsFromUplift === 'function') autofillVideoEventsFromUplift();
+
   const handLabel = armSide === 'left' ? '좌투' : '우투';
   const eventsLabel = `KH=${events.kh ?? '?'} · FC=${events.fc ?? '?'} · MER=${events.mer ?? '?'} · BR=${events.br ?? '?'}`;
   renderUploadStatus('mechanics', {
@@ -4548,10 +4561,43 @@ function toggleArmSide() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// 영상 입력 헬퍼 — v2 P3 player + P6 정지 frame 3장 자동 캡처 (2026-05-07)
+// 영상 입력 헬퍼 — v2 P3 player + P6 정지 frame 4장 자동 캡처 (2026-05-07)
+//   knee_high / FC / MER / BR — Uplift CSV 이벤트 시간 자동 추출 + 영상 frame 캡처
 // ════════════════════════════════════════════════════════════════════
-let CURRENT_VIDEO_FILE = null;        // 선택된 File 객체
-let CURRENT_VIDEO_OBJECT_URL = null;  // createObjectURL 결과 (해제 추적)
+let CURRENT_VIDEO_FILE = null;         // 선택된 File 객체
+let CURRENT_VIDEO_OBJECT_URL = null;   // createObjectURL 결과 (해제 추적)
+let CURRENT_UPLIFT_EVENTS = null;      // Uplift CSV에서 추출한 이벤트 시간 { fps, kh_time, fc_time, mer_time, br_time }
+
+// Uplift 이벤트 시간을 영상 입력 UI에 자동 채움
+function autofillVideoEventsFromUplift() {
+  if (!CURRENT_UPLIFT_EVENTS) return;
+  const ev = CURRENT_UPLIFT_EVENTS;
+  const setIfEmpty = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.value === '' || el.value == null) {  // 사용자가 이미 입력한 값은 보존
+      if (val != null && !isNaN(val)) el.value = val.toFixed(2);
+    }
+  };
+  setIfEmpty('player-video-fps',     ev.fps);
+  setIfEmpty('player-video-t-kh',    ev.kh_time);
+  setIfEmpty('player-video-t-fc',    ev.fc_time);
+  setIfEmpty('player-video-t-mer',   ev.mer_time);
+  setIfEmpty('player-video-t-br',    ev.br_time);
+  const status = document.getElementById('player-video-uplift-status');
+  if (status) {
+    const filled = [
+      ev.kh_time  != null ? 'KH'  : null,
+      ev.fc_time  != null ? 'FC'  : null,
+      ev.mer_time != null ? 'MER' : null,
+      ev.br_time  != null ? 'BR'  : null,
+    ].filter(Boolean);
+    if (filled.length > 0) {
+      status.innerHTML = `✓ Uplift CSV에서 이벤트 시점 자동 입력: <span class="font-mono">${filled.join(' / ')}</span> · fps ${ev.fps.toFixed(0)}`;
+      status.classList.remove('hidden');
+    }
+  }
+}
 
 function onVideoFileSelected(event) {
   const file = event.target.files && event.target.files[0];
@@ -4573,12 +4619,14 @@ function clearVideoInput() {
   const infoEl = document.getElementById('player-video-info');
   if (fileEl) fileEl.value = '';
   if (infoEl) infoEl.textContent = '';
-  ['player-video-t-drive', 'player-video-t-fc', 'player-video-t-mer'].forEach(id => {
+  ['player-video-t-kh', 'player-video-t-fc', 'player-video-t-mer', 'player-video-t-br'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   const fpsEl = document.getElementById('player-video-fps');
   if (fpsEl) fpsEl.value = '240';
+  const status = document.getElementById('player-video-uplift-status');
+  if (status) { status.classList.add('hidden'); status.innerHTML = ''; }
 }
 
 // 단일 video element를 재사용해서 여러 시점의 frame을 순차 캡처
@@ -4616,21 +4664,24 @@ async function _captureFramesAt(videoUrl, timestamps) {
 }
 
 // v2 input.video 객체 빌드 (영상 없으면 null)
+//   4 이벤트: knee_high / FC / MER / BR — Uplift CSV 자동 추출 시간이 채워짐
 async function buildVideoInputForV2() {
   if (!CURRENT_VIDEO_OBJECT_URL) return null;
   const fpsEl = document.getElementById('player-video-fps');
   const fps = parseFloat(fpsEl && fpsEl.value) || 240;
-  const tDrive = parseFloat(document.getElementById('player-video-t-drive').value);
-  const tFc    = parseFloat(document.getElementById('player-video-t-fc').value);
-  const tMer   = parseFloat(document.getElementById('player-video-t-mer').value);
+  const tKh  = parseFloat(document.getElementById('player-video-t-kh').value);
+  const tFc  = parseFloat(document.getElementById('player-video-t-fc').value);
+  const tMer = parseFloat(document.getElementById('player-video-t-mer').value);
+  const tBr  = parseFloat(document.getElementById('player-video-t-br').value);
 
   const videoObj = { src: CURRENT_VIDEO_OBJECT_URL, fps };
 
-  if (!isNaN(tDrive) && !isNaN(tFc) && !isNaN(tMer)) {
-    videoObj.events = { drive_start: tDrive, fc: tFc, mer: tMer };
+  // 4개 timestamp가 모두 입력돼야 frame 캡처 진행 (1개라도 누락이면 player만)
+  if (![tKh, tFc, tMer, tBr].some(isNaN)) {
+    videoObj.events = { knee_high: tKh, fc: tFc, mer: tMer, br: tBr };
     try {
       videoObj.eventFrames = await _captureFramesAt(CURRENT_VIDEO_OBJECT_URL, {
-        drive_start: tDrive, fc: tFc, mer: tMer,
+        knee_high: tKh, fc: tFc, mer: tMer, br: tBr,
       });
     } catch (e) {
       console.warn('영상 frame 캡처 실패 — events만 유지:', e.message);
