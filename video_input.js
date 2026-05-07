@@ -253,13 +253,14 @@ async function _captureFramesAt(videoUrl, timestamps) {
     }
   }
 
-  // 4) bbox: 2nd~98th percentile (이상치 제거 → 빈 공간 과감히 제거)
+  // 4) bbox: 0.5th~99.5th percentile (극단 outlier만 제외, 본체는 보존)
+  //    좌우 padding 6%, 상하 padding 5% — 선수 사지가 짤리지 않게 안전 margin
   let cropX = 0, cropY = 0, cropW = W, cropH = H;
   const motionRatio = motionXs.length / (dW * dH);
   if (motionRatio >= 0.01 && motionRatio <= 0.95 && motionXs.length > 50) {
     motionXs.sort((a, b) => a - b);
     motionYs.sort((a, b) => a - b);
-    const P = 0.02;  // 2nd / 98th percentile
+    const P = 0.005;  // 0.5th / 99.5th percentile (이전 2% → 너무 공격적이라 좌우 짤림 발생)
     const loX = motionXs[Math.floor(motionXs.length * P)];
     const hiX = motionXs[Math.min(motionXs.length - 1, Math.ceil(motionXs.length * (1 - P)))];
     const loY = motionYs[Math.floor(motionYs.length * P)];
@@ -267,9 +268,8 @@ async function _captureFramesAt(videoUrl, timestamps) {
     const inv = (v) => Math.round(v / dScale);
     let bx = inv(loX), by = inv(loY);
     let bw = inv(hiX + 1) - bx, bh = inv(hiY + 1) - by;
-    // 패딩 — 좌우 4%, 상하 3% (사용자 피드백: 위아래 빈 공간 더 잘라내기)
-    const padX = Math.round(bw * 0.04);
-    const padY = Math.round(bh * 0.03);
+    const padX = Math.round(bw * 0.06);
+    const padY = Math.round(bh * 0.05);
     bx -= padX; by -= padY; bw += 2 * padX; bh += 2 * padY;
     // 화면 밖 클램프
     bx = Math.max(0, bx); by = Math.max(0, by);
