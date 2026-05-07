@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>박명균 Kinematic-Only Report v2 (Phase B)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+.kbo-scope {
+  font-family: 'Inter', 'Noto Sans KR', 'Malgun Gothic', -apple-system, system-ui, sans-serif;
+  font-size: 15px; line-height: 1.55; color: #0F1419; background: #FFFFFF;
+  --kbo-navy: #0F2A4A; --kbo-navy-soft: #3B5A82; --kbo-navy-tint: #EAF0F7;
+  --kbo-bg-card: #FFFFFF; --kbo-bg-elev: #F6F7F9;
+  --kbo-border: #E1E5EB; --kbo-text: #0F1419; --kbo-text-muted: #6B7280;
+  --kbo-good: #3F7D5C; --kbo-caution: #A87333; --kbo-leak: #A8443A;
+  --kbo-shadow: none;
+}
+.kbo-scope * { box-sizing: border-box; }
+.kbo-scope .kbo-pad { padding: 24px 20px 40px; }
+.kbo-scope .kbo-display { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; letter-spacing: -0.01em; }
+.kbo-scope .kbo-mono { font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+.kbo-scope .kbo-plain { background: var(--kbo-navy-tint); border-radius: 10px; padding: 12px 14px; margin-top: 14px; display: flex; gap: 10px; align-items: flex-start; }
+.kbo-scope .kbo-plain-tag { flex: 0 0 auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: var(--kbo-navy); letter-spacing: 0.08em; text-transform: uppercase; background: #fff; border: 1px solid var(--kbo-navy); padding: 3px 7px; border-radius: 4px; line-height: 1; margin-top: 1px; }
+.kbo-scope .kbo-plain-text { font-size: 13.5px; color: #0F1419; line-height: 1.55; }
+.kbo-scope .kbo-plain-text b { font-weight: 700; color: var(--kbo-navy); }
+.kbo-scope .kbo-page-head { display: flex; align-items: baseline; gap: 8px; padding-bottom: 14px; margin-bottom: 20px; border-bottom: 2px solid var(--kbo-navy); flex-wrap: wrap; }
+.kbo-scope .kbo-page-num { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 0.16em; color: var(--kbo-navy); padding: 4px 9px; border: 1.5px solid var(--kbo-navy); border-radius: 4px; }
+.kbo-scope .kbo-page-title-en { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 20px; color: var(--kbo-navy); letter-spacing: -0.01em; }
+.kbo-scope .kbo-page-title-kr { font-size: 13px; color: var(--kbo-text-muted); margin-left: 2px; }
+.kbo-scope .kbo-page-q { flex-basis: 100%; font-size: 12px; color: var(--kbo-text-muted); margin-top: 4px; }
+.kbo-scope .kbo-headline { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; font-size: 22px; line-height: 1.32; letter-spacing: -0.012em; color: var(--kbo-text); }
+.kbo-scope .kbo-headline em { font-style: normal; color: var(--kbo-navy); }
+.kbo-scope .kbo-card { background: var(--kbo-bg-card); border: 1px solid var(--kbo-border); border-radius: 10px; box-shadow: var(--kbo-shadow); }
+.kbo-scope .kbo-conf { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.04em; text-transform: uppercase; }
+.kbo-scope .kbo-conf-h { color: var(--kbo-good); background: rgba(63,125,92,0.08); border: 1px solid var(--kbo-good); }
+.kbo-scope .kbo-conf-m { color: var(--kbo-caution); background: rgba(168,115,51,0.08); border: 1px solid var(--kbo-caution); }
+.kbo-scope .kbo-conf-l { color: var(--kbo-leak); background: rgba(168,68,58,0.06); border: 1px solid var(--kbo-leak); }
+.kbo-scope .kbo-pill { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 4px; letter-spacing: 0.06em; text-transform: uppercase; }
+.kbo-scope .kbo-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.kbo-scope .kbo-pill-good { color: var(--kbo-good); background: rgba(63,125,92,0.10); }
+.kbo-scope .kbo-pill-caution { color: var(--kbo-caution); background: rgba(168,115,51,0.10); }
+.kbo-scope .kbo-pill-leak { color: var(--kbo-leak); background: rgba(168,68,58,0.10); }
+.kbo-scope .kbo-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; color: var(--kbo-text-muted); text-transform: uppercase; }
+.kbo-scope .kbo-metric-num { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; line-height: 0.95; letter-spacing: -0.02em; }
+.kbo-scope .kbo-metric-unit { font-family: 'Inter', sans-serif; font-weight: 400; color: var(--kbo-text-muted); font-size: 0.4em; margin-left: 4px; }
+.kbo-scope .kbo-na { color: #9CA3AF; font-style: italic; }
+@media (max-width: 768px) {
+  .kbo-scope .kbo-pad { padding: 18px 14px 32px; }
+  .kbo-scope .kbo-page-title-en { font-size: 17px; }
+  .kbo-scope .kbo-headline { font-size: 18px; }
+  .kbo-scope .kbo-card > div[style*="grid-template-columns: 140px 1fr 80px 1fr"] { grid-template-columns: 100px 1fr !important; }
+  .kbo-scope .kbo-card > div[style*="grid-template-columns: repeat(3, 1fr)"] { grid-template-columns: 1fr !important; }
+}
+body { margin: 0; background: #F2F5FA; min-height: 100vh; }
+.report-container { max-width: 1100px; margin: 0 auto; background: #fff; min-height: 100vh; }
+</style>
+</head>
+<body>
+<div class="report-container">
+
+    <nav class="report-nav-sticky" style="position:sticky; top:0; z-index:40; background:rgba(255,255,255,0.96); backdrop-filter:blur(12px); border-bottom:1px solid #E1E5EB; padding:8px 16px;">
+      <div style="max-width:1200px; margin:0 auto; display:flex; gap:6px; overflow-x:auto;">
+        <a class="p-nav-tab" href="#p1" style="display:flex; align-items:center; gap:8px; min-width:120px; padding:6px 12px; border:1px solid #E1E5EB; border-radius:8px; text-decoration:none; color:#0F2A4A;">
+            <span class="p-nav-num" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:#0F2A4A; color:#fff; border-radius:50%; font-size:12px; font-weight:700;">1</span>
+            <span class="p-nav-label" style="font-size:12px; font-weight:600;">Executive</span>
+          </a><a class="p-nav-tab" href="#p2" style="display:flex; align-items:center; gap:8px; min-width:120px; padding:6px 12px; border:1px solid #E1E5EB; border-radius:8px; text-decoration:none; color:#0F2A4A;">
+            <span class="p-nav-num" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:#0F2A4A; color:#fff; border-radius:50%; font-size:12px; font-weight:700;">2</span>
+            <span class="p-nav-label" style="font-size:12px; font-weight:600;">Output</span>
+          </a><a class="p-nav-tab" href="#p3" style="display:flex; align-items:center; gap:8px; min-width:120px; padding:6px 12px; border:1px solid #E1E5EB; border-radius:8px; text-decoration:none; color:#0F2A4A;">
+            <span class="p-nav-num" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:#0F2A4A; color:#fff; border-radius:50%; font-size:12px; font-weight:700;">3</span>
+            <span class="p-nav-label" style="font-size:12px; font-weight:600;">Transfer</span>
+          </a><a class="p-nav-tab" href="#p4" style="display:flex; align-items:center; gap:8px; min-width:120px; padding:6px 12px; border:1px solid #E1E5EB; border-radius:8px; text-decoration:none; color:#0F2A4A;">
+            <span class="p-nav-num" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:#0F2A4A; color:#fff; border-radius:50%; font-size:12px; font-weight:700;">4</span>
+            <span class="p-nav-label" style="font-size:12px; font-weight:600;">Leak</span>
+          </a><a class="p-nav-tab" href="#p5" style="display:flex; align-items:center; gap:8px; min-width:120px; padding:6px 12px; border:1px solid #E1E5EB; border-radius:8px; text-decoration:none; color:#0F2A4A;">
+            <span class="p-nav-num" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:#0F2A4A; color:#fff; border-radius:50%; font-size:12px; font-weight:700;">5</span>
+            <span class="p-nav-label" style="font-size:12px; font-weight:600;">Evidence</span>
+          </a><a class="p-nav-tab" href="#p6" style="display:flex; align-items:center; gap:8px; min-width:120px; padding:6px 12px; border:1px solid #E1E5EB; border-radius:8px; text-decoration:none; color:#0F2A4A;">
+            <span class="p-nav-num" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:#0F2A4A; color:#fff; border-radius:50%; font-size:12px; font-weight:700;">6</span>
+            <span class="p-nav-label" style="font-size:12px; font-weight:600;">Action</span>
+          </a>
+      </div>
+    </nav>
+<section id="p1" class="report-page kbo-scope">
+  <div class="kbo-pad">
+
+    <!-- Page header -->
+    <div class="kbo-page-head">
+      <span class="kbo-page-num">P1</span>
+      <span class="kbo-page-title-en">한눈에 보는 결론</span>
+      <span class="kbo-page-title-kr">Executive Summary</span>
+      <span class="kbo-page-q">이 선수의 강점과 우선 과제는 무엇인가</span>
+    </div>
+
+    <!-- Hero block -->
+    <div style="margin-bottom: 28px;">
+      <div class="kbo-eyebrow" style="margin-bottom: 10px;">투구 동작 분석 · parkmyeonggyun · 고교 우투</div>
+      <div class="kbo-headline"><em>투구 동작 순서가 정확함 (10번 중 10번 합격) · 골반-몸통 분리 각도 40.7° — 또래 상위권</em>이 강점입니다. 골반 회전 속도 키우기 — 하체에서 몸통으로 힘 전달 보강이(가) 다음 우선 과제입니다.</div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;"><span class="kbo-pill kbo-pill-good">투구 동작 측정</span><span class="kbo-pill kbo-pill-good">구속 측정</span><span class="kbo-pill kbo-pill-good">체력 측정</span><span class="kbo-pill kbo-pill-good">영상 통합</span><span class="kbo-pill kbo-pill-caution">지면 반력 측정 안 함</span><span class="kbo-pill kbo-pill-caution">관절 파워 측정 안 함</span></div>
+    </div>
+
+    <!-- 예상 구속 향상 (Kinematic-only, 참고값) -->
+    <div class="kbo-card" style="padding: 24px; margin-bottom: 18px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; gap:12px; flex-wrap:wrap;">
+        <div>
+          <div class="kbo-eyebrow" style="margin-bottom: 4px;">예상 구속 향상 · 참고값</div>
+          <div class="kbo-display" style="font-size: 18px; color: #0F2A4A; font-weight: 700;">무엇을 키우면 어디까지 빨라질까?</div>
+          <div style="font-size: 13px; color: #6B7280; margin-top: 2px;">BBL 고교 투수 166명 자료로 만든 모델 기반 예상치 — 보장값 아님</div>
+        </div>
+        <span class="kbo-conf kbo-conf-m">
+          <span style="font-weight: 700;">● 참고</span>
+          <span style="opacity: 0.7;">예상치</span>
+        </span>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 140px 1fr 80px 1fr; gap:16px; align-items:center; padding:10px 0;">
+      <div style="font-size:14px; color:#0F1419; font-weight:600;">지금 구속</div>
+      <div style="background:#F6F7F9; height:32px; border-radius:6px; position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; bottom:0; width:94.29530201342283%; background:#3F4651; opacity:0.92; border-radius:6px;"></div>
+        <div style="position:absolute; inset:0; display:flex; align-items:center; padding:0 14px; font-family:'Space Grotesk',sans-serif; font-size:16px; color:#fff; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,0.25);">
+          140.5 <span style="font-size:11px; margin-left:4px; opacity:0.85;">km/h</span>
+        </div>
+      </div>
+      <div class="kbo-mono" style="font-size:14px; color:#6B7280; font-weight:700; text-align:right;">—</div>
+      <div style="font-size:12px; color:#6B7280;">BBL 평균 (10번 던진 평균)</div>
+    </div><div style="display:grid; grid-template-columns: 140px 1fr 80px 1fr; gap:16px; align-items:center; padding:10px 0;">
+      <div style="font-size:14px; color:#0F1419; font-weight:600;">체력만 키우면</div>
+      <div style="background:#F6F7F9; height:32px; border-radius:6px; position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; bottom:0; width:98.65771812080537%; background:#3B5A82; opacity:0.92; border-radius:6px;"></div>
+        <div style="position:absolute; inset:0; display:flex; align-items:center; padding:0 14px; font-family:'Space Grotesk',sans-serif; font-size:16px; color:#fff; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,0.25);">
+          147.0 <span style="font-size:11px; margin-left:4px; opacity:0.85;">km/h</span>
+        </div>
+      </div>
+      <div class="kbo-mono" style="font-size:14px; color:#3F7D5C; font-weight:700; text-align:right;">+6.5</div>
+      <div style="font-size:12px; color:#6B7280;">악력·점프력·코어 힘을 또래 상위까지 키울 때</div>
+    </div><div style="display:grid; grid-template-columns: 140px 1fr 80px 1fr; gap:16px; align-items:center; padding:10px 0;">
+      <div style="font-size:14px; color:#0F1419; font-weight:600;">동작만 다듬으면</div>
+      <div style="background:#F6F7F9; height:32px; border-radius:6px; position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; bottom:0; width:95.63758389261746%; background:#0F2A4A; opacity:0.92; border-radius:6px;"></div>
+        <div style="position:absolute; inset:0; display:flex; align-items:center; padding:0 14px; font-family:'Space Grotesk',sans-serif; font-size:16px; color:#fff; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,0.25);">
+          142.5 <span style="font-size:11px; margin-left:4px; opacity:0.85;">km/h</span>
+        </div>
+      </div>
+      <div class="kbo-mono" style="font-size:14px; color:#3F7D5C; font-weight:700; text-align:right;">+2.0</div>
+      <div style="font-size:12px; color:#6B7280;">회전 출력·동작 순서를 또래 상위까지 다듬을 때</div>
+    </div><div style="display:grid; grid-template-columns: 140px 1fr 80px 1fr; gap:16px; align-items:center; padding:10px 0;">
+      <div style="font-size:14px; color:#0F1419; font-weight:600;">둘 다 발전하면</div>
+      <div style="background:#F6F7F9; height:32px; border-radius:6px; position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; bottom:0; width:100%; background:#A87333; opacity:0.92; border-radius:6px;"></div>
+        <div style="position:absolute; inset:0; display:flex; align-items:center; padding:0 14px; font-family:'Space Grotesk',sans-serif; font-size:16px; color:#fff; font-weight:700; text-shadow:0 1px 2px rgba(0,0,0,0.25);">
+          149.0 <span style="font-size:11px; margin-left:4px; opacity:0.85;">km/h</span>
+        </div>
+      </div>
+      <div class="kbo-mono" style="font-size:14px; color:#3F7D5C; font-weight:700; text-align:right;">+8.5</div>
+      <div style="font-size:12px; color:#6B7280;">체력+동작 둘 다 발전 시 6주 후 도달 가능 상한</div>
+    </div>
+
+      
+      <div style="margin-top: 14px; padding: 12px 14px; border-left: 3px solid #3F7D5C; background: rgba(63,125,92,0.06); border-radius: 4px; font-size: 13px; color: #0F1419;">
+        <b style="color: #3F7D5C;">실제 구속이 예상보다 빠름 (+8.0 km/h)</b>
+        <div style="color: #3F4651; margin-top: 4px; line-height: 1.5;">
+          동작·체력 외에도 잘 던지게 만드는 무엇이 있다는 뜻 (감각·릴리스 타이밍·연습량 등). 강점이지만 모델로는 설명 안 됨.
+        </div>
+      </div>
+
+      <div style="margin-top: 14px; padding: 10px 14px; border-left: 3px solid #A87333; background: rgba(180,83,9,0.05); border-radius: 4px; font-size: 12px; color: #3F4651; line-height: 1.55;">
+        ※ 위 km/h 값은 BBL 또래 투수 자료로 만든 예상치입니다. 실제 도달은 훈련·컨디션·재측정 환경에 따라 달라집니다. 보장이 아니라 "이 방향으로 갈 수 있다"는 참고용입니다.
+      </div>
+    </div>
+
+    <!-- 3 핵심 카드: 강점 / 우선 과제 / 재측정 KPI -->
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-bottom: 18px;">
+      <div class="kbo-card" style="padding:18px; border-left:3px solid #3F7D5C;">
+      <div class="kbo-eyebrow" style="margin-bottom:8px;">✓ 강점</div>
+      <ul style="margin:0; padding-left:18px; font-size:13px; color:#0F1419; list-style:disc;">
+        <li style="margin-top:6px; line-height:1.4;">투구 동작 순서가 정확함 (10번 중 10번 합격)</li><li style="margin-top:6px; line-height:1.4;">골반-몸통 분리 각도 40.7° — 또래 상위권</li><li style="margin-top:6px; line-height:1.4;">어깨 젖힘 각도 204° — 미국 엘리트 수준</li>
+      </ul>
+    </div><div class="kbo-card" style="padding:18px; border-left:3px solid #A87333;">
+      <div class="kbo-eyebrow" style="margin-bottom:8px;">◎ 우선 과제</div>
+      <ul style="margin:0; padding-left:18px; font-size:13px; color:#0F1419; list-style:disc;">
+        <li style="margin-top:6px; line-height:1.4;">골반 회전 속도 키우기 — 하체에서 몸통으로 힘 전달 보강</li><li style="margin-top:6px; line-height:1.4;">앞다리 단단히 박기 — 몸 전진 멈춤이 약해 회전으로 잘 안 바뀜</li>
+      </ul>
+    </div><div class="kbo-card" style="padding:18px; border-left:3px solid #3B5A82;">
+      <div class="kbo-eyebrow" style="margin-bottom:8px;">◇ 재측정 KPI</div>
+      <ul style="margin:0; padding-left:18px; font-size:13px; color:#0F1419; list-style:disc;">
+        <li style="margin-top:6px; line-height:1.4;">투구 동작 순서 (10번 중 몇 번 합격?)</li><li style="margin-top:6px; line-height:1.4;">골반 → 몸통 시간차 (ms)</li><li style="margin-top:6px; line-height:1.4;">골반 → 몸통 속도 증폭 (몇 배?)</li>
+      </ul>
+    </div>
+    </div>
+
+    <!-- Coach Delivery -->
+    <div class="kbo-plain" style="flex-direction: column; gap: 8px; padding: 14px 16px;">
+    <div style="display:flex; gap:10px; align-items:flex-start;">
+      <span class="kbo-plain-tag">코치 메시지</span>
+      <div style="flex:1; display:flex; flex-direction:column; gap:6px;"><div class="kbo-plain-text"><b>지금 상태</b> · 투구 동작 순서가 정확함 (10번 중 10번 합격) · 골반-몸통 분리 각도 40.7° — 또래 상위권 모두 잘 되고 있음. 다음은 골반 회전 속도 키우기 — 하체에서 몸통으로 힘 전달 보강.</div><div class="kbo-plain-text"><b>오늘 한 가지만</b> · 골반 먼저, 몸통 다음에, 팔이 마지막에 나오게.</div><div class="kbo-plain-text"><b>영상 볼 곳</b> · 앞발 착지 → 어깨 최대로 젖혀짐 → 공 놓는 순간, 이 세 장면을 함께 보세요.</div><div class="kbo-plain-text"><b>다시 측정할 때</b> · 6주 후 다시 측정 — 투구 동작 순서, 골반-몸통 시간차, 속도 증폭이 어떻게 변했는지 확인.</div></div>
+    </div>
+  </div>
+
+  </div>
+</section>
+
+<section id="p2" class="report-page kbo-scope">
+  <div class="kbo-pad">
+
+    <div class="kbo-page-head">
+      <span class="kbo-page-num">P2</span>
+      <span class="kbo-page-title-en">속도를 만드는 능력</span>
+      <span class="kbo-page-title-kr">Kinematic Output</span>
+      <span class="kbo-page-q">이 선수는 회전 속도를 충분히 만들 수 있는가?</span>
+    </div>
+
+    <div style="margin-bottom: 18px;">
+      <div class="kbo-headline" style="font-size: 18px;">골반은 잘 돌아가는데 몸통이 따라오는 속도가 약합니다. 골반과 몸통 사이 연결을 점검하세요.</div>
+      <div style="font-size:13.5px; color:#3F4651; margin-top:6px; line-height:1.55;">몸통→팔 속도 증폭 1.91배 — 팔로 힘이 잘 전달되고 있습니다.</div>
+      <div style="font-size:11px; color:#6B7280; margin-top:8px; font-style:italic;">
+        ※ 이 페이지는 회전 속도와 속도 증폭으로 "속도를 만드는 능력"을 봅니다. 지면 반력·관절 파워는 측정하지 않으므로 회전 출력으로 대체 평가합니다.
+      </div>
+    </div>
+
+    <!-- 분절별 peak velocity 3카드 -->
+    <div class="kbo-eyebrow" style="margin-bottom: 8px;">분절별 회전 속도 — 골반에서 시작해 팔로 전달</div>
+    <div class="kbo-card" style="padding:18px; margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+      <div>
+        <div style="font-size:13px; color:#6B7280; font-weight:500; margin-bottom:2px;">① 골반 회전 속도</div>
+        <div style="display:flex; align-items:baseline; gap:6px;">
+          <span class="kbo-metric-num" style="font-size:32px; color:#0F2A4A;">517</span>
+          <span class="kbo-metric-unit" style="font-size:14px;">°/s</span>
+        </div>
+        <div style="font-size:11px; color:#9CA3AF; margin-top:4px;">하체에서 만든 회전을 골반으로 옮기는 속도</div>
+      </div>
+      <span class="kbo-pill kbo-pill-good">또래 상위 범위</span>
+    </div>
+    <!-- 분포 막대: Pro 범위(중앙 녹색) + 선수 위치(검정 점) -->
+    <div style="position:relative; height:14px; background:#F6F7F9; border-radius:7px; overflow:hidden;">
+      <div style="position:absolute; top:0; bottom:0; left:32.285368802902056%; width:32.64812575574365%; background:rgba(63,125,92,0.18); border-radius:7px;"></div>
+      
+      <div style="position:absolute; top:-4px; left:calc(49.66868198307134% - 11px); width:22px; height:22px; background:#3F7D5C; border:2px solid #fff; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.15);"></div>
+      
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:10px; color:#9CA3AF; font-family:'JetBrains Mono',monospace; margin-top:4px;">
+      <span>312</span>
+      <span style="color:#3F7D5C; font-weight:600;">또래 상위 445~580</span>
+      <span>725</span>
+    </div>
+  </div>
+    <div class="kbo-card" style="padding:18px; margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+      <div>
+        <div style="font-size:13px; color:#6B7280; font-weight:500; margin-bottom:2px;">② 몸통 회전 속도</div>
+        <div style="display:flex; align-items:baseline; gap:6px;">
+          <span class="kbo-metric-num" style="font-size:32px; color:#0F2A4A;">792</span>
+          <span class="kbo-metric-unit" style="font-size:14px;">°/s</span>
+        </div>
+        <div style="font-size:11px; color:#9CA3AF; margin-top:4px;">골반 회전을 몸통이 받아서 빨라지는 속도</div>
+      </div>
+      <span class="kbo-pill kbo-pill-caution">약간 낮음</span>
+    </div>
+    <!-- 분포 막대: Pro 범위(중앙 녹색) + 선수 위치(검정 점) -->
+    <div style="position:relative; height:14px; background:#F6F7F9; border-radius:7px; overflow:hidden;">
+      <div style="position:absolute; top:0; bottom:0; left:31.03448275862069%; width:34.48275862068966%; background:rgba(63,125,92,0.18); border-radius:7px;"></div>
+      
+      <div style="position:absolute; top:-4px; left:calc(26.88902821316615% - 11px); width:22px; height:22px; background:#A87333; border:2px solid #fff; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.15);"></div>
+      
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:10px; color:#9CA3AF; font-family:'JetBrains Mono',monospace; margin-top:4px;">
+      <span>578</span>
+      <span style="color:#3F7D5C; font-weight:600;">또래 상위 825~1100</span>
+      <span>1375</span>
+    </div>
+  </div>
+    <div class="kbo-card" style="padding:18px; margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+      <div>
+        <div style="font-size:13px; color:#6B7280; font-weight:500; margin-bottom:2px;">③ 팔 회전 속도</div>
+        <div style="display:flex; align-items:baseline; gap:6px;">
+          <span class="kbo-metric-num" style="font-size:32px; color:#0F2A4A;">1855</span>
+          <span class="kbo-metric-unit" style="font-size:14px;">°/s</span>
+        </div>
+        <div style="font-size:11px; color:#9CA3AF; margin-top:4px;">몸통 회전을 팔이 마지막으로 받아 공으로 전달</div>
+      </div>
+      <span class="kbo-pill kbo-pill-caution">범위 초과 (안정성 점검)</span>
+    </div>
+    <!-- 분포 막대: Pro 범위(중앙 녹색) + 선수 위치(검정 점) -->
+    <div style="position:relative; height:14px; background:#F6F7F9; border-radius:7px; overflow:hidden;">
+      <div style="position:absolute; top:0; bottom:0; left:37.595129375951295%; width:24.860476915271434%; background:rgba(63,125,92,0.18); border-radius:7px;"></div>
+      
+      <div style="position:absolute; top:-4px; left:calc(100% - 11px); width:22px; height:22px; background:#A87333; border:2px solid #fff; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.15);"></div>
+      
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:10px; color:#9CA3AF; font-family:'JetBrains Mono',monospace; margin-top:4px;">
+      <span>865</span>
+      <span style="color:#3F7D5C; font-weight:600;">또래 상위 1235~1480</span>
+      <span>1850</span>
+    </div>
+  </div>
+
+    <!-- 속도 증폭 (Speed Gain) — 분절 사이에서 얼마나 빨라지나 -->
+    <div class="kbo-eyebrow" style="margin: 22px 0 8px 0;">속도 증폭 — 다음 분절로 갈 때 속도가 몇 배 빨라지나</div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+      <div class="kbo-card" style="padding:18px; margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+      <div>
+        <div style="font-size:13px; color:#6B7280; font-weight:500; margin-bottom:2px;">골반 → 몸통</div>
+        <div style="display:flex; align-items:baseline; gap:6px;">
+          <span class="kbo-metric-num" style="font-size:32px; color:#0F2A4A;">1.53</span>
+          <span class="kbo-metric-unit" style="font-size:14px;">배</span>
+        </div>
+        <div style="font-size:11px; color:#9CA3AF; margin-top:4px;">몸통이 골반보다 몇 배 빠르게 돌아가나</div>
+      </div>
+      <span class="kbo-pill kbo-pill-good">또래 상위 범위</span>
+    </div>
+    <!-- 분포 막대: Pro 범위(중앙 녹색) + 선수 위치(검정 점) -->
+    <div style="position:relative; height:14px; background:#F6F7F9; border-radius:7px; overflow:hidden;">
+      <div style="position:absolute; top:0; bottom:0; left:33.52601156069364%; width:30.828516377649333%; background:rgba(63,125,92,0.18); border-radius:7px;"></div>
+      
+      <div style="position:absolute; top:-4px; left:calc(39.69171483622351% - 11px); width:22px; height:22px; background:#3F7D5C; border:2px solid #fff; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.15);"></div>
+      
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:10px; color:#9CA3AF; font-family:'JetBrains Mono',monospace; margin-top:4px;">
+      <span>1</span>
+      <span style="color:#3F7D5C; font-weight:600;">또래 상위 1~2</span>
+      <span>2</span>
+    </div>
+  </div>
+      <div class="kbo-card" style="padding:18px; margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+      <div>
+        <div style="font-size:13px; color:#6B7280; font-weight:500; margin-bottom:2px;">몸통 → 팔</div>
+        <div style="display:flex; align-items:baseline; gap:6px;">
+          <span class="kbo-metric-num" style="font-size:32px; color:#0F2A4A;">1.91</span>
+          <span class="kbo-metric-unit" style="font-size:14px;">배</span>
+        </div>
+        <div style="font-size:11px; color:#9CA3AF; margin-top:4px;">팔이 몸통보다 몇 배 빠르게 돌아가나</div>
+      </div>
+      <span class="kbo-pill kbo-pill-good">또래 상위 범위</span>
+    </div>
+    <!-- 분포 막대: Pro 범위(중앙 녹색) + 선수 위치(검정 점) -->
+    <div style="position:relative; height:14px; background:#F6F7F9; border-radius:7px; overflow:hidden;">
+      <div style="position:absolute; top:0; bottom:0; left:30.1948051948052%; width:35.714285714285715%; background:rgba(63,125,92,0.18); border-radius:7px;"></div>
+      
+      <div style="position:absolute; top:-4px; left:calc(53.57142857142857% - 11px); width:22px; height:22px; background:#3F7D5C; border:2px solid #fff; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.15);"></div>
+      
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:10px; color:#9CA3AF; font-family:'JetBrains Mono',monospace; margin-top:4px;">
+      <span>1</span>
+      <span style="color:#3F7D5C; font-weight:600;">또래 상위 2~2</span>
+      <span>3</span>
+    </div>
+  </div>
+    </div>
+
+    <!-- 공 놓는 순간의 속도 (release speed) -->
+    
+
+    <!-- Coach Delivery -->
+    <div class="kbo-plain" style="flex-direction: column; gap: 8px; padding: 14px 16px;">
+    <div style="display:flex; gap:10px; align-items:flex-start;">
+      <span class="kbo-plain-tag">코치 메시지</span>
+      <div style="flex:1; display:flex; flex-direction:column; gap:6px;"><div class="kbo-plain-text"><b>지금 상태</b> · 골반은 잘 돌아가는데 몸통이 따라오는 속도가 약합니다. 골반과 몸통 사이 연결을 점검하세요.</div><div class="kbo-plain-text"><b>오늘 한 가지만</b> · 몸통 회전 늦추기 — 골반이 먼저 돌아간 뒤 몸통이 받게.</div><div class="kbo-plain-text"><b>영상 볼 곳</b> · 앞발 착지 직후 골반·몸통이 도는 순서를 옆에서 확인.</div><div class="kbo-plain-text"><b>다시 측정할 때</b> · 6주 후 골반·몸통·팔 회전 속도 + 속도 증폭 재측정.</div></div>
+    </div>
+  </div>
+
+  </div>
+</section>
+
+<section id="p3" class="report-page kbo-scope">
+  <div class="kbo-pad">
+
+    <div class="kbo-page-head">
+      <span class="kbo-page-num">P3</span>
+      <span class="kbo-page-title-en">동작 순서·시간차 (전달 효율)</span>
+      <span class="kbo-page-title-kr">Kinematic Transfer Proxy</span>
+      <span class="kbo-page-q">골반 → 몸통 → 팔 순서와 시간차가 좋은가?</span>
+    </div>
+
+    <div style="margin-bottom: 18px;">
+      <div class="kbo-headline" style="font-size: 18px;">골반 → 몸통 → 팔이 54ms 시간차로 정확하게 이어집니다. 동작 순서·시간차 모두 양호.</div>
+      <div style="font-size:12px; color:#6B7280; margin-top:8px; font-style:italic; line-height:1.55;">
+        ※ 이 페이지는 회전 속도가 골반에서 시작해 팔로 이어지는 "흐름"을 봅니다. 직접적인 힘 전달율은 측정하지 않으므로, 동작 순서와 시간차로 대체 평가합니다.
+      </div>
+    </div>
+
+    <!-- Dynamic Sequence Curve (핵심 시각화) -->
+    <div class="kbo-card" style="padding: 18px; margin-bottom: 14px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom: 8px;">
+        <div>
+          <div class="kbo-eyebrow" style="margin-bottom: 4px;">동작 순서 그래프 — 골반에서 시작해 팔로 가는 흐름</div>
+          <div style="font-size:12px; color:#6B7280;">좋은 투구는 골반 → 몸통 → 팔 순서로 약간의 시간차를 두고 회전 속도가 정점을 찍습니다.</div>
+        </div>
+        <button onclick="document.getElementById('kbo-video-p3').play();"
+          style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:#fff; color:#0F2A4A; border:1.5px solid #0F2A4A; border-radius:6px; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; cursor:pointer; flex-shrink:0;">
+          <span>▶</span><span>전체 투구 영상 보기</span>
+        </button>
+      </div>
+      <div class="kbo-video-wrap" style="max-width:560px; margin:12px auto;">
+    <div style="position:relative; background:#000; border-radius:10px; overflow:hidden;">
+      <video id="kbo-video-p3" controls preload="metadata" playsinline style="width:100%; display:block;">
+        <source src="parkmyeonggyun_pitch_2026-05-07.mp4" type="video/mp4">
+        이 브라우저는 video 태그를 지원하지 않습니다.
+      </video>
+      <div style="position:absolute; top:8px; left:10px; background:rgba(15,42,74,0.85); color:#fff; padding:3px 8px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.06em;">
+        투구 영상 · 240 fps
+      </div>
+    </div>
+
+    <!-- Frame-step + speed 컨트롤 -->
+    <div class="kbo-video-controls" style="margin-top:8px; padding:8px 10px; background:#F2F5FA; border:1px solid #E1E5EB; border-radius:8px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+      <!-- Frame step group -->
+      <div style="display:flex; gap:4px; align-items:center;">
+        <span style="font-size:10px; color:#6B7280; font-family:'JetBrains Mono',monospace; font-weight:600; margin-right:4px;">FRAME</span>
+        <button onclick="kboVideoStep('kbo-video-p3', -5, 240)" title="5프레임 뒤로 (20.8ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">⏮ −5f</button>
+        <button onclick="kboVideoStep('kbo-video-p3', -1, 240)" title="1프레임 뒤로 (4.17ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">◀ −1f</button>
+        <button onclick="kboVideoTogglePlay('kbo-video-p3')" title="재생/일시정지 (Space)" style="padding:4px 9px; background:#0F2A4A; color:#fff; border:1px solid #0F2A4A; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">▶ / ⏸</button>
+        <button onclick="kboVideoStep('kbo-video-p3', 1, 240)" title="1프레임 앞으로 (4.17ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">+1f ▶</button>
+        <button onclick="kboVideoStep('kbo-video-p3', 5, 240)" title="5프레임 앞으로 (20.8ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">+5f ⏭</button>
+      </div>
+      <!-- Speed group -->
+      <div style="display:flex; gap:4px; align-items:center;">
+        <span style="font-size:10px; color:#6B7280; font-family:'JetBrains Mono',monospace; font-weight:600; margin-right:4px;">속도</span>
+        <button onclick="kboVideoSpeed('kbo-video-p3', 0.1, this)" title="극저속" data-rate="0.1" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">0.1×</button><button onclick="kboVideoSpeed('kbo-video-p3', 0.25, this)" title="저속" data-rate="0.25" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">0.25×</button><button onclick="kboVideoSpeed('kbo-video-p3', 0.5, this)" title="슬로우" data-rate="0.5" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">0.5×</button><button onclick="kboVideoSpeed('kbo-video-p3', 1, this)" title="정상" data-rate="1" style="padding:4px 9px; background:#0F2A4A; color:#fff; border:1px solid #0F2A4A; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">1×</button>
+      </div>
+    </div>
+
+    <!-- 시간 표시 + frame counter -->
+    <div id="kbo-video-p3-info" style="margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#6B7280; text-align:center;">
+      <span id="kbo-video-p3-time">0.000</span>s
+      · frame <span id="kbo-video-p3-frame">0</span> / 240 fps
+      · <span id="kbo-video-p3-rate">1.0</span>×
+    </div>
+
+    <!-- 한 번만 등록되는 글로벌 helper (모든 video player 공유) -->
+    <script>
+if (!window._kboVideoHelpersInit) {
+  window._kboVideoHelpersInit = true;
+  window.kboVideoStep = function(id, frames, fps) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    v.pause();
+    var dt = frames / fps;
+    var t = (v.currentTime || 0) + dt;
+    if (t < 0) t = 0;
+    if (v.duration && t > v.duration) t = v.duration;
+    v.currentTime = t;
+  };
+  window.kboVideoTogglePlay = function(id) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    if (v.paused) v.play(); else v.pause();
+  };
+  window.kboVideoSpeed = function(id, rate, btn) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    v.playbackRate = rate;
+    var rateEl = document.getElementById(id + '-rate');
+    if (rateEl) rateEl.textContent = rate.toFixed(2);
+    // 같은 그룹 내 active toggle
+    if (btn && btn.parentElement) {
+      Array.prototype.forEach.call(btn.parentElement.querySelectorAll('button[data-rate]'), function(b) {
+        if (b === btn) {
+          b.style.background = '#0F2A4A'; b.style.color = '#fff'; b.style.borderColor = '#0F2A4A';
+        } else {
+          b.style.background = '#fff'; b.style.color = '#0F2A4A'; b.style.borderColor = '#C5CCD5';
+        }
+      });
+    }
+  };
+  window.kboVideoBindInfo = function(id, fps) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    var tEl = document.getElementById(id + '-time');
+    var fEl = document.getElementById(id + '-frame');
+    var rEl = document.getElementById(id + '-rate');
+    function update() {
+      var t = v.currentTime || 0;
+      if (tEl) tEl.textContent = t.toFixed(3);
+      if (fEl) fEl.textContent = Math.round(t * fps);
+      if (rEl) rEl.textContent = (v.playbackRate || 1).toFixed(2);
+    }
+    v.addEventListener('timeupdate', update);
+    v.addEventListener('seeked', update);
+    v.addEventListener('ratechange', update);
+    update();
+  };
+}</script>
+    <script>kboVideoBindInfo('kbo-video-p3', 240);</script>
+  </div>
+      <svg viewBox="0 0 720 280" width="100%" style="max-width:720px; display:block; margin:0 auto;">
+    <!-- 격자 -->
+    
+      <line x1="50" y1="20" x2="50" y2="240" stroke="#E1E5EB" stroke-dasharray="3,3" />
+      <text x="50" y="272" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#6B7280">KH (드는 발)</text>
+    
+      <line x1="411.11111111111114" y1="20" x2="411.11111111111114" y2="240" stroke="#E1E5EB" stroke-dasharray="3,3" />
+      <text x="411.11111111111114" y="272" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#6B7280">FC (앞발 착지)</text>
+    
+      <line x1="583.4044444444444" y1="20" x2="583.4044444444444" y2="240" stroke="#E1E5EB" stroke-dasharray="3,3" />
+      <text x="583.4044444444444" y="272" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#6B7280">BR (공 놓기)</text>
+    
+    <!-- y축 라벨 -->
+    <text x="42" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#9CA3AF">2040</text>
+    <text x="42" y="240" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#9CA3AF">0</text>
+    <text x="42" y="130" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#9CA3AF">°/s</text>
+    <!-- 곡선 + peak marker -->
+    
+      <path d="M 50,240 L 57.22222222222222,240 L 64.44444444444444,240 L 71.66666666666667,239.99999999999994 L 78.88888888888889,239.99999999999983 L 86.11111111111111,239.99999999999937 L 93.33333333333334,239.9999999999978 L 100.55555555555556,239.99999999999255 L 107.77777777777777,239.9999999999753 L 115,239.99999999992016 L 122.22222222222221,239.99999999974833 L 129.44444444444446,239.99999999922602 L 136.66666666666669,239.9999999976777 L 143.88888888888889,239.99999999320195 L 151.11111111111111,239.99999998058553 L 158.33333333333331,239.9999999459067 L 165.55555555555554,239.99999985295912 L 172.77777777777777,239.99999961004968 L 180,239.9999989910791 L 187.22222222222223,239.99999745327747 L 194.44444444444443,239.99999372833534 L 201.66666666666666,239.99998493182315 L 208.88888888888889,239.99996468044142 L 216.1111111111111,239.99991923066534 L 223.33333333333334,239.9998198001509 L 230.55555555555557,239.9996077716148 L 237.77777777777777,239.99916708574207 L 245,239.99827440746859 L 252.22222222222223,239.9965121894434 L 259.44444444444446,239.993122284569 L 266.66666666666663,239.98676840506863 L 273.8888888888889,239.97516541707355 L 281.1111111111111,239.95452442238025 L 288.3333333333333,239.91875881363467 L 295.55555555555554,239.8584040052242 L 302.77777777777777,239.7592300067529 L 310,239.6005794258037 L 317.22222222222223,239.3535496391542 L 324.44444444444446,238.97925652547724 L 331.6666666666667,238.42755768734557 L 338.88888888888886,237.63675084867322 L 346.1111111111111,236.53485845895764 L 353.3333333333333,235.04311176465106 L 360.55555555555554,233.08210518898397 L 367.77777777777777,230.58076871594596 L 375,227.48780088151864 L 382.2222222222222,223.78456839348493 L 389.44444444444446,219.49781925336995 L 396.6666666666667,214.71003184264345 L 403.88888888888886,209.56500837509597 L 411.11111111111114,204.26656468508887 L 418.3333333333333,199.06893611077143 L 425.55555555555554,194.25875559989555 L 432.77777777777777,190.12997368349994 L 440,186.9545792236208 L 447.22222222222223,184.95309833654687 L 454.44444444444446,184.26929463265262 L 461.66666666666663,184.95309833654687 L 468.8888888888889,186.9545792236208 L 476.1111111111111,190.12997368349994 L 483.3333333333333,194.25875559989555 L 490.5555555555556,199.06893611077143 L 497.77777777777777,204.26656468508887 L 504.99999999999994,209.56500837509597 L 512.2222222222222,214.71003184264345 L 519.4444444444445,219.49781925336995 L 526.6666666666666,223.78456839348493 L 533.8888888888889,227.48780088151864 L 541.1111111111111,230.58076871594596 L 548.3333333333334,233.08210518898397 L 555.5555555555555,235.04311176465106 L 562.7777777777777,236.53485845895764 L 570,237.63675084867322 L 577.2222222222222,238.42755768734557 L 584.4444444444445,238.97925652547724 L 591.6666666666667,239.3535496391542 L 598.8888888888889,239.6005794258037 L 606.1111111111111,239.7592300067529 L 613.3333333333334,239.8584040052242 L 620.5555555555555,239.91875881363467 L 627.7777777777777,239.95452442238025 L 635,239.97516541707355 L 642.2222222222222,239.98676840506863 L 649.4444444444445,239.993122284569 L 656.6666666666666,239.9965121894434 L 663.8888888888889,239.99827440746859 L 671.1111111111111,239.99916708574207 L 678.3333333333334,239.9996077716148 L 685.5555555555555,239.9998198001509 L 692.7777777777778,239.99991923066534 L 700,239.99996468044142" fill="none" stroke="#3B5A82" stroke-width="2.5" />
+      <circle cx="454.44444444444446" cy="184.26929463265262" r="5" fill="#3B5A82" stroke="#fff" stroke-width="2" />
+      <text x="454.44444444444446" y="174.26929463265262" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="11" font-weight="700" fill="#3B5A82">골반</text>
+      <text x="454.44444444444446" y="160.26929463265262" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#6B7280">517 °/s</text>
+    
+      <path d="M 50,240 L 57.22222222222222,240 L 64.44444444444444,240 L 71.66666666666667,240 L 78.88888888888889,240 L 86.11111111111111,240 L 93.33333333333334,240 L 100.55555555555556,240 L 107.77777777777777,240 L 115,240 L 122.22222222222221,240 L 129.44444444444446,240 L 136.66666666666669,240 L 143.88888888888889,240 L 151.11111111111111,240 L 158.33333333333331,240 L 165.55555555555554,240 L 172.77777777777777,240 L 180,240 L 187.22222222222223,240 L 194.44444444444443,240 L 201.66666666666666,240 L 208.88888888888889,239.99999999999994 L 216.1111111111111,239.99999999999972 L 223.33333333333334,239.99999999999866 L 230.55555555555557,239.99999999999426 L 237.77777777777777,239.99999999997598 L 245,239.99999999990283 L 252.22222222222223,239.99999999962037 L 259.44444444444446,239.99999999856726 L 266.66666666666663,239.99999999477697 L 273.8888888888889,239.99999998160754 L 281.1111111111111,239.99999993743666 L 288.3333333333333,239.99999979442896 L 295.55555555555554,239.99999934752174 L 302.77777777777777,239.99999799952903 L 310,239.99999407537905 L 317.22222222222223,239.9999830507304 L 324.44444444444446,239.99995316144276 L 331.6666666666667,239.9998749688768 L 338.88888888888886,239.9996776001296 L 346.1111111111111,239.99919696645566 L 353.3333333333333,239.9980678776785 L 360.55555555555554,239.99550946949313 L 367.77777777777777,239.98991855495984 L 375,239.9781369863963 L 382.2222222222222,239.95420064460254 L 389.44444444444446,239.9073232472098 L 396.6666666666667,239.8188474907895 L 403.88888888888886,239.65795755529913 L 411.11111111111114,239.37615348674828 L 418.3333333333333,238.900898995433 L 425.55555555555554,238.12949204324957 L 432.77777777777777,236.92501063920398 L 440,235.11696567126398 L 447.22222222222223,232.50972022109752 L 454.44444444444446,228.9013947542306 L 461.66666666666663,224.11450061881797 L 468.8888888888889,218.036808832983 L 476.1111111111111,210.66729505067235 L 483.3333333333333,202.1582782223186 L 490.5555555555556,192.84239229553307 L 497.77777777777777,183.2331566821561 L 504.99999999999994,173.99150566380422 L 512.2222222222222,165.85753671425275 L 519.4444444444445,159.55551096702933 L 526.6666666666666,155.68833098446737 L 533.8888888888889,154.64259996399295 L 541.1111111111111,156.5249338113802 L 548.3333333333334,161.1440499453626 L 555.5555555555555,168.04279808365067 L 562.7777777777777,176.57270818201116 L 570,185.9942287943158 L 577.2222222222222,195.58125557193125 L 584.4444444444445,204.7097701624387 L 591.6666666666667,212.9164993587205 L 598.8888888888889,219.92214973006034 L 606.1111111111111,225.62222354373657 L 613.3333333333334,230.0544605315309 L 620.5555555555555,233.35450912703584 L 627.7777777777777,235.71068551650964 L 635,237.32569575020526 L 642.2222222222222,238.3893697837453 L 649.4444444444445,239.0629927034374 L 656.6666666666666,239.47343473716833 L 663.8888888888889,239.71415964615338 L 671.1111111111111,239.85011541200237 L 678.3333333333334,239.9240806434589 L 685.5555555555555,239.96285416194075 L 692.7777777777778,239.98244382480823 L 700,239.9919848481738" fill="none" stroke="#0F2A4A" stroke-width="2.5" />
+      <circle cx="532.848888888889" cy="154.6119509197162" r="5" fill="#0F2A4A" stroke="#fff" stroke-width="2" />
+      <text x="532.848888888889" y="144.6119509197162" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="11" font-weight="700" fill="#0F2A4A">몸통</text>
+      <text x="532.848888888889" y="130.6119509197162" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#6B7280">792 °/s</text>
+    
+      <path d="M 50,240 L 57.22222222222222,240 L 64.44444444444444,240 L 71.66666666666667,240 L 78.88888888888889,240 L 86.11111111111111,240 L 93.33333333333334,240 L 100.55555555555556,240 L 107.77777777777777,240 L 115,240 L 122.22222222222221,240 L 129.44444444444446,240 L 136.66666666666669,240 L 143.88888888888889,240 L 151.11111111111111,240 L 158.33333333333331,240 L 165.55555555555554,240 L 172.77777777777777,240 L 180,240 L 187.22222222222223,240 L 194.44444444444443,240 L 201.66666666666666,240 L 208.88888888888889,240 L 216.1111111111111,240 L 223.33333333333334,240 L 230.55555555555557,240 L 237.77777777777777,240 L 245,240 L 252.22222222222223,240 L 259.44444444444446,240 L 266.66666666666663,240 L 273.8888888888889,240 L 281.1111111111111,240 L 288.3333333333333,240 L 295.55555555555554,240 L 302.77777777777777,240 L 310,240 L 317.22222222222223,240 L 324.44444444444446,239.99999999999994 L 331.6666666666667,239.99999999999955 L 338.88888888888886,239.99999999999702 L 346.1111111111111,239.99999999998104 L 353.3333333333333,239.99999999988552 L 360.55555555555554,239.99999999934653 L 367.77777777777777,239.99999999647102 L 375,239.99999998197254 L 382.2222222222222,239.99999991288496 L 389.44444444444446,239.99999960177897 L 396.6666666666667,239.9999982780211 L 403.88888888888886,239.9999929562492 L 411.11111111111114,239.99997274459298 L 418.3333333333333,239.9999002359917 L 425.55555555555554,239.99965456396794 L 432.77777777777777,239.99886855379086 L 440,239.99649431640952 L 447.22222222222223,239.98972494752164 L 454.44444444444446,239.97151160972442 L 461.66666666666663,239.92528216133204 L 468.8888888888889,239.8146241224399 L 476.1111111111111,239.56493447778377 L 483.3333333333333,239.03410783158157 L 490.5555555555556,237.9714993540459 L 497.77777777777777,235.9701007866642 L 504.99999999999994,232.42668976338896 L 512.2222222222222,226.53675218733218 L 519.4444444444445,217.35947671080896 L 526.6666666666666,203.9839890293128 L 533.8888888888889,185.80274532354005 L 541.1111111111111,162.8507878719233 L 548.3333333333334,136.11371140175712 L 555.5555555555555,107.67024887033097 L 562.7777777777777,80.54825033088562 L 570,58.25033823220096 L 577.2222222222222,44.02960757373938 L 584.4444444444445,40.11516682876922 L 591.6666666666667,47.14018289136172 L 598.8888888888889,63.974256287218964 L 606.1111111111111,88.02114998174304 L 613.3333333333334,115.87403185371355 L 620.5555555555555,144.1008688295227 L 627.7777777777777,169.91271691359117 L 635,191.54525568422682 L 642.2222222222222,208.31119104413045 L 649.4444444444445,220.3958482742405 L 656.6666666666666,228.52737699712227 L 663.8888888888889,233.64888584218727 L 671.1111111111111,236.67409649990478 L 678.3333333333334,238.3524375013814 L 685.5555555555555,239.2279477716143 L 692.7777777777778,239.65776533883525 L 700,239.85649275317905" fill="none" stroke="#A87333" stroke-width="2.5" />
+      <circle cx="583.4044444444444" cy="40" r="5" fill="#A87333" stroke="#fff" stroke-width="2" />
+      <text x="583.4044444444444" y="30" text-anchor="middle" font-family="Space Grotesk, sans-serif" font-size="11" font-weight="700" fill="#A87333">팔</text>
+      <text x="583.4044444444444" y="16" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#6B7280">1855 °/s</text>
+    
+    <!-- lag 표시 (골반→몸통) -->
+    <line x1="454.44444444444446" y1="245" x2="532.848888888889" y2="245" stroke="#A87333" stroke-width="2" />
+    <text x="493.6466666666667" y="258" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#A87333" font-weight="700">54ms</text>
+  </svg>
+      <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:#3F4651;">
+        <span><span style="display:inline-block; width:10px; height:3px; background:#3B5A82; margin-right:4px; vertical-align:middle;"></span>골반</span>
+        <span><span style="display:inline-block; width:10px; height:3px; background:#0F2A4A; margin-right:4px; vertical-align:middle;"></span>몸통</span>
+        <span><span style="display:inline-block; width:10px; height:3px; background:#A87333; margin-right:4px; vertical-align:middle;"></span>팔</span>
+        <span style="margin-left:auto; color:#9CA3AF; font-style:italic;">※ 곡선은 peak 시점·속도를 시뮬레이션. 실제 raw 시계열은 부록 참조</span>
+      </div>
+    </div>
+
+    <!-- 3 핵심 지표 -->
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom: 16px;">
+      <!-- 시퀀스 합격 여부 -->
+      <div class="kbo-card" style="padding:16px; border-left:3px solid #3F7D5C;">
+        <div class="kbo-eyebrow" style="margin-bottom:6px;">동작 순서 합격</div>
+        <div style="display:flex; align-items:baseline; gap:6px;">
+          <span class="kbo-metric-num" style="font-size:30px; color:#3F7D5C;">10/10</span>
+        </div>
+        <div style="font-size:12px; color:#3F7D5C; font-weight:600; margin-top:4px;">정확함</div>
+        <div style="font-size:11px; color:#6B7280; margin-top:4px;">10번 던졌을 때 골반→몸통→팔 순서가 맞은 횟수</div>
+      </div>
+      <!-- 골반→몸통 시간차 -->
+      <div class="kbo-card" style="padding:16px; border-left:3px solid #3F7D5C;">
+        <div class="kbo-eyebrow" style="margin-bottom:6px;">골반 → 몸통 시간차</div>
+        <div style="display:flex; align-items:baseline; gap:6px;">
+          <span class="kbo-metric-num" style="font-size:30px; color:#3F7D5C;">54</span>
+          <span class="kbo-metric-unit" style="font-size:13px;">ms</span>
+        </div>
+        <div style="font-size:12px; color:#3F7D5C; font-weight:600; margin-top:4px;">적절</div>
+        <div style="font-size:11px; color:#6B7280; margin-top:4px;">또래 상위 30~70ms — 너무 짧으면 동시, 너무 길면 끊김</div>
+      </div>
+      <!-- 속도 증폭 (몸통→팔) -->
+      <div class="kbo-card" style="padding:16px; border-left:3px solid #0F2A4A;">
+        <div class="kbo-eyebrow" style="margin-bottom:6px;">몸통 → 팔 속도 증폭</div>
+        <div style="display:flex; align-items:baseline; gap:6px;">
+          <span class="kbo-metric-num" style="font-size:30px; color:#0F2A4A;">1.91</span>
+          <span class="kbo-metric-unit" style="font-size:13px;">배</span>
+        </div>
+        <div style="font-size:12px; color:#3F7D5C; font-weight:600; margin-top:4px;">
+          잘 전달됨
+        </div>
+        <div style="font-size:11px; color:#6B7280; margin-top:4px;">팔이 몸통보다 몇 배 빠르게 돌아가나 — 클수록 잘 전달</div>
+      </div>
+    </div>
+
+    <!-- Coach Delivery -->
+    <div class="kbo-plain" style="flex-direction: column; gap: 8px; padding: 14px 16px;">
+    <div style="display:flex; gap:10px; align-items:flex-start;">
+      <span class="kbo-plain-tag">코치 메시지</span>
+      <div style="flex:1; display:flex; flex-direction:column; gap:6px;"><div class="kbo-plain-text"><b>지금 상태</b> · 골반 → 몸통 → 팔이 54ms 시간차로 정확하게 이어집니다. 동작 순서·시간차 모두 양호.</div><div class="kbo-plain-text"><b>오늘 한 가지만</b> · 지금 흐름은 좋음 — 다음 페이지에서 시간 흐름별 점검.</div><div class="kbo-plain-text"><b>영상 볼 곳</b> · 옆에서 본 영상에서 골반·몸통이 도는 시점을 슬로우로 보세요. 골반이 먼저 정점을 찍고, 몸통이 그 다음에 정점을 찍어야 합니다.</div><div class="kbo-plain-text"><b>다시 측정할 때</b> · 6주 후 동작 순서 합격 횟수, 골반-몸통 시간차, 속도 증폭 재측정.</div></div>
+    </div>
+  </div>
+
+  </div>
+</section>
+
+<section id="p4" class="report-page kbo-scope">
+  <div class="kbo-pad">
+
+    <div class="kbo-page-head">
+      <span class="kbo-page-num">P4</span>
+      <span class="kbo-page-title-en">시간 흐름별 점검</span>
+      <span class="kbo-page-title-kr">Flow Leak Timeline</span>
+      <span class="kbo-page-q">투구 시간 흐름에서 어디가 막히는가?</span>
+    </div>
+
+    <div style="margin-bottom: 18px;">
+      <div class="kbo-headline" style="font-size: 18px;">5단계 모두 양호하게 이어집니다. 이 흐름을 유지하면서 체력 보강에 집중하세요.</div>
+      <div style="font-size:12px; color:#6B7280; margin-top:8px; font-style:italic; line-height:1.55;">
+        ※ 투구 동작을 5 단계로 나눠 어디서 흐름이 끊기는지 봅니다. 각 단계마다 측정값·평가·코칭 cue·연습 드릴을 함께 표시합니다. 각 단계 카드의 영상 버튼을 누르면 해당 시점부터 재생됩니다.
+      </div>
+    </div>
+
+    <!-- 영상 (있을 때만) -->
+    
+    <div class="kbo-card" style="padding:14px; margin-bottom:14px; background:#F2F5FA;">
+      <div class="kbo-eyebrow" style="margin-bottom:6px;">실제 투구 영상 — 단계별 jump 버튼으로 해당 시점 재생</div>
+      <div class="kbo-video-wrap" style="max-width:560px; margin:12px auto;">
+    <div style="position:relative; background:#000; border-radius:10px; overflow:hidden;">
+      <video id="kbo-video-p4" controls preload="metadata" playsinline style="width:100%; display:block;">
+        <source src="parkmyeonggyun_pitch_2026-05-07.mp4" type="video/mp4">
+        이 브라우저는 video 태그를 지원하지 않습니다.
+      </video>
+      <div style="position:absolute; top:8px; left:10px; background:rgba(15,42,74,0.85); color:#fff; padding:3px 8px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.06em;">
+        투구 영상 · 240 fps
+      </div>
+    </div>
+
+    <!-- Frame-step + speed 컨트롤 -->
+    <div class="kbo-video-controls" style="margin-top:8px; padding:8px 10px; background:#F2F5FA; border:1px solid #E1E5EB; border-radius:8px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+      <!-- Frame step group -->
+      <div style="display:flex; gap:4px; align-items:center;">
+        <span style="font-size:10px; color:#6B7280; font-family:'JetBrains Mono',monospace; font-weight:600; margin-right:4px;">FRAME</span>
+        <button onclick="kboVideoStep('kbo-video-p4', -5, 240)" title="5프레임 뒤로 (20.8ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">⏮ −5f</button>
+        <button onclick="kboVideoStep('kbo-video-p4', -1, 240)" title="1프레임 뒤로 (4.17ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">◀ −1f</button>
+        <button onclick="kboVideoTogglePlay('kbo-video-p4')" title="재생/일시정지 (Space)" style="padding:4px 9px; background:#0F2A4A; color:#fff; border:1px solid #0F2A4A; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">▶ / ⏸</button>
+        <button onclick="kboVideoStep('kbo-video-p4', 1, 240)" title="1프레임 앞으로 (4.17ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">+1f ▶</button>
+        <button onclick="kboVideoStep('kbo-video-p4', 5, 240)" title="5프레임 앞으로 (20.8ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">+5f ⏭</button>
+      </div>
+      <!-- Speed group -->
+      <div style="display:flex; gap:4px; align-items:center;">
+        <span style="font-size:10px; color:#6B7280; font-family:'JetBrains Mono',monospace; font-weight:600; margin-right:4px;">속도</span>
+        <button onclick="kboVideoSpeed('kbo-video-p4', 0.1, this)" title="극저속" data-rate="0.1" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">0.1×</button><button onclick="kboVideoSpeed('kbo-video-p4', 0.25, this)" title="저속" data-rate="0.25" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">0.25×</button><button onclick="kboVideoSpeed('kbo-video-p4', 0.5, this)" title="슬로우" data-rate="0.5" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">0.5×</button><button onclick="kboVideoSpeed('kbo-video-p4', 1, this)" title="정상" data-rate="1" style="padding:4px 9px; background:#0F2A4A; color:#fff; border:1px solid #0F2A4A; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">1×</button>
+      </div>
+    </div>
+
+    <!-- 시간 표시 + frame counter -->
+    <div id="kbo-video-p4-info" style="margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#6B7280; text-align:center;">
+      <span id="kbo-video-p4-time">0.000</span>s
+      · frame <span id="kbo-video-p4-frame">0</span> / 240 fps
+      · <span id="kbo-video-p4-rate">1.0</span>×
+    </div>
+
+    <!-- 한 번만 등록되는 글로벌 helper (모든 video player 공유) -->
+    <script>
+if (!window._kboVideoHelpersInit) {
+  window._kboVideoHelpersInit = true;
+  window.kboVideoStep = function(id, frames, fps) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    v.pause();
+    var dt = frames / fps;
+    var t = (v.currentTime || 0) + dt;
+    if (t < 0) t = 0;
+    if (v.duration && t > v.duration) t = v.duration;
+    v.currentTime = t;
+  };
+  window.kboVideoTogglePlay = function(id) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    if (v.paused) v.play(); else v.pause();
+  };
+  window.kboVideoSpeed = function(id, rate, btn) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    v.playbackRate = rate;
+    var rateEl = document.getElementById(id + '-rate');
+    if (rateEl) rateEl.textContent = rate.toFixed(2);
+    // 같은 그룹 내 active toggle
+    if (btn && btn.parentElement) {
+      Array.prototype.forEach.call(btn.parentElement.querySelectorAll('button[data-rate]'), function(b) {
+        if (b === btn) {
+          b.style.background = '#0F2A4A'; b.style.color = '#fff'; b.style.borderColor = '#0F2A4A';
+        } else {
+          b.style.background = '#fff'; b.style.color = '#0F2A4A'; b.style.borderColor = '#C5CCD5';
+        }
+      });
+    }
+  };
+  window.kboVideoBindInfo = function(id, fps) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    var tEl = document.getElementById(id + '-time');
+    var fEl = document.getElementById(id + '-frame');
+    var rEl = document.getElementById(id + '-rate');
+    function update() {
+      var t = v.currentTime || 0;
+      if (tEl) tEl.textContent = t.toFixed(3);
+      if (fEl) fEl.textContent = Math.round(t * fps);
+      if (rEl) rEl.textContent = (v.playbackRate || 1).toFixed(2);
+    }
+    v.addEventListener('timeupdate', update);
+    v.addEventListener('seeked', update);
+    v.addEventListener('ratechange', update);
+    update();
+  };
+}</script>
+    <script>kboVideoBindInfo('kbo-video-p4', 240);</script>
+  </div>
+    </div>
+    
+
+    <!-- 5 단계 타임라인 -->
+    <div style="display:grid; grid-template-columns: 32px 1fr; gap:14px; margin-bottom:8px;">
+    <!-- 좌측: 단계 번호 + 연결선 -->
+    <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
+      <div style="width:32px; height:32px; background:#3F7D5C; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700; flex-shrink:0;">
+        1
+      </div>
+      <div style="flex:1; width:2px; background:#3F7D5C; opacity:0.3; margin-top:4px;"></div>
+    </div>
+    <!-- 우측: 카드 -->
+    <div class="kbo-card" style="padding:16px; margin-bottom:6px; border-left:3px solid #3F7D5C;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px;">
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; color:#0F2A4A;">Drive</span>
+            <span style="font-size:13px; color:#6B7280;">— 구동</span>
+          </div>
+          <div style="font-size:12px; color:#6B7280; margin-top:2px;">디딤발에서 시작해 골반이 돌기 시작하는 단계</div>
+        </div>
+        <span class="kbo-pill kbo-pill-good">양호</span>
+      </div>
+      <!-- metrics -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:10px;">
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">뒷다리 hip 회전 속도</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">877 °/s</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">골반 회전 속도</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">517 °/s</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+      </div>
+      <!-- cue + video button -->
+      <div style="font-size:13px; color:#3F4651; padding:8px 12px; background:rgba(15,42,74,0.04); border-radius:6px;">
+        <b style="color:#0F2A4A;">cue</b> · 디딤발에 체중 단단히 싣기 — 그 위에서 골반이 돌게.
+      </div>
+      <button onclick="document.getElementById('kbo-video-p4').currentTime=0.5; document.getElementById('kbo-video-p4').play(); document.getElementById('kbo-video-p4').scrollIntoView({behavior:'smooth', block:'center'});"
+    style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:#0F2A4A; color:#fff; border:none; border-radius:6px; font-family:'Inter','Noto Sans KR',sans-serif; font-size:12px; font-weight:600; cursor:pointer; margin-top:8px;">
+    <span style="font-size:13px;">▶</span>
+    <span>구동 보기 보기 (0.50초)</span>
+  </button>
+    </div>
+  </div><div style="display:grid; grid-template-columns: 32px 1fr; gap:14px; margin-bottom:8px;">
+    <!-- 좌측: 단계 번호 + 연결선 -->
+    <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
+      <div style="width:32px; height:32px; background:#3F7D5C; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700; flex-shrink:0;">
+        2
+      </div>
+      <div style="flex:1; width:2px; background:#3F7D5C; opacity:0.3; margin-top:4px;"></div>
+    </div>
+    <!-- 우측: 카드 -->
+    <div class="kbo-card" style="padding:16px; margin-bottom:6px; border-left:3px solid #3F7D5C;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px;">
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; color:#0F2A4A;">Landing</span>
+            <span style="font-size:13px; color:#6B7280;">— 착지</span>
+          </div>
+          <div style="font-size:12px; color:#6B7280; margin-top:2px;">앞발이 땅에 닿고, 그 다리로 몸의 전진을 받쳐주는 단계</div>
+        </div>
+        <span class="kbo-pill kbo-pill-good">양호</span>
+      </div>
+      <!-- metrics -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:10px;">
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">앞무릎 유지력 (착지→릴리스)</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">+8.6°</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">착지 시 몸통 기울기</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">4.2°</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">무게중심 정지력</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">1.18 m/s</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+      </div>
+      <!-- cue + video button -->
+      <div style="font-size:13px; color:#3F4651; padding:8px 12px; background:rgba(15,42,74,0.04); border-radius:6px;">
+        <b style="color:#0F2A4A;">cue</b> · 앞발 디딘 다음 무릎이 더 굽혀지지 않게 — 단단히 받쳐서.
+      </div>
+      <button onclick="document.getElementById('kbo-video-p4').currentTime=1.1; document.getElementById('kbo-video-p4').play(); document.getElementById('kbo-video-p4').scrollIntoView({behavior:'smooth', block:'center'});"
+    style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:#0F2A4A; color:#fff; border:none; border-radius:6px; font-family:'Inter','Noto Sans KR',sans-serif; font-size:12px; font-weight:600; cursor:pointer; margin-top:8px;">
+    <span style="font-size:13px;">▶</span>
+    <span>착지 보기 보기 (1.10초)</span>
+  </button>
+    </div>
+  </div><div style="display:grid; grid-template-columns: 32px 1fr; gap:14px; margin-bottom:8px;">
+    <!-- 좌측: 단계 번호 + 연결선 -->
+    <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
+      <div style="width:32px; height:32px; background:#3F7D5C; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700; flex-shrink:0;">
+        3
+      </div>
+      <div style="flex:1; width:2px; background:#3F7D5C; opacity:0.3; margin-top:4px;"></div>
+    </div>
+    <!-- 우측: 카드 -->
+    <div class="kbo-card" style="padding:16px; margin-bottom:6px; border-left:3px solid #3F7D5C;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px;">
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; color:#0F2A4A;">Torso</span>
+            <span style="font-size:13px; color:#6B7280;">— 몸통</span>
+          </div>
+          <div style="font-size:12px; color:#6B7280; margin-top:2px;">골반-몸통 분리에서 몸통이 회전하며 팔로 힘을 전달</div>
+        </div>
+        <span class="kbo-pill kbo-pill-good">양호</span>
+      </div>
+      <!-- metrics -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:10px;">
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">골반-몸통 분리 (X-Factor)</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">40.7°</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">골반 → 몸통 시간차</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">54 ms</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">골반 → 몸통 속도 증폭</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">1.53배</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+      </div>
+      <!-- cue + video button -->
+      <div style="font-size:13px; color:#3F4651; padding:8px 12px; background:rgba(15,42,74,0.04); border-radius:6px;">
+        <b style="color:#0F2A4A;">cue</b> · 몸통이 골반보다 먼저 돌지 않게 — &quot;잠깐 기다렸다가&quot; 회전.
+      </div>
+      <button onclick="document.getElementById('kbo-video-p4').currentTime=1.3; document.getElementById('kbo-video-p4').play(); document.getElementById('kbo-video-p4').scrollIntoView({behavior:'smooth', block:'center'});"
+    style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:#0F2A4A; color:#fff; border:none; border-radius:6px; font-family:'Inter','Noto Sans KR',sans-serif; font-size:12px; font-weight:600; cursor:pointer; margin-top:8px;">
+    <span style="font-size:13px;">▶</span>
+    <span>몸통 보기 보기 (1.30초)</span>
+  </button>
+    </div>
+  </div><div style="display:grid; grid-template-columns: 32px 1fr; gap:14px; margin-bottom:8px;">
+    <!-- 좌측: 단계 번호 + 연결선 -->
+    <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
+      <div style="width:32px; height:32px; background:#3F7D5C; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700; flex-shrink:0;">
+        4
+      </div>
+      <div style="flex:1; width:2px; background:#3F7D5C; opacity:0.3; margin-top:4px;"></div>
+    </div>
+    <!-- 우측: 카드 -->
+    <div class="kbo-card" style="padding:16px; margin-bottom:6px; border-left:3px solid #3F7D5C;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px;">
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; color:#0F2A4A;">Arm</span>
+            <span style="font-size:13px; color:#6B7280;">— 팔</span>
+          </div>
+          <div style="font-size:12px; color:#6B7280; margin-top:2px;">어깨가 최대로 젖혀지고, 그 반동으로 팔이 채찍처럼 빠르게 돔</div>
+        </div>
+        <span class="kbo-pill kbo-pill-good">양호</span>
+      </div>
+      <!-- metrics -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:10px;">
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">어깨 젖힘 각도 (Layback)</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">204°</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">팔꿈치 신전 속도</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">1855 °/s</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">몸통 → 팔 증폭</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">1.91배</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+      </div>
+      <!-- cue + video button -->
+      <div style="font-size:13px; color:#3F4651; padding:8px 12px; background:rgba(15,42,74,0.04); border-radius:6px;">
+        <b style="color:#0F2A4A;">cue</b> · 팔이 먼저 나가지 않게 — 어깨가 충분히 젖혀진 다음에 채찍처럼.
+      </div>
+      <button onclick="document.getElementById('kbo-video-p4').currentTime=1.45; document.getElementById('kbo-video-p4').play(); document.getElementById('kbo-video-p4').scrollIntoView({behavior:'smooth', block:'center'});"
+    style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:#0F2A4A; color:#fff; border:none; border-radius:6px; font-family:'Inter','Noto Sans KR',sans-serif; font-size:12px; font-weight:600; cursor:pointer; margin-top:8px;">
+    <span style="font-size:13px;">▶</span>
+    <span>팔 보기 보기 (1.45초)</span>
+  </button>
+    </div>
+  </div><div style="display:grid; grid-template-columns: 32px 1fr; gap:14px; margin-bottom:8px;">
+    <!-- 좌측: 단계 번호 + 연결선 -->
+    <div style="position:relative; display:flex; flex-direction:column; align-items:center;">
+      <div style="width:32px; height:32px; background:#3F7D5C; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700; flex-shrink:0;">
+        5
+      </div>
+      
+    </div>
+    <!-- 우측: 카드 -->
+    <div class="kbo-card" style="padding:16px; margin-bottom:6px; border-left:3px solid #3F7D5C;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px;">
+        <div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; color:#0F2A4A;">Release</span>
+            <span style="font-size:13px; color:#6B7280;">— 릴리스</span>
+          </div>
+          <div style="font-size:12px; color:#6B7280; margin-top:2px;">공을 놓는 순간 — 팔이 어디서 어떤 자세로 공을 놓는지</div>
+        </div>
+        <span class="kbo-pill kbo-pill-good">양호</span>
+      </div>
+      <!-- metrics -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:10px;">
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">팔 각도 (arm slot)</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">25° (사이드)</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+          <div style="background:#F6F7F9; border-radius:6px; padding:8px 10px;">
+            <div style="font-size:10.5px; color:#6B7280; line-height:1.2;">릴리스 높이</div>
+            <div style="display:flex; align-items:center; gap:4px; margin-top:3px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#3F7D5C;">1.12 m</span>
+              <span style="color:#3F7D5C; font-size:11px;">✓</span>
+            </div>
+          </div>
+        
+      </div>
+      <!-- cue + video button -->
+      <div style="font-size:13px; color:#3F4651; padding:8px 12px; background:rgba(15,42,74,0.04); border-radius:6px;">
+        <b style="color:#0F2A4A;">cue</b> · 매 투구 같은 지점에서 같은 각도로 — 일관성이 제구.
+      </div>
+      <button onclick="document.getElementById('kbo-video-p4').currentTime=1.55; document.getElementById('kbo-video-p4').play(); document.getElementById('kbo-video-p4').scrollIntoView({behavior:'smooth', block:'center'});"
+    style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:#0F2A4A; color:#fff; border:none; border-radius:6px; font-family:'Inter','Noto Sans KR',sans-serif; font-size:12px; font-weight:600; cursor:pointer; margin-top:8px;">
+    <span style="font-size:13px;">▶</span>
+    <span>릴리스 보기 보기 (1.55초)</span>
+  </button>
+    </div>
+  </div>
+
+    <!-- 우선 코칭 -->
+    
+
+    <!-- Coach Delivery -->
+    <div class="kbo-plain" style="flex-direction: column; gap: 8px; padding: 14px 16px;">
+    <div style="display:flex; gap:10px; align-items:flex-start;">
+      <span class="kbo-plain-tag">코치 메시지</span>
+      <div style="flex:1; display:flex; flex-direction:column; gap:6px;"><div class="kbo-plain-text"><b>지금 상태</b> · 5단계 모두 양호 — 흐름을 유지하며 체력 보강.</div><div class="kbo-plain-text"><b>오늘 한 가지만</b> · 오늘 흐름 그대로 유지하기.</div><div class="kbo-plain-text"><b>영상 볼 곳</b> · 옆에서 본 영상에서 5단계가 끊기지 않고 이어지는지 슬로우로 확인.</div><div class="kbo-plain-text"><b>다시 측정할 때</b> · 6주 후 동일 5단계 점검 — 가장 약한 단계가 어떻게 변했는지.</div></div>
+    </div>
+  </div>
+
+  </div>
+</section>
+
+<section id="p5" class="report-page kbo-scope">
+  <div class="kbo-pad">
+
+    <div class="kbo-page-head">
+      <span class="kbo-page-num">P5</span>
+      <span class="kbo-page-title-en">핵심 근거</span>
+      <span class="kbo-page-title-kr">Evidence Dashboard</span>
+      <span class="kbo-page-q">코칭 우선순위를 설명하는 대표 지표</span>
+    </div>
+
+    <div style="margin-bottom: 18px;">
+      <div class="kbo-headline" style="font-size: 17px;">아래 5개 지표가 이번 평가의 핵심 근거입니다.</div>
+      <div style="font-size:12px; color:#6B7280; margin-top:8px; font-style:italic; line-height:1.55;">
+        ※ 각 카드는 측정값·기준값·해석 한 줄로 압축했습니다. 전체 변수표·산식은 아래 펼침에서 확인.
+      </div>
+    </div>
+
+    <div class="kbo-card" style="padding:18px; border-left:3px solid #3B5A82; margin-bottom:12px;">
+      <div class="kbo-eyebrow" style="margin-bottom:8px; color:#3B5A82;">① 동작 순서 (Sequence)</div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:10px;">
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">순서 합격</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              10/10
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 90%+)</span>
+            </div>
+          </div>
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">골반→몸통 시간차</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              54ms
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 30~70ms)</span>
+            </div>
+          </div>
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">몸통→팔 시간차</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              35ms
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 20~50ms)</span>
+            </div>
+          </div>
+        
+      </div>
+      <div style="font-size:13px; color:#3F4651; line-height:1.5;">분절이 골반 → 몸통 → 팔 순서로 정확히 이어집니다.</div>
+    </div><div class="kbo-card" style="padding:18px; border-left:3px solid #0F2A4A; margin-bottom:12px;">
+      <div class="kbo-eyebrow" style="margin-bottom:8px; color:#0F2A4A;">② 회전 속도 (Peak Velocity)</div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:10px;">
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">골반</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              517 °/s
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 445~580)</span>
+            </div>
+          </div>
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">몸통</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              792 °/s
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 825~1100)</span>
+            </div>
+          </div>
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">팔(팔꿈치)</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              1855 °/s
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 1500+)</span>
+            </div>
+          </div>
+        
+      </div>
+      <div style="font-size:13px; color:#3F4651; line-height:1.5;">속도를 만들고 전달하는 회전 출력의 위치를 보여줍니다.</div>
+    </div><div class="kbo-card" style="padding:18px; border-left:3px solid #3F7D5C; margin-bottom:12px;">
+      <div class="kbo-eyebrow" style="margin-bottom:8px; color:#3F7D5C;">③ 속도 증폭 (Speed Gain)</div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:10px;">
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">골반→몸통</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              1.53배
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 1.45+)</span>
+            </div>
+          </div>
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">몸통→팔</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              1.91배
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 1.55+)</span>
+            </div>
+          </div>
+        
+      </div>
+      <div style="font-size:13px; color:#3F4651; line-height:1.5;">다음 분절로 갈 때 속도가 몇 배 빨라지는지. 클수록 잘 전달.</div>
+    </div><div class="kbo-card" style="padding:18px; border-left:3px solid #A87333; margin-bottom:12px;">
+      <div class="kbo-eyebrow" style="margin-bottom:8px; color:#A87333;">④ 분리·자세 (Separation / Posture)</div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:10px;">
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">골반-몸통 분리</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              40.7°
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 30°+)</span>
+            </div>
+          </div>
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">착지 시 몸통 기울기</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              4.2°
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 0~10°)</span>
+            </div>
+          </div>
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">어깨 젖힘</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              204°
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 165°+)</span>
+            </div>
+          </div>
+        
+      </div>
+      <div style="font-size:13px; color:#3F4651; line-height:1.5;">힘을 모아두고 팔로 넘길 준비 자세를 봅니다.</div>
+    </div><div class="kbo-card" style="padding:18px; border-left:3px solid #A87333; margin-bottom:12px;">
+      <div class="kbo-eyebrow" style="margin-bottom:8px; color:#A87333;">⑤ 무게중심 정지력 (Block)</div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:10px;">
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">정지력 (속도 차이)</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              1.18 m/s
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 1.4 m/s+)</span>
+            </div>
+          </div>
+        
+          <div>
+            <div style="font-size:11px; color:#6B7280;">앞무릎 유지</div>
+            <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:#0F2A4A; margin-top:2px;">
+              +8.6°
+              <span style="font-size:10px; color:#9CA3AF; font-weight:400; margin-left:4px;">(기준 0° 이상)</span>
+            </div>
+          </div>
+        
+      </div>
+      <div style="font-size:13px; color:#3F4651; line-height:1.5;">앞다리로 몸 전진을 단단히 멈춰야 그 운동량이 회전 에너지로 바뀝니다. 현재 평균 수준.</div>
+    </div>
+
+    <!-- 펼침: 전체 변수표 (가이드 §6 — details 안으로) -->
+    <details class="kbo-card" style="padding:14px 16px; margin-top:8px; background:#F6F7F9;">
+      <summary style="cursor:pointer; font-family:'Space Grotesk',sans-serif; font-weight:600; color:#0F2A4A; font-size:14px;">
+        ▾ 전체 변수표 (연구·분석용)
+      </summary>
+      <div style="margin-top:12px; font-size:11.5px; color:#3F4651; font-family:'JetBrains Mono',monospace;">
+        <table style="width:100%; border-collapse:collapse;"><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">max_pelvis_rot_vel_dps</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">516.88</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">max_trunk_twist_vel_dps</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">791.94</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">trunk_flex_vel_max</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">502.80</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">peak_x_factor</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">40.73</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">max_shoulder_ER</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">203.58</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">max_shoulder_ER_deg</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">203.58</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">trunk_rotation_at_fc</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">-88.51</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">hip_shoulder_sep_at_fc</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">33.29</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">trunk_forward_tilt_at_fc</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">4.16</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">lead_knee_ext_vel_max</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">319.87</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">lead_knee_ext_change_fc_to_br</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">8.61</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">max_cog_velo</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">3.17</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">cog_decel</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">1.18</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">hip_ir_vel_max_drive</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">876.52</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">com_decel_pct</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">92.34</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">elbow_ext_vel_max</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">1854.92</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">shoulder_ir_vel_max</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">1637.98</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">pelvis_to_trunk_lag_ms</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">54.28</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">pelvis_to_trunk_lag_ms_sd</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">12.00</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">arm_trunk_speedup</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">1.91</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">pelvis_trunk_speedup</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">1.53</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">proper_sequence</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">1.00</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">proper_sequence_pct</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">100.00</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">trunk_to_arm_lag_ms</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">35.00</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">arm_slot_mean_deg</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">25.01</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">release_height_m</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">1.12</td>
+    </tr><tr style="border-bottom:1px solid #E1E5EB;">
+      <td style="padding:4px 8px; color:#6B7280;">stride_mean_m</td>
+      <td style="padding:4px 8px; text-align:right; color:#0F2A4A;">1.85</td>
+    </tr></table>
+      </div>
+    </details>
+
+    <!-- 신뢰도 안내 -->
+    <div style="margin-top: 14px; padding: 10px 14px; border-left: 3px solid #A87333; background: rgba(180,83,9,0.05); border-radius: 4px; font-size: 12px; color: #3F4651; line-height:1.55;">
+      ※ 측정 도구는 Uplift Capture (스마트폰 2대 markerless). 마커 기반 시스템 대비 정확도는 보통 수준. 절대값보다 같은 선수의 시간 변화 비교가 더 안전합니다.
+    </div>
+
+  </div>
+</section>
+
+<section id="p6" class="report-page kbo-scope">
+  <div class="kbo-pad">
+
+    <div class="kbo-page-head">
+      <span class="kbo-page-num">P6</span>
+      <span class="kbo-page-title-en">훈련 우선순위 · 6주 후 재측정</span>
+      <span class="kbo-page-title-kr">Action &amp; Retest</span>
+      <span class="kbo-page-q">오늘부터 무엇을 어떻게 할 것인가?</span>
+    </div>
+
+    <!-- Athlete Card — 선수에게 바로 전달 가능한 1장 요약 -->
+    <div class="kbo-card" style="padding:24px; margin-bottom:18px; background: linear-gradient(180deg, #F2F5FA 0%, #FFFFFF 100%); border:2px solid #0F2A4A;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+        <div>
+          <div class="kbo-eyebrow" style="margin-bottom:2px; color:#0F2A4A;">선수 카드 · ATHLETE CARD</div>
+          <div class="kbo-display" style="font-size:20px; color:#0F2A4A;">parkmyeonggyun — 오늘 한 장 요약</div>
+        </div>
+        <span class="kbo-pill kbo-pill-good">선수에게 그대로 전달 OK</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:14px;">
+        <!-- 잘되는 점 -->
+        <div style="padding:14px; background:rgba(63,125,92,0.06); border-radius:8px; border-left:3px solid #3F7D5C;">
+          <div class="kbo-eyebrow" style="color:#3F7D5C; margin-bottom:6px;">✓ 잘되는 점</div>
+          <ul style="margin:0; padding-left:16px; font-size:13px; color:#0F1419; line-height:1.5;">
+            <li style="margin-top:3px;">투구 동작 순서가 정확함</li><li style="margin-top:3px;">골반-몸통 분리가 충분함</li><li style="margin-top:3px;">어깨 젖힘 각도가 미국 엘리트 수준</li><li style="margin-top:3px;">몸통→팔 속도 증폭이 우수함</li>
+          </ul>
+        </div>
+        <!-- 고칠 점 -->
+        <div style="padding:14px; background:rgba(168,115,51,0.06); border-radius:8px; border-left:3px solid #A87333;">
+          <div class="kbo-eyebrow" style="color:#A87333; margin-bottom:6px;">◎ 우선 고칠 점</div>
+          <ul style="margin:0; padding-left:16px; font-size:13px; color:#0F1419; line-height:1.5;">
+            <li style="margin-top:3px;">몸통 회전 속도가 평균보다 낮음</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 오늘의 cue + drill -->
+      <div style="margin-top:14px; padding:14px; background:#FFFFFF; border-radius:8px; border:1px solid #E1E5EB;">
+        <div style="display:flex; gap:14px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:200px;">
+            <div class="kbo-eyebrow" style="margin-bottom:6px; color:#0F2A4A;">오늘 한 가지만</div>
+            <div style="font-size:14px; color:#0F1419; font-weight:600; line-height:1.5;">
+              골반이 돈 다음 몸통이 돌게 — &quot;잠깐 기다리기&quot;.
+            </div>
+          </div>
+          <div style="flex:1; min-width:200px;">
+            <div class="kbo-eyebrow" style="margin-bottom:6px; color:#0F2A4A;">오늘 1개 drill</div>
+            <div style="font-size:14px; color:#0F1419; font-weight:600; line-height:1.5;">Hip-shoulder separation</div>
+            <div style="font-size:11.5px; color:#6B7280; margin-top:2px;">골반 먼저 돌리고 몸통이 따라가는 분리 동작 연습</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6주 후 확인 -->
+      <div style="margin-top:14px; padding:12px 14px; background:rgba(15,42,74,0.04); border-radius:8px;">
+        <div class="kbo-eyebrow" style="margin-bottom:4px; color:#0F2A4A;">6주 후 확인</div>
+        <div style="font-size:13px; color:#0F1419; line-height:1.5;">
+          같은 4가지 — <b>동작 순서, 골반-몸통 시간차, 속도 증폭, 팔 각도 일관성</b> — 이 어떻게 변했는지 다시 측정합니다.
+          <span style="color:#6B7280; font-size:11.5px;">(보장이 아니라, 같은 지표로 변화를 본다는 뜻)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drill Package -->
+    <div class="kbo-card" style="padding:18px; margin-bottom:14px;">
+      <div class="kbo-eyebrow" style="margin-bottom:10px;">우선순위 드릴 — 1순위부터 진행</div>
+      <div style="display:grid; gap:10px;">
+        
+          <div style="display:grid; grid-template-columns: 32px 1fr; gap:12px; align-items:start;">
+            <div style="width:28px; height:28px; background:#A8443A; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:12px;">1</div>
+            <div>
+              <div style="display:flex; align-items:baseline; gap:8px;">
+                <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#0F2A4A;">Hip-shoulder separation</span>
+                <span style="font-size:11px; color:#6B7280;">— 동작 순서</span>
+              </div>
+              <div style="font-size:12.5px; color:#3F4651; margin-top:2px; line-height:1.4;">골반 먼저 돌리고 몸통이 따라가는 분리 동작 연습</div>
+            </div>
+          </div>
+        
+          <div style="display:grid; grid-template-columns: 32px 1fr; gap:12px; align-items:start;">
+            <div style="width:28px; height:28px; background:#A87333; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:12px;">2</div>
+            <div>
+              <div style="display:flex; align-items:baseline; gap:8px;">
+                <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:#0F2A4A;">Connected throw</span>
+                <span style="font-size:11px; color:#6B7280;">— 전달 연결</span>
+              </div>
+              <div style="font-size:12.5px; color:#3F4651; margin-top:2px; line-height:1.4;">짧은 거리 캐치볼로 몸통-팔 연결 감각</div>
+            </div>
+          </div>
+        
+      </div>
+    </div>
+
+    <!-- Retest KPI 표 -->
+    <div class="kbo-card" style="padding:18px; margin-bottom:14px;">
+      <div class="kbo-eyebrow" style="margin-bottom:10px;">6주 후 재측정 KPI — 같은 지표로 변화 확인</div>
+      <table class="kpi-retest-table" style="width:100%; border-collapse:collapse; font-size:12.5px;">
+        <thead>
+          <tr style="background:#F6F7F9; border-bottom:1px solid #E1E5EB;">
+            <th style="text-align:left; padding:8px;">지표</th>
+            <th style="text-align:right; padding:8px;">현재</th>
+            <th style="text-align:right; padding:8px;">목표 (또래 상위)</th>
+            <th style="text-align:left; padding:8px;">의미</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #EEF1F5;"><td style="padding:8px;">동작 순서 합격</td><td style="text-align:right; padding:8px; font-family:'JetBrains Mono',monospace;">10/10</td><td style="text-align:right; padding:8px; color:#3F7D5C; font-family:'JetBrains Mono',monospace;">9/10+</td><td style="padding:8px; color:#6B7280;">10번 중 골반→몸통→팔 순서</td></tr>
+          <tr style="border-bottom:1px solid #EEF1F5;"><td style="padding:8px;">골반→몸통 시간차</td><td style="text-align:right; padding:8px; font-family:'JetBrains Mono',monospace;">54ms</td><td style="text-align:right; padding:8px; color:#3F7D5C; font-family:'JetBrains Mono',monospace;">30~70ms</td><td style="padding:8px; color:#6B7280;">너무 짧으면 동시, 너무 길면 끊김</td></tr>
+          <tr style="border-bottom:1px solid #EEF1F5;"><td style="padding:8px;">몸통→팔 속도 증폭</td><td style="text-align:right; padding:8px; font-family:'JetBrains Mono',monospace;">1.91배</td><td style="text-align:right; padding:8px; color:#3F7D5C; font-family:'JetBrains Mono',monospace;">1.7배+</td><td style="padding:8px; color:#6B7280;">팔로 힘이 잘 전달되는지</td></tr>
+          <tr style="border-bottom:1px solid #EEF1F5;"><td style="padding:8px;">앞무릎 유지</td><td style="text-align:right; padding:8px; font-family:'JetBrains Mono',monospace;">+8.6°</td><td style="text-align:right; padding:8px; color:#3F7D5C; font-family:'JetBrains Mono',monospace;">0° 이상</td><td style="padding:8px; color:#6B7280;">착지에서 릴리스까지 무릎 굽혀지지 않기</td></tr>
+          <tr><td style="padding:8px;">팔 각도 일관성 (SD)</td><td style="text-align:right; padding:8px; font-family:'JetBrains Mono',monospace;">—</td><td style="text-align:right; padding:8px; color:#3F7D5C; font-family:'JetBrains Mono',monospace;">±3° 이내</td><td style="padding:8px; color:#6B7280;">매 투구 같은 각도로 — 제구의 핵심</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Video Checkpoint -->
+    <div class="kbo-card" style="padding:18px; margin-bottom:14px;">
+      <div class="kbo-eyebrow" style="margin-bottom:10px;">영상에서 볼 3 순간 — 코치용 체크포인트</div>
+
+      
+      <div style="margin-bottom:14px;">
+        <div class="kbo-video-wrap" style="max-width:560px; margin:12px auto;">
+    <div style="position:relative; background:#000; border-radius:10px; overflow:hidden;">
+      <video id="kbo-video-p6" controls preload="metadata" playsinline style="width:100%; display:block;">
+        <source src="parkmyeonggyun_pitch_2026-05-07.mp4" type="video/mp4">
+        이 브라우저는 video 태그를 지원하지 않습니다.
+      </video>
+      <div style="position:absolute; top:8px; left:10px; background:rgba(15,42,74,0.85); color:#fff; padding:3px 8px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.06em;">
+        투구 영상 · 240 fps
+      </div>
+    </div>
+
+    <!-- Frame-step + speed 컨트롤 -->
+    <div class="kbo-video-controls" style="margin-top:8px; padding:8px 10px; background:#F2F5FA; border:1px solid #E1E5EB; border-radius:8px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+      <!-- Frame step group -->
+      <div style="display:flex; gap:4px; align-items:center;">
+        <span style="font-size:10px; color:#6B7280; font-family:'JetBrains Mono',monospace; font-weight:600; margin-right:4px;">FRAME</span>
+        <button onclick="kboVideoStep('kbo-video-p6', -5, 240)" title="5프레임 뒤로 (20.8ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">⏮ −5f</button>
+        <button onclick="kboVideoStep('kbo-video-p6', -1, 240)" title="1프레임 뒤로 (4.17ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">◀ −1f</button>
+        <button onclick="kboVideoTogglePlay('kbo-video-p6')" title="재생/일시정지 (Space)" style="padding:4px 9px; background:#0F2A4A; color:#fff; border:1px solid #0F2A4A; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">▶ / ⏸</button>
+        <button onclick="kboVideoStep('kbo-video-p6', 1, 240)" title="1프레임 앞으로 (4.17ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">+1f ▶</button>
+        <button onclick="kboVideoStep('kbo-video-p6', 5, 240)" title="5프레임 앞으로 (20.8ms)" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">+5f ⏭</button>
+      </div>
+      <!-- Speed group -->
+      <div style="display:flex; gap:4px; align-items:center;">
+        <span style="font-size:10px; color:#6B7280; font-family:'JetBrains Mono',monospace; font-weight:600; margin-right:4px;">속도</span>
+        <button onclick="kboVideoSpeed('kbo-video-p6', 0.1, this)" title="극저속" data-rate="0.1" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">0.1×</button><button onclick="kboVideoSpeed('kbo-video-p6', 0.25, this)" title="저속" data-rate="0.25" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">0.25×</button><button onclick="kboVideoSpeed('kbo-video-p6', 0.5, this)" title="슬로우" data-rate="0.5" style="padding:4px 9px; background:#fff; color:#0F2A4A; border:1px solid #C5CCD5; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">0.5×</button><button onclick="kboVideoSpeed('kbo-video-p6', 1, this)" title="정상" data-rate="1" style="padding:4px 9px; background:#0F2A4A; color:#fff; border:1px solid #0F2A4A; border-radius:5px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;">1×</button>
+      </div>
+    </div>
+
+    <!-- 시간 표시 + frame counter -->
+    <div id="kbo-video-p6-info" style="margin-top:6px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#6B7280; text-align:center;">
+      <span id="kbo-video-p6-time">0.000</span>s
+      · frame <span id="kbo-video-p6-frame">0</span> / 240 fps
+      · <span id="kbo-video-p6-rate">1.0</span>×
+    </div>
+
+    <!-- 한 번만 등록되는 글로벌 helper (모든 video player 공유) -->
+    <script>
+if (!window._kboVideoHelpersInit) {
+  window._kboVideoHelpersInit = true;
+  window.kboVideoStep = function(id, frames, fps) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    v.pause();
+    var dt = frames / fps;
+    var t = (v.currentTime || 0) + dt;
+    if (t < 0) t = 0;
+    if (v.duration && t > v.duration) t = v.duration;
+    v.currentTime = t;
+  };
+  window.kboVideoTogglePlay = function(id) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    if (v.paused) v.play(); else v.pause();
+  };
+  window.kboVideoSpeed = function(id, rate, btn) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    v.playbackRate = rate;
+    var rateEl = document.getElementById(id + '-rate');
+    if (rateEl) rateEl.textContent = rate.toFixed(2);
+    // 같은 그룹 내 active toggle
+    if (btn && btn.parentElement) {
+      Array.prototype.forEach.call(btn.parentElement.querySelectorAll('button[data-rate]'), function(b) {
+        if (b === btn) {
+          b.style.background = '#0F2A4A'; b.style.color = '#fff'; b.style.borderColor = '#0F2A4A';
+        } else {
+          b.style.background = '#fff'; b.style.color = '#0F2A4A'; b.style.borderColor = '#C5CCD5';
+        }
+      });
+    }
+  };
+  window.kboVideoBindInfo = function(id, fps) {
+    var v = document.getElementById(id);
+    if (!v) return;
+    var tEl = document.getElementById(id + '-time');
+    var fEl = document.getElementById(id + '-frame');
+    var rEl = document.getElementById(id + '-rate');
+    function update() {
+      var t = v.currentTime || 0;
+      if (tEl) tEl.textContent = t.toFixed(3);
+      if (fEl) fEl.textContent = Math.round(t * fps);
+      if (rEl) rEl.textContent = (v.playbackRate || 1).toFixed(2);
+    }
+    v.addEventListener('timeupdate', update);
+    v.addEventListener('seeked', update);
+    v.addEventListener('ratechange', update);
+    update();
+  };
+}</script>
+    <script>kboVideoBindInfo('kbo-video-p6', 240);</script>
+  </div>
+        <div style="font-size:12px; color:#3F4651; margin-top:8px; text-align:center;">
+          ↓ 아래 카드의 시점 버튼을 누르면 해당 순간으로 일시정지됩니다 ↓
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
+        
+          <div style="background:#F6F7F9; border-radius:8px; padding:12px;">
+            <div style="display:flex; align-items:baseline; gap:6px; margin-bottom:4px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; color:#0F2A4A;">① 앞발 착지</span>
+            </div>
+            <div style="font-size:11.5px; color:#6B7280; line-height:1.45;">디딤발에 체중 → 앞발이 단단히 닿는 순간. 골반이 막 돌기 시작</div>
+            <button onclick="document.getElementById('kbo-video-p6').currentTime=1.1; document.getElementById('kbo-video-p6').pause(); document.getElementById('kbo-video-p6').scrollIntoView({behavior:'smooth', block:'center'});"
+    style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:#fff; color:#0F2A4A; border:1.5px solid #0F2A4A; border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; cursor:pointer; margin-top:6px;">
+    ⏸ 앞발 착지 (1.10s)
+  </button>
+          </div>
+        
+          <div style="background:#F6F7F9; border-radius:8px; padding:12px;">
+            <div style="display:flex; align-items:baseline; gap:6px; margin-bottom:4px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; color:#0F2A4A;">② 어깨 최대 젖혀짐</span>
+            </div>
+            <div style="font-size:11.5px; color:#6B7280; line-height:1.45;">어깨 외회전 정점. 이때 몸통이 최대 회전 + 팔이 채찍처럼 준비</div>
+            <button onclick="document.getElementById('kbo-video-p6').currentTime=1.4; document.getElementById('kbo-video-p6').pause(); document.getElementById('kbo-video-p6').scrollIntoView({behavior:'smooth', block:'center'});"
+    style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:#fff; color:#0F2A4A; border:1.5px solid #0F2A4A; border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; cursor:pointer; margin-top:6px;">
+    ⏸ 어깨 최대 젖혀짐 (1.40s)
+  </button>
+          </div>
+        
+          <div style="background:#F6F7F9; border-radius:8px; padding:12px;">
+            <div style="display:flex; align-items:baseline; gap:6px; margin-bottom:4px;">
+              <span style="font-family:'Space Grotesk',sans-serif; font-weight:700; color:#0F2A4A;">③ 공 놓는 순간</span>
+            </div>
+            <div style="font-size:11.5px; color:#6B7280; line-height:1.45;">릴리스. 어디서·어떤 각도로 공이 빠져나가나 (제구 시작점)</div>
+            <button onclick="document.getElementById('kbo-video-p6').currentTime=1.55; document.getElementById('kbo-video-p6').pause(); document.getElementById('kbo-video-p6').scrollIntoView({behavior:'smooth', block:'center'});"
+    style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:#fff; color:#0F2A4A; border:1.5px solid #0F2A4A; border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; cursor:pointer; margin-top:6px;">
+    ⏸ 공 놓는 순간 (1.55s)
+  </button>
+          </div>
+        
+      </div>
+      <div style="font-size:11px; color:#9CA3AF; margin-top:10px; font-style:italic;">
+        ※ 버튼을 누르면 영상이 해당 시점으로 이동해 일시정지됩니다. 슬로우로 단계 사이 흐름을 확인하세요.
+      </div>
+    </div>
+
+    <!-- Coach Delivery (P6 정리) -->
+    <div class="kbo-plain" style="flex-direction: column; gap: 8px; padding: 14px 16px;">
+    <div style="display:flex; gap:10px; align-items:flex-start;">
+      <span class="kbo-plain-tag">코치 메시지 · 최종</span>
+      <div style="flex:1; display:flex; flex-direction:column; gap:6px;"><div class="kbo-plain-text"><b>지금 상태</b> · 투구 동작 순서가 정확함 · 골반-몸통 분리가 충분함이 강점. 6주간 몸통 회전 속도가 평균보다 낮음 해결에 집중.</div><div class="kbo-plain-text"><b>오늘 한 가지만</b> · Hip-shoulder separation — 동작 순서</div><div class="kbo-plain-text"><b>영상 볼 곳</b> · 앞발 착지 → 어깨 최대 젖혀짐 → 공 놓는 순간, 이 3 장면 슬로우.</div><div class="kbo-plain-text"><b>다시 측정할 때</b> · 6주 후 동일 5가지 KPI 재측정. &quot;보장&quot;이 아니라 &quot;변화 확인&quot; 목적.</div></div>
+    </div>
+  </div>
+
+    <!-- 안전 안내 -->
+    <div style="margin-top: 14px; padding: 10px 14px; border-left: 3px solid #6B7280; background: rgba(107,114,128,0.06); border-radius: 4px; font-size: 11.5px; color: #6B7280; line-height:1.55;">
+      ※ 본 리포트는 진단용이 아닙니다. 부상 위험·관절 부하는 별도 측정이 필요하며, 통증·이상 감각이 있으면 즉시 트레이너·의사 상담을 권합니다.
+    </div>
+
+  </div>
+</section>
+</div>
+</body>
+</html>

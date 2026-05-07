@@ -1,5 +1,60 @@
-# BBL v33.22 — Driveline 검증 cog_decel 단일 채택
-**Build**: 2026-05-07 / **Patch**: v33.21 → v33.22 / **Type**: 외부 모델 검증 + 회귀 변수 1개 추가
+# BBL v33.22 — Driveline 검증 cog_decel 단일 채택 + Kinematic-Only Report v2
+**Build**: 2026-05-07 / **Patch**: v33.21 → v33.22 / **Type**: 외부 모델 검증 + 회귀 변수 1개 + 새 리포트 모듈
+
+## v33.22 v2 — Kinematic-Only Report 모듈 신설 (2026-05-07)
+
+기존 단일 페이지 박명균_offline.html을 Theia Offline 6 페이지 narrative + KBO light 디자인 + 영상 통합 + 240 fps frame-step 컨트롤로 재구성한 새 빌더 모듈을 추가.
+
+### 새 파일
+- `kinematic_only_report.js` (93 KB) — 메인 빌더 모듈 (11개 함수)
+- `build_park_offline_v2.js` (10 KB) — 박명균 케이스 빌드 예시
+- `박명균_offline_v2_phaseB.html` (120 KB) — 결과물 예시
+- `README_kinematic_only_report.md` — 개발자 README
+- `BBL_Kinematic_Report_사용설명서.pdf` — 코치·선수·연구원용 사용 설명서
+
+### 6 페이지 구조 (Theia 가이드 §2 적용)
+| 페이지 | 한글 제목 | 핵심 컴포넌트 |
+|---|---|---|
+| P1 | 한눈에 보는 결론 | Hero + 4단계 구속 막대 + 효율 보너스 박스 + 3 카드 + 코치 메시지 |
+| P2 | 속도를 만드는 능력 | 분절 회전 속도 3 막대 + 속도 증폭 + 손목 속도 |
+| P3 | 동작 순서·시간차 | Dynamic Sequence SVG + 시간차/증폭 카드 + 영상 |
+| P4 | 시간 흐름별 점검 | 5단계 timeline (Drive→Landing→Torso→Arm→Release) + 영상 jump |
+| P5 | 핵심 근거 | Evidence 6 카드 + 펼침 details (전체 변수표) |
+| P6 | 훈련·재측정 | Athlete Card + Drill 패키지 + Retest KPI + 영상 체크포인트 |
+
+### Kinematic-only 안전 처리 (가이드 §3)
+- GRF / Joint Power / 관절 파워 / J / kW / ETE direct 라벨 자동 "미측정"으로 치환 (`sanitizeUnsupportedMetrics`)
+- "Force Generation" → "속도를 만드는 능력 (Kinematic Output)"
+- "Force Transmission" → "동작 순서·시간차 (Kinematic Transfer Proxy)"
+- "Energy Leak" → "Kinematic leak indicator" (조심스럽게)
+- UCL / 부상 위험 진단 표시 금지
+
+### 영상 통합 (3 위치)
+- **P3** Dynamic Sequence 옆 — 전체 영상 보기
+- **P4** 5단계 카드마다 ▶ jump 버튼 (Drive 0.50s · Landing 1.10s · Torso 1.30s · Arm 1.45s · Release 1.55s)
+- **P6** 영상 체크포인트 ⏸ 일시정지 (앞발 착지 / 어깨 최대 / 공 놓는 순간)
+
+### 240 fps frame-step + slow motion 컨트롤
+- ⏮ −5f (≈20.83ms) / ◀ −1f (≈4.17ms) / ▶ ⏸ / +1f ▶ / +5f ⏭
+- 0.1× / 0.25× / 0.5× / 1× 속도 선택
+- 실시간 표시: `0.450s · frame 108 / 240 fps · 0.10×`
+- 다른 fps (120/60) 영상도 자동 대응
+
+### Velocity Waterfall 모순 해결 (Phase B-Fix)
+- baseline = 측정값 (잔차 보존)
+- 시나리오 = baseline + max(0, model_delta) — 음수 클램프
+- max-only imputation — 본인이 이미 elite 이상이면 그대로
+
+### 선수·코치 친화 표현 일관 적용
+- X-Factor → 골반-몸통 분리 각도
+- Layback → 어깨 젖힘 각도
+- FC/MER/BR → 앞발 착지 / 어깨 최대 젖혀짐 / 공 놓는 순간
+- sequence 100% → 동작 순서 합격 10/10
+- 바닥 반력 → 지면 반력 (학술 용어 반영)
+- "어디를 키우면" → "무엇을 키우면"
+- 페이지 제목 영어 → 한글 메인 + 영어 부제
+
+---
 
 ## v33.22 — Driveline "Mechanical Composite Scores+" 모델 정량 검증 후 cog_decel 단일 채택 (2026-05-07)
 
